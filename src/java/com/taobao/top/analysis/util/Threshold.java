@@ -6,6 +6,7 @@ package com.taobao.top.analysis.util;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
+ * 简单的一个实现，防止日志爆掉
  * @author fangweng
  * @Email fangweng@taobao.com
  * 2011-11-25

@@ -38,6 +38,9 @@ import com.taobao.top.analysis.statistics.data.Rule;
 import com.taobao.top.analysis.util.ReportUtil;
 
 /**
+ * 
+ * 通过读取文件，创建多个任务
+ * 
  * @author fangweng
  * @Email fangweng@taobao.com
  * 2011-11-24

@@ -6,6 +6,7 @@ package com.taobao.top.analysis.config;
 import org.apache.commons.lang.StringUtils;
 
 /**
+ * 任务的配置类
  * @author fangweng
  *
  */

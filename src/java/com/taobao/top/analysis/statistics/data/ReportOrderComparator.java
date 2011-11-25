@@ -3,6 +3,7 @@ package com.taobao.top.analysis.statistics.data;
 import java.util.Comparator;
 
 /**
+ * 用于报表排序
  * @author fangweng
  * 
  */

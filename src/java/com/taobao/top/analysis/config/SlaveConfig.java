@@ -3,9 +3,9 @@
  */
 package com.taobao.top.analysis.config;
 
-import com.taobao.top.analysis.exception.AnalysisException;
 
 /**
+ * Slave配置类
  * @author fangweng
  *
  */

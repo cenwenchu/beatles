@@ -17,6 +17,8 @@ import com.taobao.top.analysis.job.JobTask;
 import com.taobao.top.analysis.node.base.IInputAdaptor;
 
 /**
+ * 文件输入适配器
+ * 
  * @author fangweng
  * @Email fangweng@taobao.com
  * 2011-11-25

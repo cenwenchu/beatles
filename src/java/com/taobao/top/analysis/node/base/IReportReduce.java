@@ -9,7 +9,7 @@ import com.taobao.top.analysis.statistics.data.ReportEntry;
 /**
  * 可定制化的ｖａｌｕｅ生成类（Ｒｅｄｕｃｅ类）
  * 
- * @author wenchu
+ * @author fangweng
  * 
  */
 public interface IReportReduce {

@@ -12,6 +12,15 @@ import com.taobao.top.analysis.statistics.data.Alias;
 import com.taobao.top.analysis.statistics.data.ReportEntry;
 
 
+/**
+ * 
+ * 时间类型Reduce实现
+ * 
+ * @author fangweng
+ * @Email fangweng@taobao.com
+ * 2011-11-26
+ *
+ */
 public class TimeReduce implements IReportReduce {
 
 	private static final Log logger = LogFactory.getLog(TimeReduce.class);

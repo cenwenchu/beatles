@@ -8,6 +8,7 @@ import java.util.Iterator;
 import java.util.Map;
 
 /**
+ * 配置抽象类
  * 参数采取动态获取，每次获取都会可能产生消耗，注意使用场景
  * @author fangweng
  *

@@ -17,6 +17,7 @@ import org.apache.commons.logging.LogFactory;
 import com.taobao.top.analysis.util.AnalysisConstants;
 
 /**
+ * 内部key映射，用于可逆压缩
  * @author fangweng
  *
  */

@@ -3,9 +3,9 @@
  */
 package com.taobao.top.analysis.config;
 
-import com.taobao.top.analysis.exception.AnalysisException;
 
 /**
+ * 拖拉数据配置类
  * @author fangweng
  *
  */

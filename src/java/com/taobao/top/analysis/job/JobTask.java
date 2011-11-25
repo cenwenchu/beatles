@@ -11,6 +11,10 @@ import com.taobao.top.analysis.config.JobConfig;
 import com.taobao.top.analysis.statistics.data.Rule;
 
 /**
+ * 
+ * 任务的真实需要执行的实例，每个计算节点根据描述的输入获取数据，
+ * 根据规则来分析数据，最后返回结果到输出
+ * 
  * @author fangweng
  * @Email fangweng@taobao.com
  * 2011-11-24

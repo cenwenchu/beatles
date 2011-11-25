@@ -11,6 +11,10 @@ import com.taobao.top.analysis.exception.AnalysisException;
 import com.taobao.top.analysis.statistics.data.Rule;
 
 /**
+ * 任务结构体，自我描述了数据来源，数据输出，分析规则，包含的子任务
+ * 每个子任务可以被提交到集群的单台机器执行，
+ * 可以认为就是每个计算节点所处理无差别任务定义。
+ * 
  * @author fangweng
  * @Email fangweng@taobao.com
  * 2011-11-24

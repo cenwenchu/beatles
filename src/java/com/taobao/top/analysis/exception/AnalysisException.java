@@ -4,6 +4,7 @@
 package com.taobao.top.analysis.exception;
 
 /**
+ * 分析包中的异常基类
  * @author fangweng
  *
  */

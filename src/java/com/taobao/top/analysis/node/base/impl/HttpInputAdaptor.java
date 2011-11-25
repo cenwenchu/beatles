@@ -12,6 +12,8 @@ import com.taobao.top.analysis.job.JobTask;
 import com.taobao.top.analysis.node.base.IInputAdaptor;
 
 /**
+ * Http数据源适配器
+ * 
  * @author fangweng
  * @Email fangweng@taobao.com
  * 2011-11-25

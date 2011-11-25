@@ -10,6 +10,14 @@ import com.taobao.top.analysis.statistics.data.ReportEntry;
 import com.taobao.top.analysis.util.AnalysisConstants;
 import com.taobao.top.analysis.util.ReportUtil;
 
+/**
+ * 时间类型的MapClass实现
+ * 
+ * @author fangweng
+ * @Email fangweng@taobao.com
+ * 2011-11-26
+ *
+ */
 public class TimeMap implements IReportMap {
 
 	@Override

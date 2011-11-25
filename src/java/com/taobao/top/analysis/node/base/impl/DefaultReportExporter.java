@@ -31,6 +31,8 @@ import com.taobao.top.analysis.util.NamedThreadFactory;
 import com.taobao.top.analysis.util.ReportUtil;
 
 /**
+ * 默认报表输出实现
+ * 
  * @author fangweng
  * @Email fangweng@taobao.com
  * 2011-11-25
@@ -112,6 +114,8 @@ public class DefaultReportExporter implements IReportExporter {
 		
 		if (!rootDir.endsWith(File.separator))
 			rootDir = new StringBuilder(rootDir).append(File.separator).toString();
+		
+		rootDir = new StringBuilder(rootDir).append(jobTask.getTaskId()).append(File.separator).toString();
 		
 		StringBuilder periodRootDir = new StringBuilder();
 		StringBuilder periodDir = new StringBuilder();

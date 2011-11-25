@@ -8,6 +8,7 @@ import org.apache.commons.logging.LogFactory;
 
 
 /**
+ * 服务端配置类
  * @author fangweng
  *
  */

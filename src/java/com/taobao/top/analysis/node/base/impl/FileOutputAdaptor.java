@@ -9,6 +9,8 @@ import com.taobao.top.analysis.node.base.IOutputAdaptor;
 import com.taobao.top.analysis.node.base.IReportExporter;
 
 /**
+ * 文件输出适配器
+ * 
  * @author fangweng
  * @Email fangweng@taobao.com
  * 2011-11-25

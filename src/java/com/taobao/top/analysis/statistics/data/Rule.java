@@ -10,7 +10,7 @@ import java.util.TreeMap;
 /**
  * 配置信息的传输对象，用于master向slave传输配置信息
  * 
- * @author fangliang
+ * @author fangweng
  * 
  */
 public class Rule implements Serializable {

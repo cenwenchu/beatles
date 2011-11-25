@@ -11,6 +11,15 @@ import com.taobao.top.analysis.job.JobTask;
 import com.taobao.top.analysis.node.base.IInputAdaptor;
 
 
+/**
+ * @author fangweng
+ * @Email fangweng@taobao.com
+ * 2011-11-26
+ * 
+ * 测试整个分析统计抽象层的测试用例子，analysis-job-config.properties中的一个数据来源
+ * 需要通过http本地获得数据，因此首先跑这个用例以前先运行TestServer,然后再跑这个例子
+ *
+ */
 public class DefaultAnalysisEngineTest {
 
 	@Test

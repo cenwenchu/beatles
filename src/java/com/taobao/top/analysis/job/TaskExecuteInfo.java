@@ -6,6 +6,8 @@ package com.taobao.top.analysis.job;
 import java.io.Serializable;
 
 /**
+ * 任务执行时必要的执行信息纪录，用于监控和状态报告
+ * 
  * @author fangweng
  * @Email fangweng@taobao.com
  * 2011-11-25

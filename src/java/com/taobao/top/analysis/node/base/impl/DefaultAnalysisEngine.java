@@ -35,6 +35,8 @@ import com.taobao.top.analysis.util.ReportUtil;
 import com.taobao.top.analysis.util.Threshold;
 
 /**
+ * 默认计算引擎实现，用于分析任务
+ * 
  * @author fangweng
  * @Email fangweng@taobao.com
  * 2011-11-24
