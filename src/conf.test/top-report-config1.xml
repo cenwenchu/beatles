@@ -53,8 +53,8 @@
 		<ReportEntry id="apiMaxTimeConsume" name="处理最大时间" key="apiName" value="max($responseTime$)"  valuefilter="&gt;=0&amp;&lt;10000&amp;isnumber"/>	
 		<ReportEntry id="apiAverageServiceConsume" name="业务成功处理平均时间" key="apiName" condition="$errorCode$=0" 
 			 value="average($responseTime$ - $platformConsumeTime$)" valuefilter="&gt;=0&amp;isnumber&amp;round:3"/>	
-		<ReportEntry id="400ErrorCount" name="400错误次数" key="apiName" value="count()" condition="$errorCode$&gt;=400&amp;$errorCode$&lt;500" />
-		<ReportEntry id="500ErrorCount" name="400错误次数" key="apiName" value="count()" condition="$errorCode$=500" />
+		<ReportEntry id="api400ErrorCount" name="400错误次数" key="apiName" value="count()" condition="$errorCode$&gt;=400&amp;$errorCode$&lt;500" />
+		<ReportEntry id="api500ErrorCount" name="400错误次数" key="apiName" value="count()" condition="$errorCode$=500" />
 		<!-- 读取数据量乘以8来计算bit -->
 		<ReportEntry id="apiFlow" name="服务上行数据量" key="apiName" value="sum($readBytes$*#8#)" />
 	</entrys>
@@ -81,7 +81,7 @@
 				<entry id="apiMinTimeConsume"/>
 				<entry id="apiMaxTimeConsume"/>
 				<entry id="apiAverageServiceConsume"/>
-				<entry name="400与500占总访问百分比" key="apiName" value="plain(entry(400ErrorCount+500ErrorCount)/entry(apiTotalCount))" valuefilter="&gt;=0&amp;isnumber&amp;round:3"/>	
+				<entry name="400与500占总访问百分比" key="apiName" value="plain(entry(api400ErrorCount+api500ErrorCount)/entry(apiTotalCount))" valuefilter="&gt;=0&amp;isnumber&amp;round:3"/>	
 			</entryList>
 		</report>
 	
@@ -93,83 +93,40 @@
 			</entryList>
 		</report>
 		
-		<!--API2.0访问统计-->
-		<report id="totalReportV2" file="totalReportV2">
-			<entryList>
-				<entry id="totalCountV2" name="请求总次数" key="GLOBAL_KEY" value="count()" condition="$version$=2.0"/>
-				<entry id="successCountV2" name="成功总数" key="GLOBAL_KEY" value="count()" condition="$errorCode$=0&amp;$version$=2.0"/>
-				<entry id="totalReportV2_2"  name="访问成功率" key="GLOBAL_KEY" value="plain(entry(successCountV2)/entry(totalReportV2_1))" valuefilter="&gt;=0&amp;isnumber&amp;round:4"/>
-				
-				<entry id="platformSysFailCountV2" name="平台系统错误数" key="GLOBAL_KEY" value="count()" condition="$errorCode$!=0&amp;$version$=2.0"
-					mapClass="com.taobao.top.analysis.map.PlatformErrorCodeMap" />
-				<entry id="totalReportV2_5" name="平台系统错误率(占请求总次数百分比)" key="GLOBAL_KEY" value="plain(entry(platformSysFailCountV2)/entry(totalCountV2))"
-					valuefilter="&gt;=0&amp;isnumber&amp;round:5" />
-					
-				<entry id="totalReportV2_6" name="ISV业务错误率(占有效请求总次数百分比)" key="GLOBAL_KEY" value="plain(entry(isvBizFailCountV2)/entry(totalReportV2_1))"
-					valuefilter="&gt;=0&amp;isnumber&amp;round:5" />
-					<!--ISV 系统错误量-->
-					<!--TIP 拦截下的错误量-->
-				<entry id="paltformFailCountV2" name="TOP平台级错误数" key="GLOBAL_KEY" value="count()" condition="$version$=2.0&amp;$errorCode$&gt;0&amp;$errorCode$&lt;100&amp;$errorCode$!=15" />
-					<!--通过TIP验证，由后端服务报的错误量-->
-				<entry id="serviceApiFailCountV2" name="服务级错误数" key="GLOBAL_KEY" value="plain(entry(totalCountV2)-entry(successCountV2)-entry(paltformFailCountV2))"  />
-				
-			</entryList>
-		</report>
-	
-		<report id="apiReport" file="apiReport">
-			<entryList>
-			    <entry name="服务名称" key="apiName" value="plain($apiName$)" /> 
-				<entry id="1"/>
-				<entry name="占总量比例" key="apiName" value="plain(entry(1)/entry(sum:1))" valuefilter="&gt;=0&amp;isnumber&amp;round:3"/> 
-				<entry id="2"/>
-				<entry id="apiReport_2" name="服务请求成功率" key="apiName" value="plain(entry(2)/entry(apiReport_1))" valuefilter="&gt;=0&amp;isnumber&amp;round:3"/> 
-				<entry id="3" />
-				<entry id="4"/>
-				<entry id="5"/>
-				<entry name="TOP占总处理时间百分比" key="apiName" value="plain(entry(5)/entry(5+4))" valuefilter="&gt;=0&amp;isnumber&amp;round:3"/>
-				<entry id="api_AverageSuccessTIPTimeConsume"/>
-				<entry id="api_AverageFailTIPTimeConsume"/>
-				<entry id="6"/>
-				<entry id="7"/>
-				<entry id="api_sysFailCount"/>
-				<entry id="api_v1FailCount" />
-				<entry id="apiV1Rate" name="1.0错误率(占总服务请求总次数)" key="apiName" value="plain(entry(api_v1FailCount)/entry(1))" valuefilter="&gt;=0&amp;isnumber&amp;round:3"/> 
-			<entry name="api类型" key="apiName" value="plain($apiBizType$)" />	
-			</entryList>
-		</report>
 		
 		<report id="errorCodeReport" file="errorCodeReport">
 			<entryList>
-			    <entry id="33" name="错误码" key="errorCode" value="plain($errorCode$)" condition="$errorCode$!=0" valuefilter="isnumber"/> 
-				<entry id="16"/>
-				<entry name="错误比例" key="errorCode" value="plain(entry(16)/entry(sum:16))" condition="$errorCode$!=0" valuefilter="&gt;=0&amp;isnumber&amp;round:3"/> 
+			    <entry name="错误码" key="errorCode" value="plain($errorCode$)" condition="$errorCode$!=0" valuefilter="isnumber"/> 
+				<entry id="errorCount" name="错误数量" key="errorCode" value="count()" condition="$errorCode$!=0" valuefilter="isnumber"/> 
+				<entry name="错误比例" key="errorCode" value="plain(entry(errorCount)/entry(sum:errorCount))" condition="$errorCode$!=0" valuefilter="&gt;=0&amp;isnumber&amp;round:3"/> 
 			</entryList>
 		</report>
 		
-         <report id="machineReport" file="machineReport">
+         <report id="ipReport" file="ipReport">
             <entryList>
-                <entry name="服务器IP" key="localIp" value="plain($localIp$)"/>
-                    <entry id="17"/>
-                    <entry name="占总量比例" key="localIp" value="plain(entry(17)/entry(sum:17))" valuefilter="&gt;=0&amp;isnumber&amp;round:3"/>
-                    <entry id="18"/>
-                    <entry name="成功率" key="localIp" value="plain(entry(18)/entry(machineTotalCount))" valuefilter="&gt;=0&amp;isnumber&amp;round:3"/>
-                    <entry id="19"/>
-                    <entry id="20"/>
-                    <entry id="21"/>
-                    <entry name="TOP占总处理时间比值" key="localIp" value="plain(entry(21)/entry(20+21))" valuefilter="&gt;=0&amp;isnumber&amp;round:3"/>
+                <entry name="服务器IP" key="remoteIp" value="plain($remoteIp$)"/>
+                <entry name="访问总量" key="remoteIp" value="count()"/>
+                <entry name="访问成功总量" key="remoteIp" value="count()" condition="$errorCode$=0" />
              </entryList>
          </report>	
+         
 		<report id="appReport" file="appReport">
 			<entryList>
-			    <entry name="应用ID" key="appKey" value="plain($appKey$)" />
-			    <entry name="应用Tag" key="appKey" value="plain($tag$)" />
-				<entry id="22"/>
-				<entry name="占总访问比例" key="appKey" value="plain(entry(22)/entry(sum:22))" valuefilter="&gt;=0&amp;isnumber&amp;round:3"/> 
-				<entry id="23"/>
-				<entry name="应用访问成功率" key="appKey" value="plain(entry(23)/entry(appTotalReport))" valuefilter="&gt;=0&amp;isnumber&amp;round:3"/>
-				<entry id="24"/>
-				<entry id="25"/>
-				<entry id="26"/>
+			    <entry name="应用ID" key="appkey" value="plain($appkey$)" />
+			    <entry name="访问总量" key="appkey" value="count()"/>
+                <entry name="访问成功总量" key="appkey" value="count()" condition="$errorCode$=0" />
+			</entryList>
+		</report>
+		
+		<report id="appAPIReport" file="appAPIReport">
+			<entryList>
+			    <entry name="应用ID" key="appkey,apiName" value="plain($appkey$)"/> 
+			    <entry name="服务名称" key="appkey,apiName" value="plain($apiName$)"/>
+			    <entry id="app_api_count" name="访问总量" key="appkey,apiName" value="count()" />
+                <entry id="app_api_successCount" name="访问成功总量" key="appkey,apiName" value="count()" condition="$errorCode$=0" />
+                <entry id="app_api_AverageTimeConsume" name="平均处理时间" key="appkey,apiName" value="average($responseTime$)" valuefilter="&gt;=0&amp;&lt;10000&amp;isnumber&amp;round:3"/>
+				<entry id="app_api_MinTimeConsume" name="处理最小时间" key="appkey,apiName" value="min($responseTime$)" valuefilter="&gt;=0&amp;isnumber"/>
+				<entry id="app_api_MaxTimeConsume" name="处理最大时间" key="appkey,apiName" value="max($responseTime$)"  valuefilter="&gt;=0&amp;&lt;10000&amp;isnumber"/>	     
 			</entryList>
 		</report>
 		
@@ -188,190 +145,6 @@
 			</entryList>
 		</report>
 		
-		<report id="appAPIReport" file="appAPIReport">
-			<entryList>
-			    <entry name="应用ID" key="appKey,apiName" value="plain($appKey$)" condition="$version$=2.0"/> 
-			    <entry name="服务名称" key="appKey,apiName" value="plain($apiName$)" condition="$version$=2.0"/>
-			    <entry id="app_api_count" name="访问总量" key="appKey,apiName" value="count()" condition="$version$=2.0" />
-                            <entry id="app_api_successCount" name="访问成功总量" key="appKey,apiName" value="count()" condition="$errorCode$=0&amp;$version$=2.0" />
-                            <entry id="app_api_validCount" name="有效访问量" key="appKey,apiName" value="plain(entry(app_api_count) - entry(apiIsvSysFailCount))" />
-			</entryList>
-		</report>
-		
-		<report id="lazyParserTest1" file="lazyParserTest1">
-        	<entryList>
-                 <entry name="服务器IP" key="apiName,localIp" value="plain($localIp$)" condition="$apiName$=taobao.item.vip.update"/> 
-                 <entry name="服务名称" key="apiName,localIp" value="plain($apiName$)" condition="$apiName$=taobao.item.vip.update"/> 
-                 <entry name="访问成功次数" key="apiName,localIp" value="count()" condition="$errorCode$=0&amp;$apiName$=taobao.item.vip.update"/>
- 				 <entry name="访问失败次数" key="apiName,localIp" value="count()" condition="$errorCode$!=0&amp;$apiName$=taobao.item.vip.update"/>
-
-
-                 <entry name="成功访问平均消耗时间" key="apiName,localIp" value="average($transactionConsumeTime$)" condition="$errorCode$=0&amp;$apiName$=taobao.item.vip.update"/>
-                 <entry name="成功访问平均业务消耗时间" key="apiName,localIp" value="average($serviceConsumeTime$)" condition="$errorCode$=0&amp;$apiName$=taobao.item.vip.update"/>
-			     <entry name="失败访问平均消耗时间" key="apiName,localIp" value="average($transactionConsumeTime$)" condition="$errorCode$!=0&amp;$apiName$=taobao.item.vip.update"/>
-                 <entry name="失败访问平均业务消耗时间" key="apiName,localIp" value="average($serviceConsumeTime$)" condition="$errorCode$!=0&amp;$apiName$=taobao.item.vip.update"/>
-
-                 <entry name="Success-Pipe1" key="apiName,localIp" value="average($timestamp1$)" condition="$errorCode$=0&amp;$apiName$=taobao.item.vip.update&amp;$timestamp1$!=-1&amp;$timestamp1$&lt;10000"/>
-			     <entry name="Fail-Pipe1" key="apiName,localIp" value="average($timestamp1$)" condition="$errorCode$!=0&amp;$apiName$=taobao.item.vip.update&amp;$timestamp1$!=-1&amp;$timestamp1$&lt;10000"/>
-                
-             </entryList>
-          </report>
-		
-		<report id="appAPIJsonReport" file="appAPIJsonReport">
-			<entryList>
-			    <entry name="应用ID" key="appKey,apiName,format" value="plain($appKey$)" condition="$errorCode$=0&amp;$format$=json&amp;$tag$!=3"/> 
-			    <entry name="服务名称" key="appKey,apiName,format" value="plain($apiName$)" condition="$errorCode$=0&amp;$format$=json&amp;$tag$!=3"/>
-				  <entry id="app_api_successCount_json" name="访问成功总量" key="appKey,apiName,format" value="count()" condition="$errorCode$=0&amp;$format$=json&amp;$tag$!=3"/>
-			    <entry name="返回格式" key="appKey,apiName,format" value="plain($format$)" condition="$errorCode$=0&amp;$format$=json&amp;$tag$!=3"/>
-				  <entry name="应用TAG" key="appKey,apiName,format" value="plain($tag$)" condition="$errorCode$=0&amp;$format$=json&amp;$tag$!=3"/>
-				  <entry name="版本号" key="appKey,apiName,format" value="plain($version$)" condition="$errorCode$=0&amp;$format$=json&amp;$tag$!=3"/>
-			</entryList>
-		</report>
-		
-		<report id="apiResponseMappingTimeReport" file="apiResponseMappingTimeReport">
-			<entryList>
-				<entry name="服务名称" key="version,apiName,format" value="plain($apiName$)" condition="$errorCode$=0"/>
-			    <entry name="版本号" key="version,apiName,format" value="plain($version$)" condition="$errorCode$=0"/>
-			    <entry name="返回格式" key="version,apiName,format" value="plain($format$)" condition="$errorCode$=0"/>
-			    <entry name="Mapping时间" key="version,apiName,format" value="average($responseMappingTime$)" condition="$errorCode$=0"/>
-			    <entry name="Mapping时间最大" key="version,apiName,format" value="max($responseMappingTime$)" condition="$errorCode$=0"/>
-			    <entry name="业务平均消耗时间(ms)" key="version,apiName,format" value="average($serviceConsumeTime$)"  condition="$errorCode$=0"/>
-			    <entry name="处理总数" key="version,apiName,format" value="count()" condition="$errorCode$=0"/>
-			</entryList>
-		</report>
-		
-		<report id="errorCodeAndSubErrorCodeReport" file="errorCodeAndSubErrorCodeReport">
-			<entryList>
-			    <entry name="错误码" key="errorCode,subErrorCode" value="plain($errorCode$)" condition="$errorCode$!=0" valuefilter="isnumber"/>  
-			    <entry name="子错误码" key="errorCode,subErrorCode" value="plain($subErrorCode$)"  condition="$errorCode$!=0"/>
-				<entry name="错误总数" key="errorCode,subErrorCode" value="count()" condition="$errorCode$!=0"/>
-			</entryList>
-		</report>
-		
-		<report id="verionAndSignTypeReport" file="verionAndSignTypeReport">
-			<entryList>
-			    <entry name="版本号" key="version,signMethod" value="plain($version$)" condition="$errorCode$=0"/>
-			    <entry name="签名类型" key="version,signMethod" value="plain($signMethod$)" condition="$errorCode$=0"/>
-			    <entry name="访问成功总数" key="version,signMethod" value="count()" condition="$errorCode$=0"/>
-			</entryList>
-		</report>
-		
-		
-		<report id="apiVerionReport" file="apiVerionReport">
-			<entryList>
-			    <entry name="版本号" key="version,apiName" value="plain($version$)" condition="$errorCode$=0"/>
-			    <entry name="服务名称" key="version,apiName" value="plain($apiName$)" condition="$errorCode$=0"/>
-			    <entry name="访问成功总数" key="version,apiName" value="count()" condition="$errorCode$=0"/>
-			</entryList>
-		</report>
-		
-		<report id="appApiErrorDetailReport" file="appApiErrorDetailReport">
-			<entryList>
-			    <entry name="应用ID" key="appKey,apiName,version,errorCode,subErrorCode" 
-			    	value="plain($appKey$)" condition="$errorCode$!=0&amp;$errorCode$!=28&amp;$errorCode$!=29&amp;$version$=2.0" mapClass="com.taobao.top.analysis.map.FileConditionMap"/>
-			    <entry name="服务名称" key="appKey,apiName,version,errorCode,subErrorCode" 
-			      	value="plain($apiName$)" condition="$errorCode$!=0&amp;$errorCode$!=28&amp;$errorCode$!=29&amp;$version$=2.0" mapClass="com.taobao.top.analysis.map.FileConditionMap"/>
-			    <entry name="版本号" key="appKey,apiName,version,errorCode,subErrorCode" 
-			    	value="plain($version$)" condition="$errorCode$!=0&amp;$errorCode$!=28&amp;$errorCode$!=29&amp;$version$=2.0" mapClass="com.taobao.top.analysis.map.FileConditionMap"/>
-			    <entry name="错误码" key="appKey,apiName,version,errorCode,subErrorCode" 
-			    	value="plain($errorCode$)" condition="$errorCode$!=0&amp;$errorCode$!=28&amp;$errorCode$!=29&amp;$version$=2.0" mapClass="com.taobao.top.analysis.map.FileConditionMap"/>
-			    <entry name="子错误码" key="appKey,apiName,version,errorCode,subErrorCode" 
-			    	value="plain($subErrorCode$)"  condition="$errorCode$!=0&amp;$errorCode$!=28&amp;$errorCode$!=29&amp;$version$=2.0" mapClass="com.taobao.top.analysis.map.FileConditionMap"/>
-			    <entry name="错误总数" key="appKey,apiName,version,errorCode,subErrorCode" 
-			    	value="count()" condition="$errorCode$!=0&amp;$errorCode$!=28&amp;$errorCode$!=29&amp;$version$=2.0" mapClass="com.taobao.top.analysis.map.FileConditionMap"/>
-			    <entry name="应用TAG" key="appKey,apiName,version,errorCode,subErrorCode" 
-			    	value="plain($tag$)" condition="$errorCode$!=0&amp;$errorCode$!=28&amp;$errorCode$!=29&amp;$version$=2.0" mapClass="com.taobao.top.analysis.map.FileConditionMap"/>
-			</entryList>
-		</report>
-		
-		
-		<report id="appErrorCodeReport" file="appErrorCodeReport">
-			<entryList>
-			    <entry name="应用ID" key="appKey,errorCode" value="plain($appKey$)" condition="$errorCode$!=0"/>
-			    <entry name="错误码" key="appKey,errorCode" value="plain($errorCode$)" condition="$errorCode$!=0" valuefilter="isnumber"/>
-			    <entry name="错误总数" key="appKey,errorCode" value="count()" condition="$errorCode$!=0"/>
-			</entryList>
-		</report>
-		
-		<report id="appApiErrorReport" file="appApiErrorReport">
-			<entryList>
-			    <entry name="应用ID" key="appKey,apiName,errorCode" value="plain($appKey$)" condition="$errorCode$!=0&amp;$errorCode$!=28&amp;$errorCode$!=29&amp;$version$=2.0"/>
-			    <entry name="服务名称" key="appKey,apiName,errorCode" value="plain($apiName$)" condition="$errorCode$!=0&amp;$errorCode$!=28&amp;$errorCode$!=29&amp;$version$=2.0"/>
-			    <entry name="错误码" key="appKey,apiName,errorCode" value="plain($errorCode$)" condition="$errorCode$!=0&amp;$errorCode$!=28&amp;$errorCode$!=29&amp;$version$=2.0" valuefilter="isnumber"/>
-				<entry name="错误次数" key="appKey,apiName,errorCode" value="count()" condition="$errorCode$!=0&amp;$errorCode$!=28&amp;$errorCode$!=29&amp;$version$=2.0"/> 
-			</entryList>
-		</report>	
-		
-		<report id="pipe4APIReport" file="pipeReport">
-			<entryList>
-			 	<entry name="服务名称" key="apiName" value="plain($apiName$)" condition="$errorCode$=0"/> 
-			 	<entry name="访问成功次数" key="apiName" value="count()" condition="$errorCode$=0"/>
-			 	<entry name="平均消耗时间" key="apiName" value="average($transactionConsumeTime$)" condition="$errorCode$=0"/>
-			    <entry name="Pipe1" key="apiName" value="average($timestamp1$)" condition="$errorCode$=0&amp;$timestamp1$!=-1&amp;$timestamp1$&lt;10000"/>
-			    <entry name="Pipe2" key="apiName" value="average($timestamp2$)" condition="$errorCode$=0&amp;$timestamp2$!=-1&amp;$timestamp2$&lt;10000"/>
-			    <entry name="Pipe3" key="apiName" value="average($timestamp3$)" condition="$errorCode$=0&amp;$timestamp3$!=-1&amp;$timestamp3$&lt;10000"/>
-			    <entry name="Pipe4" key="apiName" value="average($timestamp4$)" condition="$errorCode$=0&amp;$timestamp4$!=-1&amp;$timestamp4$&lt;10000"/>
-			    <entry name="Pipe5" key="apiName" value="average($timestamp5$)" condition="$errorCode$=0&amp;$timestamp5$!=-1&amp;$timestamp5$&lt;10000"/>
-			    <entry name="Pipe6" key="apiName" value="average($timestamp6$)" condition="$errorCode$=0&amp;$timestamp6$!=-1&amp;$timestamp6$&lt;10000"/>
-			    <entry name="Pipe7" key="apiName" value="average($timestamp7$)" condition="$errorCode$=0&amp;$timestamp7$!=-1&amp;$timestamp7$&lt;10000"/>
-			    <entry name="Pipe8" key="apiName" value="average($timestamp8$)" condition="$errorCode$=0&amp;$timestamp8$!=-1&amp;$timestamp8$&lt;10000"/>
-			    <entry name="Pipe9" key="apiName" value="average($timestamp9$)" condition="$errorCode$=0&amp;$timestamp9$!=-1&amp;$timestamp9$&lt;10000"/>
-			    <entry name="Pipe10" key="apiName" value="average($timestamp10$)" condition="$errorCode$=0&amp;$timestamp10$!=-1&amp;$timestamp10$&lt;10000"/>
-			</entryList>
-		</report>	
-		
-		<report id="appAPIVersionReport" file="appAPIVersionReport">
-			<entryList>
-			    <entry name="应用ID" key="appKey,tag,version,apiName" value="plain($appKey$)" condition="$errorCode$=0&amp;$tag$!=3"/>
-			    <entry name="服务名称" key="appKey,tag,version,apiName" value="plain($apiName$)" condition="$errorCode$=0&amp;$tag$!=3"/>
-			    <entry name="版本号" key="appKey,tag,version,apiName" value="plain($version$)" condition="$errorCode$=0&amp;$tag$!=3"/>
-			    <entry name="业务类型" key="appKey,tag,version,apiName" value="plain($tag$)" condition="$errorCode$=0&amp;$tag$!=3"/>
-			    <entry name="访问成功总数" key="appKey,tag,version,apiName" value="count()" condition="$errorCode$=0&amp;$tag$!=3"/>
-			</entryList>
-		</report>		
-       <report id="SDKCallReport" file="SDKCallReport">
-             <entryList>
-                 <entry name="应用ID" key="appKey,partnerId" value="plain($appKey$)" condition="$partnerId$!=null"/>
-                 <entry name="Partner ID" key="appKey,partnerId" value="plain($partnerId$)" condition="$partnerId$!=null"/>
-                 <entry name="SDK调用总数" key="appKey,partnerId" value="count()" condition="$partnerId$!=null"/>
-             </entryList>
-      </report>
-
-                <!-- report id="ipAppReport" file="ipAppReport">
-                        <entryList>
-                                <entry name="访问者ip" key="remoteIp,appKey" value="plain($remoteIp$)"/>
-                                <entry name="应用key" key="remoteIp,appKey" value="plain($appKey$)"/>
-                                <entry name="成功总数" key="remoteIp,appKey" value="count()" condition="$errorCode$=0" />
-                                <entry name="失败总数" key="remoteIp,appKey" value="count()" condition="$errorCode$!=0" />
-                        </entryList>
-                </report -->
-		
-		<!--report id="apiFailDetailReport1" file="apiFailDetailReport1">
-			<entryList>
-			    <entry name="服务名称" key="apiName" value="plain($apiName$)" /> 
-				<entry id="1"/>
-				<entry id="3"/>
-				<entry name="失败数占服务请求量比例" key="apiName" value="plain(entry(3)/entry(1))" valuefilter="&gt;=0&amp;isnumber&amp;round:3"/>
-				<entry name="失败数占失败总量比例" key="apiName" value="plain(entry(3)/entry(sum:3))" valuefilter="&gt;=0&amp;isnumber&amp;round:3"/>
-				<entry id="api_sysFailCount"/>
-				<entry name="平台级错误占总服务请求比例" key="apiName" value="plain(entry(api_sysFailCount)/entry(1))" valuefilter="&gt;=0&amp;isnumber&amp;round:3"/>
-				<entry id="api_serviceSysFailCount"/>
-				<entry name="服务系统级错误量(900到901)占总服务请求比例" key="apiName" value="plain(entry(api_serviceSysFailCount)/entry(1))" valuefilter="&gt;=0&amp;isnumber&amp;round:3"/>
-				<entry id="api_serviceSysFailCount1"/>
-				<entry name="服务系统级错误量(大于901)占总服务请求比例" key="apiName" value="plain(entry(api_serviceSysFailCount1)/entry(1))" valuefilter="&gt;=0&amp;isnumber&amp;round:3"/>
-				<entry id="api_serviceAPIFailCount"/>
-				<entry name="服务业务级错误占总服务请求比例" key="apiName" value="plain(entry(api_serviceAPIFailCount)/entry(1))" valuefilter="&gt;=0&amp;isnumber&amp;round:3"/>
-			</entryList>
-		</report>
-		
-		<report id="apiFailDetailReport2" file="apiFailDetailReport2">
-			<entryList>
-			    <entry name="服务名称" key="apiName,errorCode" value="plain($apiName$)" condition="$errorCode$!=0"/>
-			    <entry name="错误码" key="apiName,errorCode" value="plain($errorCode$)" condition="$errorCode$!=0"/>
-				<entry name="错误次数" key="apiName,errorCode" value="count()" condition="$errorCode$!=0"/> 
-			</entryList>
-		</report-->
-
 	</reports>
 
 	
