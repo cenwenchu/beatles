@@ -4,11 +4,12 @@ package com.taobao.top.analysis.node.base.impl;
 import java.util.List;
 import org.junit.Test;
 
+import com.taobao.top.analysis.config.MasterConfig;
 import com.taobao.top.analysis.job.Job;
 import com.taobao.top.analysis.job.JobBuilder;
 import com.taobao.top.analysis.job.JobTask;
 import com.taobao.top.analysis.node.base.IInputAdaptor;
-import com.taobao.top.analysis.node.base.IReportExporter;
+
 
 public class DefaultAnalysisEngineTest {
 
@@ -18,8 +19,10 @@ public class DefaultAnalysisEngineTest {
 		IInputAdaptor fileInputAdaptor =  new FileInputAdaptor();
 		IInputAdaptor httpInputAdaptor = new HttpInputAdaptor();
 		FileOutputAdaptor fileOutAdaptor = new FileOutputAdaptor();
+		MasterConfig masterConfig = new MasterConfig();
 		
-		IReportExporter reportExporter = new DefaultReportExporter();
+		DefaultReportExporter reportExporter = new DefaultReportExporter();
+		reportExporter.setMasterConfig(masterConfig);
 		reportExporter.init();
 		
 		fileOutAdaptor.setReportExporter(reportExporter);

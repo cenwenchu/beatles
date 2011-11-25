@@ -46,6 +46,17 @@ public class DefaultReportExporter implements IReportExporter {
 	private MasterConfig masterConfig;
 	private long lastRuntime=(System.currentTimeMillis() + 8 * 60 * 60 * 1000) / 86400000;
 	
+	
+	public MasterConfig getMasterConfig() {
+		return masterConfig;
+	}
+
+
+	public void setMasterConfig(MasterConfig masterConfig) {
+		this.masterConfig = masterConfig;
+	}
+
+
 	@Override
 	public void init() {
 		createReportFileThreadPool = new ThreadPoolExecutor(

@@ -1,5 +1,6 @@
 package com.taobao.top.analysis.job;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.commons.lang.StringUtils;
@@ -24,6 +25,11 @@ public class Job {
 	
 	public void generateJobTasks() throws AnalysisException
 	{
+		if (jobTasks == null)
+			jobTasks = new ArrayList<JobTask>();
+		else
+			jobTasks.clear();
+		
 		if (jobConfig == null)
 			throw new AnalysisException("generateJobTasks error, jobConfig is null.");
 		
@@ -31,7 +37,7 @@ public class Job {
 		{
 			JobTask jobTask = new JobTask(jobConfig);
 			jobTask.setStatisticsRule(statisticsRule);
-			jobTask.setTaskId(jobName + taskCount);
+			jobTask.setTaskId(jobName + "-" + taskCount);
 			taskCount += 1;
 			jobTasks.add(jobTask);
 		}
@@ -49,7 +55,7 @@ public class Job {
 			{
 				JobTask jobTask = new JobTask(jobConfig);
 				jobTask.setStatisticsRule(statisticsRule);
-				jobTask.setTaskId(jobName + taskCount);
+				jobTask.setTaskId(jobName + "-" + taskCount);
 				jobTask.setInput(jobConfig.getInput().replace(key, ps));
 				taskCount += 1;
 				jobTasks.add(jobTask);
