@@ -1,0 +1,9 @@
+#Thu Nov 24 09:15:10 CST 2011
+encoding//src/conf=UTF-8
+org.eclipse.jdt.core.compiler.codegen.targetPlatform=1.6
+encoding//src/java=UTF-8
+eclipse.preferences.version=1
+encoding//src/java.test=UTF-8
+org.eclipse.jdt.core.compiler.source=1.6
+encoding//src/conf.test=UTF-8
+org.eclipse.jdt.core.compiler.compliance=1.6
