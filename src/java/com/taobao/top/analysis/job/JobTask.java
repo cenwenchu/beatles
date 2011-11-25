@@ -29,6 +29,7 @@ public class JobTask implements Serializable{
 	private String output;
 	private String splitRegex;
 	private String inputEncoding;
+	private String outputEncoding;
 	private TaskStatus status;
 	
 	/**
@@ -63,13 +64,23 @@ public class JobTask implements Serializable{
 		output = jobConfig.getOutput();
 		splitRegex = jobConfig.getSplitRegex();
 		inputEncoding = jobConfig.getInputEncoding();
+		outputEncoding = jobConfig.getOutputEncoding();
 		status = TaskStatus.UNDO;
 		creatTime = System.currentTimeMillis();
 		recycleCounter= new AtomicInteger(0);
 		taskExecuteInfo = new TaskExecuteInfo();
 		results = new java.util.HashMap<String, Map<String, Object>>();
 	}
+		
 	
+	public String getOutputEncoding() {
+		return outputEncoding;
+	}
+
+	public void setOutputEncoding(String outputEncoding) {
+		this.outputEncoding = outputEncoding;
+	}
+
 	public TaskExecuteInfo getTaskExecuteInfo() {
 		return taskExecuteInfo;
 	}

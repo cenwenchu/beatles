@@ -54,7 +54,7 @@
 		<ReportEntry id="apiAverageServiceConsume" name="业务成功处理平均时间" key="apiName" condition="$errorCode$=0" 
 			 value="average($responseTime$ - $platformConsumeTime$)" valuefilter="&gt;=0&amp;isnumber&amp;round:3"/>	
 		<ReportEntry id="api400ErrorCount" name="400错误次数" key="apiName" value="count()" condition="$errorCode$&gt;=400&amp;$errorCode$&lt;500" />
-		<ReportEntry id="api500ErrorCount" name="400错误次数" key="apiName" value="count()" condition="$errorCode$=500" />
+		<ReportEntry id="api500ErrorCount" name="500错误次数" key="apiName" value="count()" condition="$errorCode$=500" />
 		<!-- 读取数据量乘以8来计算bit -->
 		<ReportEntry id="apiFlow" name="服务上行数据量" key="apiName" value="sum($readBytes$*#8#)" />
 	</entrys>
@@ -81,7 +81,7 @@
 				<entry id="apiMinTimeConsume"/>
 				<entry id="apiMaxTimeConsume"/>
 				<entry id="apiAverageServiceConsume"/>
-				<entry name="400与500占总访问百分比" key="apiName" value="plain(entry(api400ErrorCount+api500ErrorCount)/entry(apiTotalCount))" valuefilter="&gt;=0&amp;isnumber&amp;round:3"/>	
+				<entry name="400与500占总访问百分比" key="apiName" value="plain(entry(api400ErrorCount)+entry(api500ErrorCount)/entry(apiTotalCount))" valuefilter="&gt;=0&amp;isnumber&amp;round:3"/>	
 			</entryList>
 		</report>
 	
@@ -132,16 +132,19 @@
 		
 		<report id="periodReport" file="periodReport">
 			<entryList>
-			    <entry name="整点时间段" key="timestamp0" value="plain($timestamp0$)" 
-			    	mapClass="com.taobao.top.analysis.map.TimeMap"
-			    	reduceClass="com.taobao.top.analysis.reduce.TimeReduce"/> 
-				<entry id="27"/>
-				<entry name="占请求总量比例" key="timestamp0" value="plain(entry(27)/entry(sum:27))" valuefilter="&gt;=0&amp;isnumber&amp;round:3"/> 
-				<entry id="28"/>
-				<entry name="请求成功率" key="timestamp0" value="plain(entry(28)/entry(27))" valuefilter="&gt;=0&amp;isnumber&amp;round:3"/> 
-				<entry id="29"/>
-				<entry id="30"/>
-				<entry id="31"/>
+			    <entry name="整点时间段" key="timestamp" value="plain($timestamp$)" 
+			    	mapClass="com.taobao.top.analysis.node.base.map.TimeMap"
+			    	reduceClass="com.taobao.top.analysis.node.base.reduce.TimeReduce"/> 
+				<entry name="时间段内访问总量" key="timestamp" value="count()" 
+						mapClass="com.taobao.top.analysis.node.base.map.TimeMap"/>
+				<entry name="时间段内访问成功总量" key="timestamp" value="count()" condition="$errorCode$=0"
+						mapClass="com.taobao.top.analysis.node.base.map.TimeMap"/>
+				<entry name="时间段内访问失败总量" key="timestamp" value="count()" condition="$errorCode$!=0"
+						mapClass="com.taobao.top.analysis.node.base.map.TimeMap" valuefilter="&gt;=0&amp;isnumber&amp;round:3"/>
+				<entry name="时间段内访问业务平均耗时(ms)" key="timestamp" value="average($responseTime$ - $platformConsumeTime$)"  
+						mapClass="com.taobao.top.analysis.node.base.map.TimeMap" valuefilter="&gt;=0&amp;isnumber&amp;round:3"/>
+				<entry name="时间段内访问平台平均耗时(ms)" key="timestamp" value="average($platformConsumeTime$)"  
+						mapClass="com.taobao.top.analysis.node.base.map.TimeMap" valuefilter="&gt;=0&amp;isnumber&amp;round:3"/>
 			</entryList>
 		</report>
 		

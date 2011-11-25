@@ -81,6 +81,11 @@ public class DefaultReportExporter implements IReportExporter {
 		
 		Map<String, Map<String, Object>> entryResultPool = jobTask.getResults();
 		
+		//清理lazy数据
+		ReportUtil.cleanLazyData(entryResultPool, jobTask.getStatisticsRule().getEntryPool());
+		//做一下lazy处理，用于输出
+		ReportUtil.lazyMerge(entryResultPool, jobTask.getStatisticsRule().getEntryPool());
+		
 		if (entryResultPool == null || jobTask.getStatisticsRule().getReportPool() == null
 				|| (entryResultPool != null && entryResultPool.size() == 0)
 				|| (jobTask.getStatisticsRule().getReportPool() != null
@@ -100,6 +105,14 @@ public class DefaultReportExporter implements IReportExporter {
 				.append(calendar.get(Calendar.DAY_OF_MONTH)).toString();
 
 		String rootDir = jobTask.getOutput();
+		
+		//去掉前缀，主要用于协议的前缀
+		if (rootDir.indexOf(":") > 0)
+			rootDir = rootDir.substring(rootDir.indexOf(":") +1);
+		
+		if (!rootDir.endsWith(File.separator))
+			rootDir = new StringBuilder(rootDir).append(File.separator).toString();
+		
 		StringBuilder periodRootDir = new StringBuilder();
 		StringBuilder periodDir = new StringBuilder();
 		StringBuilder normalDir = new StringBuilder();
@@ -227,6 +240,9 @@ public class DefaultReportExporter implements IReportExporter {
 		
 
 		createTimeStampFile(normalDir.toString());	
+		
+		//清理lazy数据
+		ReportUtil.cleanLazyData(entryResultPool, jobTask.getStatisticsRule().getEntryPool());
 
 		if (logger.isInfoEnabled())
 			logger.info(new StringBuilder("generate report end")
@@ -281,11 +297,11 @@ public class DefaultReportExporter implements IReportExporter {
 			if(report.isAppend()){
 				bout = new BufferedWriter(new java.io.OutputStreamWriter(
 						new java.io.FileOutputStream(file,true),
-						jobTask.getInputEncoding()));
+						jobTask.getOutputEncoding()));
 			}else{
 				bout = new BufferedWriter(new java.io.OutputStreamWriter(
 						new java.io.FileOutputStream(file),
-						jobTask.getInputEncoding()));
+						jobTask.getOutputEncoding()));
 			}
 
 			

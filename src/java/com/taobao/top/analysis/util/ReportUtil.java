@@ -522,8 +522,34 @@ public class ReportUtil {
 
 		return result;
 	}
+	
+	public static void cleanLazyData(Map<String, Map<String, Object>> result,
+			Map<String, ReportEntry> entryPool)
+	{
+		if (entryPool != null)
+		{
+			Iterator<String> entryKeys = entryPool.keySet().iterator();
+			
+			while(entryKeys.hasNext())
+			{
+				String entryId = entryKeys.next();
+				
+				ReportEntry entry = entryPool.get(entryId);
+				
+				if (entry.isLazy())
+				{
+					Map<String, Object> t = result.remove(entryId);
+					
+					if(t != null)
+						t.clear();
+				}
+				
+			}
+		}
+		
+	}
 
-	protected static void lazyMerge(Map<String, Map<String, Object>> result,
+	public static void lazyMerge(Map<String, Map<String, Object>> result,
 			Map<String, ReportEntry> entryPool) {
 		// 增加对于lazy entry的处理
 		ArrayList<String> entryKeys = new ArrayList<String>();
@@ -549,13 +575,6 @@ public class ReportUtil {
 					Map<String, Object> leftMap = result.get(leftEntryId);
 
 					if (leftMap == null|| (leftMap != null && leftMap.size() <= 0)){
-						
-						//简单解决简单集合全连接问题
-//						if(bindingStack.size()==2
-//								&&entry.getOperatorStack().size()==1
-//								&&EntryValueOperator.PLUS.toString().equals(entry.getOperatorStack().get(0))){
-//							result.put(entryId, result.get(bindingStack.get(1)));
-//						}
 						continue;
 					}
 					Iterator<String> iter = leftMap.keySet().iterator();

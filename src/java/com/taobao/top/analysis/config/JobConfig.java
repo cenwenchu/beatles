@@ -41,6 +41,12 @@ public class JobConfig extends AbstractConfig {
 	 */
 	private final static String  INPUT_ENCODING = "inputEncoding";
 	
+	
+	/**
+	 * 输出文件的编码方式
+	 */
+	private final static String OUTPUT_ENCODING = "outputEncoding";
+	
 	/**
 	 * 输入附加参数
 	 */
@@ -156,6 +162,18 @@ public class JobConfig extends AbstractConfig {
 		this.properties.put(INPUT_ENCODING,inputEncoding);
 	}
 
+	public String getOutputEncoding() {
+		if (this.properties.containsKey(OUTPUT_ENCODING))
+			return (String)this.properties.get(OUTPUT_ENCODING);
+		else
+			return "UTF-8";
+	}
+
+
+
+	public void setOutputEncoding(String outputEncoding) {
+		this.properties.put(OUTPUT_ENCODING,outputEncoding);
+	}
 
 
 	public String getInputParams() {

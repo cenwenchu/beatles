@@ -8,6 +8,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.UnsupportedEncodingException;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -30,6 +32,7 @@ import com.taobao.top.analysis.statistics.data.ReportEntry;
 import com.taobao.top.analysis.statistics.data.ReportEntryValueType;
 import com.taobao.top.analysis.util.AnalysisConstants;
 import com.taobao.top.analysis.util.ReportUtil;
+import com.taobao.top.analysis.util.Threshold;
 
 /**
  * @author fangweng
@@ -40,6 +43,16 @@ import com.taobao.top.analysis.util.ReportUtil;
 public class DefaultAnalysisEngine implements IAnalysisEngine{
 	private static final Log logger = LogFactory.getLog(DefaultAnalysisEngine.class);
 	
+	private static String ip;
+	private Threshold threshold;
+	
+	static {
+		try {
+			ip = InetAddress.getLocalHost().getHostAddress();
+		} catch (UnknownHostException e) {
+		}
+	}
+	
 	List<IInputAdaptor> inputAdaptors;
 	List<IOutputAdaptor> outputAdaptors;
 
@@ -47,6 +60,7 @@ public class DefaultAnalysisEngine implements IAnalysisEngine{
 	{
 		inputAdaptors = new ArrayList<IInputAdaptor>();
 		outputAdaptors = new ArrayList<IOutputAdaptor>();
+		threshold = new Threshold(1000);
 	}
 	
 	@Override
@@ -176,8 +190,8 @@ public class DefaultAnalysisEngine implements IAnalysisEngine{
 							
 							failure=true;
 							
-							if (logger.isInfoEnabled())
-								logger.info(new StringBuilder().append("Entry :")
+							if (!threshold.sholdBlock())
+								logger.error(new StringBuilder().append("Entry :")
 									.append(entry.getId()).append("\r\n record: ")
 									.append(record).toString(), e);
 						}
@@ -197,8 +211,8 @@ public class DefaultAnalysisEngine implements IAnalysisEngine{
 							
 							failure=true;
 							
-							if (logger.isInfoEnabled())
-								logger.info(
+							if (!threshold.sholdBlock())
+								logger.error(
 									new StringBuilder().append("Entry :")
 											.append(entry.getId())
 											.append("\r\n record: ").append(record)
@@ -215,8 +229,8 @@ public class DefaultAnalysisEngine implements IAnalysisEngine{
 					if(!failure) 
 						exceptionLine++;
 					
-					if (logger.isInfoEnabled())
-						logger.info(
+					if (!threshold.sholdBlock())
+						logger.error(
 							new StringBuilder()
 									.append("\r\n record: ").append(record)
 									.toString(), t);
@@ -246,7 +260,7 @@ public class DefaultAnalysisEngine implements IAnalysisEngine{
 			taksExecuteInfo.setErrorLine(exceptionLine);
 			taksExecuteInfo.setJobDataSize(size*2);
 			taksExecuteInfo.setTotalLine(normalLine+exceptionLine+emptyLine);
-			//taksExecuteInfo.setWorkerIp(workerIp)
+			taksExecuteInfo.setWorkerIp(ip);
 			
 			if (logger.isWarnEnabled())
 				logger.warn(new StringBuilder("jobtask ").append(jobtask.getTaskId())
