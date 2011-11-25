@@ -2,8 +2,8 @@
 <top_reports>
 	<!-- 全局条件自动会应用到所有的entity中，
 		具体condition的定义和使用方式参看后面entity中condition的定义 -->
-	<global-condition value="$logflag$!=session&amp;$logflag$!=pageapi&amp;$logflag$!=exception"/> 
-  <global-condition value="$RECORD_LENGTH$&gt;=30&amp;$RECORD_LENGTH$&lt;34"/>
+	<!-- 下面范例表示说给后面所有的处理增加一个条件就是每一条分析日志长度都大于等于6,小于11,否则不做任何统计分析 -->
+  	<global-condition value="$RECORD_LENGTH$&gt;=6&amp;$RECORD_LENGTH$&lt;11"/>
     
     <!-- 全局条件自动会应用到所有的entity中，
 		具体valuefilter的定义和使用方式参看后面entity中valuefilter的定义
@@ -11,48 +11,22 @@
     <global-mapClass value=""/>
     -->
     
-    <inner-key key="6" file="file:/Users/apple/Documents/workspace/top-analysis/src/conf.test/apiInnerKey.ik"/>
+    <!--inner-key key="6" file="file:/Users/apple/Documents/workspace/top-analysis/src/conf.test/apiInnerKey.ik"/-->
     
 
 	<!-- 别名，用于定义分析文件中的列，
 		防止因为列的移位导致整个报表都需要修改，多个别名可以对应一个列,key代表列数值 -->
     <aliases>
-    	<alias name="logflag" key="1"/>
-    
-    	<alias name="appStatus" key="1"/>
+    	<alias name="appkey" key="1"/>
     	<alias name="remoteIp" key="2"/>
-    	<alias name="partnerId" key="3"/>
+    	<alias name="apiName" key="3"/>
     	<alias name="format" key="4"/>
-    	<alias name="appKey" key="5"/>
-    	<alias name="apiName" key="6"/>
-    	<alias name="readBytes" key="7"/>
-    	<alias name="errorCode" key="8"/>
-    	<alias name="subErrorCode" key="9"/>
-    	<alias name="localIp" key="10"/>
-    	<alias name="nick" key="11"/>
-    	<alias name="version" key="12"/>
-    	<alias name="signMethod" key="13"/>
-    	<alias name="tag" key="14"/>
-    	<alias name="id" key="15"/>
-    	<alias name="responseMappingTime" key="16"/>
-      <alias name="serviceConsumeTime" key="17"/>
-      <alias name="transactionConsumeTime" key="18"/> 
-      <alias name="sessionType" key="19"/>
-      <alias name="apiBizType" key="20"/>   	
-      <alias name="apiBgType" key="21"/>
-
-    	<alias name="timestamp0" key="22"/>
-    	<alias name="timestamp1" key="23"/>
-    	<alias name="timestamp2" key="24"/>
-    	<alias name="timestamp3" key="25"/>
-    	<alias name="timestamp4" key="26"/>
-    	<alias name="timestamp5" key="27"/>
-    	<alias name="timestamp6" key="28"/>
-    	
-    	<alias name="timestamp7" key="29"/>
-    	<alias name="timestamp8" key="30"/>
-    	<alias name="timestamp9" key="31"/>
-    	<alias name="timestamp10" key="32"/>
+    	<alias name="readBytes" key="5"/>
+    	<alias name="signMethod" key="6"/>
+    	<alias name="responseTime" key="7"/>
+    	<alias name="platformConsumeTime" key="8"/>
+    	<alias name="errorCode" key="9"/>
+    	<alias name="timestamp" key="10"/>
     </aliases>
     
     <!-- 统计列的定义:
@@ -71,72 +45,18 @@
 			reduceClass="com.taobao.top.analysis.reduce.TimeReduce" reduceParams="xxx=xxx"
     	 -->
 	<entrys>
-		<ReportEntry id="1" name="服务请求总次数" key="apiName" value="count()"/>
-		<ReportEntry id="2" name="访问成功次数" key="apiName" value="count()" condition="$errorCode$=0" />
-		<!--访问失败次数 =  平台系统错误+ISP服务错误+ISV业务错误-->
-		<ReportEntry id="3" name="访问失败次数" key="apiName" value="plain(entry(1)-entry(2)-entry(api_isvSysFailCount))" />
-		
-		<ReportEntry id="4" name="业务平均处理时间" key="apiName" value="average($serviceConsumeTime$)" valuefilter="&gt;=0&amp;&lt;10000&amp;isnumber&amp;round:3"/>
-		<ReportEntry id="5" name="TOP平均处理时间" key="apiName" value="average($transactionConsumeTime$ - $serviceConsumeTime$)" valuefilter="&gt;=0&amp;&lt;10000&amp;isnumber&amp;round:3"/>
-		<ReportEntry id="6" name="业务处理最小时间" key="apiName" value="min($serviceConsumeTime$)" valuefilter="&gt;=0&amp;isnumber"/>
-		<ReportEntry id="7" name="业务处理最大时间" key="apiName" value="max($serviceConsumeTime$)"  valuefilter="&gt;=0&amp;&lt;10000&amp;isnumber"/>	
-		<ReportEntry id="api_AverageSuccessTIPTimeConsume" name="成功请求TOP处理平均时间" key="apiName" condition="$errorCode$=0" 
-			 value="average($transactionConsumeTime$ - $serviceConsumeTime$)" valuefilter="&gt;=0&amp;isnumber&amp;round:3"/>
-		<ReportEntry id="api_AverageFailTIPTimeConsume" name="失败请求TOP处理平均时间" key="apiName" condition="$errorCode$!=0" 
-			value="average($transactionConsumeTime$ - $serviceConsumeTime$)" valuefilter="&gt;=0&amp;isnumber&amp;round:3"/>	
-		
-		<ReportEntry id="16" name="错误次数" key="errorCode" value="count()" condition="$errorCode$!=0" />
-		
-		
-		<ReportEntry id="17" name="单机访问总量" key="localIp" value="count()" />
-		<ReportEntry id="18" name="单机访问成功量" key="localIp" value="count()" condition="$errorCode$=0" />
-		<ReportEntry id="19" name="单机访问失败量" key="localIp" value="count()" condition="$errorCode$!=0" />
-		<ReportEntry id="20" name="单机业务平均消耗时间(ms)" key="localIp" value="average($serviceConsumeTime$)" valuefilter="&gt;=0&amp;&lt;10000&amp;isnumber&amp;round:3"/>
-		<ReportEntry id="21" name="单机TOP平均消耗时间(ms)" key="localIp" value="average($transactionConsumeTime$ - $serviceConsumeTime$)" valuefilter="&gt;=0&amp;&lt;10000&amp;isnumber&amp;round:3"/>
-	        <ReportEntry id="machineIsvSysFailCount" name="单机ISV系统错误数" key="localIp" value="count()" 
-		             condition="$errorCode$!=0" mapClass="com.taobao.top.analysis.map.IsvSysErrorCodeMap"/>	
-		
-		<ReportEntry id="22" name="应用访问总量" key="appKey" value="count()" />
-		<ReportEntry id="23" name="应用成功访问总量" key="appKey" value="count()" condition="$errorCode$=0" />
-		<ReportEntry id="24" name="应用失败访问总量" key="appKey" value="count()" condition="$errorCode$!=0"/>
-		<ReportEntry id="25" name="应用访问业务平均耗时(ms)" key="appKey" value="average($serviceConsumeTime$)" valuefilter="&gt;=0&amp;&lt;10000&amp;isnumber&amp;round:3"/>
-		<ReportEntry id="26" name="应用访问TOP平均耗时(ms)" key="appKey" value="average($transactionConsumeTime$ - $serviceConsumeTime$)" valuefilter="&gt;=0&amp;&lt;10000&amp;isnumber&amp;round:3"/>
-		
-		<ReportEntry id="27" name="时间段内访问总量" key="timestamp0" value="count()" 
-			mapClass="com.taobao.top.analysis.map.TimeMap"/>
-		<ReportEntry id="28" name="时间段内访问成功总量" key="timestamp0" value="count()" condition="$errorCode$=0"
-			mapClass="com.taobao.top.analysis.map.TimeMap"/>
-		<ReportEntry id="29" name="时间段内访问失败总量" key="timestamp0" value="count()" condition="$errorCode$!=0"
-			mapClass="com.taobao.top.analysis.map.TimeMap" valuefilter="&gt;=0&amp;isnumber&amp;round:3"/>
-		<ReportEntry id="30" name="时间段内访问业务平均耗时(ms)" key="timestamp0" value="average($serviceConsumeTime$)"  
-			mapClass="com.taobao.top.analysis.map.TimeMap" valuefilter="&gt;=0&amp;isnumber&amp;round:3"/>
-		<ReportEntry id="31" name="时间段内访问TOP平均耗时(ms)" key="timestamp0" value="average($transactionConsumeTime$ - $serviceConsumeTime$)"  
-			mapClass="com.taobao.top.analysis.map.TimeMap" valuefilter="&gt;=0&amp;isnumber&amp;round:3"/>
-			
-		
-		<ReportEntry id="api_sysFailCount" name="TOP平台级错误量" key="apiName" value="count()" 
-					condition="$errorCode$&lt;100&amp;$errorCode$&gt;0&amp;$errorCode$!=15" />
-					<!--暂不用字段-->
-		<ReportEntry id="api_serviceSysFailCount" name="服务系统级错误量(900到901)" key="apiName" value="count()" 
-					condition="$errorCode$&lt;902&amp;$errorCode$&gt;899" />
-					<!--暂不用字段-->
-		<ReportEntry id="api_serviceSysFailCount1" name="服务系统级错误量(大于901)" key="apiName" value="count()" 
-					condition="$errorCode$&gt;901"/>
-					<!--ISV 业务错误-->
-		<ReportEntry id="api_serviceAPIFailCount" name="ISV业务错误量" key="apiName" value="count()" condition="$errorCode$!=0"
-					mapClass="com.taobao.top.analysis.map.IsvBizErrorCodeMap" />
-					<!--ISP错误-->
-		<ReportEntry id="api_serviceSysFailTotalCount" name="ISP系统错误量" key="apiName" value="count()" condition="$errorCode$!=0"
-					mapClass="com.taobao.top.analysis.map.IspErrorCodeMap" />
-				<!--TIP平台错误 -->
-		<ReportEntry id="api_platformSysFailCount" name="平台系统错误量" key="apiName" value="count()"  condition="$errorCode$!=0"
-					mapClass="com.taobao.top.analysis.map.PlatformErrorCodeMap" />
-					<!--ISV 系统错误-->
-		<ReportEntry id="api_isvSysFailCount" name="ISV系统错误量" key="apiName" value="count()" condition="$errorCode$!=0" 
-					mapClass="com.taobao.top.analysis.map.IsvSysErrorCodeMap" />
-					<!--1.0错误-->
-		<ReportEntry id="api_v1FailCount" name="1.0错误量" key="apiName" value="count()" condition="$errorCode$!=0&amp;$version$=1.0"  />
-		
+		<ReportEntry id="apiTotalCount" name="服务请求总次数" key="apiName" value="count()"/>
+		<ReportEntry id="apiSuccessCount" name="访问成功次数" key="apiName" value="count()" condition="$errorCode$=0" />
+		<ReportEntry id="apiFailCount" name="访问失败次数" key="apiName" value="plain(entry(apiTotalCount)-entry(apiSuccessCount))" />
+		<ReportEntry id="apiAverageTimeConsume" name="平均处理时间" key="apiName" value="average($responseTime$)" valuefilter="&gt;=0&amp;&lt;10000&amp;isnumber&amp;round:3"/>
+		<ReportEntry id="apiMinTimeConsume" name="处理最小时间" key="apiName" value="min($responseTime$)" valuefilter="&gt;=0&amp;isnumber"/>
+		<ReportEntry id="apiMaxTimeConsume" name="处理最大时间" key="apiName" value="max($responseTime$)"  valuefilter="&gt;=0&amp;&lt;10000&amp;isnumber"/>	
+		<ReportEntry id="apiAverageServiceConsume" name="业务成功处理平均时间" key="apiName" condition="$errorCode$=0" 
+			 value="average($responseTime$ - $platformConsumeTime$)" valuefilter="&gt;=0&amp;isnumber&amp;round:3"/>	
+		<ReportEntry id="400ErrorCount" name="400错误次数" key="apiName" value="count()" condition="$errorCode$&gt;=400&amp;$errorCode$&lt;500" />
+		<ReportEntry id="500ErrorCount" name="400错误次数" key="apiName" value="count()" condition="$errorCode$=500" />
+		<!-- 读取数据量乘以8来计算bit -->
+		<ReportEntry id="apiFlow" name="服务上行数据量" key="apiName" value="sum($readBytes$*#8#)" />
 	</entrys>
 	
 	
@@ -148,52 +68,28 @@
 		
 	 -->
 	<reports>
+		<report id="apiReport" file="apiReport">
+			<entryList>
+			    <entry name="服务名称" key="apiName" value="plain($apiName$)" /> 
+				<entry id="apiTotalCount"/>
+				<entry id="apiFlow"/>
+				<entry name="占总量比例" key="apiName" value="plain(entry(apiTotalCount)/entry(sum:apiTotalCount))" valuefilter="&gt;=0&amp;isnumber&amp;round:3"/> 
+				<entry id="apiSuccessCount"/>
+				<entry name="服务请求成功率" key="apiName" value="plain(entry(apiSuccessCount)/entry(apiTotalCount))" valuefilter="&gt;=0&amp;isnumber&amp;round:3"/> 
+				<entry id="apiFailCount" />
+				<entry id="apiAverageTimeConsume"/>
+				<entry id="apiMinTimeConsume"/>
+				<entry id="apiMaxTimeConsume"/>
+				<entry id="apiAverageServiceConsume"/>
+				<entry name="400与500占总访问百分比" key="apiName" value="plain(entry(400ErrorCount+500ErrorCount)/entry(apiTotalCount))" valuefilter="&gt;=0&amp;isnumber&amp;round:3"/>	
+			</entryList>
+		</report>
+	
 		<report id="totalReport" file="totalReport">
 			<entryList>
 				<entry id="totalCount" name="请求总次数" key="GLOBAL_KEY" value="count()" />
-								<!--ISV 系统错误量-->
-				<entry id="isvSysFailCount" name="ISV系统错误数" key="GLOBAL_KEY" value="count()" condition="$errorCode$!=0" 
-					mapClass="com.taobao.top.analysis.map.IsvSysErrorCodeMap" />
-				
-				<entry id="totalReport_1" name="有效请求总次数" key="GLOBAL_KEY" value="plain(entry(totalCount)+entry(isvSysFailCount))" />
-				
-				
-				
-				<entry name="访问总流量(M)" key="GLOBAL_KEY" value="sum($readBytes$/#1000000#)"  valuefilter="&gt;=0&amp;isnumber&amp;round:4"/>
 				<entry id="successCount" name="成功总数" key="GLOBAL_KEY" value="count()" condition="$errorCode$=0"/>
-				<entry id="totalReport_2"  name="访问成功率" key="GLOBAL_KEY" value="plain(entry(successCount)/entry(totalReport_1))" valuefilter="&gt;=0&amp;isnumber&amp;round:4"/>
-				
-				<entry id="platformSysFailCount" name="平台系统错误数" key="GLOBAL_KEY" value="count()" condition="$errorCode$!=0"
-					mapClass="com.taobao.top.analysis.map.PlatformErrorCodeMap" />
-				<entry id="isvBizFailCount" name="ISV业务错误数" key="GLOBAL_KEY" value="count()" condition="$errorCode$!=0"
-					mapClass="com.taobao.top.analysis.map.IsvBizErrorCodeMap" />
-				<entry id="serviceSystemFailCount" name="ISP系统错误数" key="GLOBAL_KEY" value="count()" condition="$errorCode$!=0"
-					mapClass="com.taobao.top.analysis.map.IspErrorCodeMap" />
-					<!--通过TIP验证，由后端服务报的错误量-->
-				<entry id="serviceApiFailCount" name="服务级错误数" key="GLOBAL_KEY" value="plain(entry(totalCount)-entry(successCount)-entry(paltformFailCount))"  />
-					
-				<entry id="totalReport_5" name="平台系统错误率(占有效请求总次数百分比)" key="GLOBAL_KEY" value="plain(entry(platformSysFailCount)/entry(totalReport_1))"
-					valuefilter="&gt;=0&amp;isnumber&amp;round:5" />
-				<entry id="totalReport_6" name="ISV业务错误率(占有效请求总次数百分比)" key="GLOBAL_KEY" value="plain(entry(isvBizFailCount)/entry(totalReport_1))"
-					valuefilter="&gt;=0&amp;isnumber&amp;round:5" />
-				<entry id="totalReport_7" name="ISP系统错误率(占有效请求总次数百分比)" key="GLOBAL_KEY" value="plain(entry(serviceSystemFailCount)/entry(totalReport_1))"
-					valuefilter="&gt;=0&amp;isnumber&amp;round:5" />
-				<entry id="totalReport_8" name="服务级错误率(占有效请求总次数百分比)" key="GLOBAL_KEY" value="plain(entry(serviceApiFailCount)/entry(totalReport_1))"
-					valuefilter="&gt;=0&amp;isnumber&amp;round:5" />
-					
-				<entry name="业务平均消耗时间(ms)" key="GLOBAL_KEY" value="average($serviceConsumeTime$)"  valuefilter="&gt;=0&amp;&lt;10000&amp;isnumber&amp;round:3"/>
-				<entry name="TOP平均消耗时间(ms)" key="GLOBAL_KEY" value="average($transactionConsumeTime$ - $serviceConsumeTime$)"  valuefilter="&gt;=0&amp;&lt;10000&amp;isnumber&amp;round:3"/>
-				<entry name="TOP成功处理平均耗时" key="GLOBAL_KEY" 
-					value="average($transactionConsumeTime$ - $serviceConsumeTime$)" condition="$errorCode$=0" valuefilter="&gt;=0&amp;isnumber&amp;round:3"/>
-				<entry name="业务成功处理平均消耗时间(ms)" key="GLOBAL_KEY" value="average($serviceConsumeTime$)"  condition="$errorCode$=0" valuefilter="&gt;=0&amp;&lt;10000&amp;isnumber&amp;round:3"/>
-				<!--TIP 拦截下的错误量-->
-				<entry id="paltformFailCount" name="TOP平台级错误数" key="GLOBAL_KEY" value="count()" condition="$errorCode$&gt;0&amp;$errorCode$&lt;100&amp;$errorCode$!=15" />
-
-				<!--1.0错误量-->
-				<entry id="v1FailCount" name="1.0错误数" key="GLOBAL_KEY" value="count()" condition="$errorCode$!=0&amp;$version$=1.0"  />
-				<!--1.0错误率-->
-				<entry name="1.0错误率" key="GLOBAL_KEY" value="plain(entry(v1FailCount)/entry(totalCount))" 
-					valuefilter="&gt;=0&amp;isnumber&amp;round:5" />
+				<entry name="访问总流量(M)" key="GLOBAL_KEY" value="sum($readBytes$*#8#)"  valuefilter="&gt;=0&amp;isnumber&amp;round:4"/>
 			</entryList>
 		</report>
 		
@@ -201,7 +97,6 @@
 		<report id="totalReportV2" file="totalReportV2">
 			<entryList>
 				<entry id="totalCountV2" name="请求总次数" key="GLOBAL_KEY" value="count()" condition="$version$=2.0"/>
-				<entry id="totalReportV2_1" name="有效请求总次数" key="GLOBAL_KEY" value="plain(entry(totalCountV2)-entry(isvSysFailCountV2))" />
 				<entry id="successCountV2" name="成功总数" key="GLOBAL_KEY" value="count()" condition="$errorCode$=0&amp;$version$=2.0"/>
 				<entry id="totalReportV2_2"  name="访问成功率" key="GLOBAL_KEY" value="plain(entry(successCountV2)/entry(totalReportV2_1))" valuefilter="&gt;=0&amp;isnumber&amp;round:4"/>
 				
@@ -210,19 +105,9 @@
 				<entry id="totalReportV2_5" name="平台系统错误率(占请求总次数百分比)" key="GLOBAL_KEY" value="plain(entry(platformSysFailCountV2)/entry(totalCountV2))"
 					valuefilter="&gt;=0&amp;isnumber&amp;round:5" />
 					
-				<entry id="serviceSystemFailCountV2" name="ISP系统错误数" key="GLOBAL_KEY" value="count()" condition="$errorCode$!=0&amp;$version$=2.0"
-					mapClass="com.taobao.top.analysis.map.IspErrorCodeMap" />
-				<entry id="totalReportV2_7" name="ISP系统错误率(占有效请求总次数百分比)" key="GLOBAL_KEY" value="plain(entry(serviceSystemFailCountV2)/entry(totalReportV2_1))"
-					valuefilter="&gt;=0&amp;isnumber&amp;round:5" />
-					
-				<entry id="isvBizFailCountV2" name="ISV业务错误数" key="GLOBAL_KEY" value="count()" condition="$errorCode$!=0&amp;$version$=2.0"
-					mapClass="com.taobao.top.analysis.map.IsvBizErrorCodeMap" />
 				<entry id="totalReportV2_6" name="ISV业务错误率(占有效请求总次数百分比)" key="GLOBAL_KEY" value="plain(entry(isvBizFailCountV2)/entry(totalReportV2_1))"
 					valuefilter="&gt;=0&amp;isnumber&amp;round:5" />
 					<!--ISV 系统错误量-->
-				<entry id="isvSysFailCountV2" name="ISV系统错误数" key="GLOBAL_KEY" value="count()" condition="$errorCode$!=0&amp;$version$=2.0" 
-					mapClass="com.taobao.top.analysis.map.IsvSysErrorCodeMap" />
-					
 					<!--TIP 拦截下的错误量-->
 				<entry id="paltformFailCountV2" name="TOP平台级错误数" key="GLOBAL_KEY" value="count()" condition="$version$=2.0&amp;$errorCode$&gt;0&amp;$errorCode$&lt;100&amp;$errorCode$!=15" />
 					<!--通过TIP验证，由后端服务报的错误量-->
@@ -247,14 +132,6 @@
 				<entry id="6"/>
 				<entry id="7"/>
 				<entry id="api_sysFailCount"/>
-				<entry id="api_serviceSysFailTotalCount"/>
-				<entry id="api_serviceAPIFailCount"/>
-				<entry id="apiReport_1" name="有效访问数" key="apiName" value="plain(entry(1)-entry(api_isvSysFailCount))"/>
-				<entry id="api_platformSysFailCount" />
-				<entry name="ISP系统错误率" key="apiName" value="plain(entry(api_serviceSysFailTotalCount)/entry(apiReport_1))" valuefilter="&gt;=0&amp;isnumber&amp;round:5"/>
-				<entry name="ISV业务错误率" key="apiName" value="plain(entry(api_serviceAPIFailCount)/entry(apiReport_1))" valuefilter="&gt;=0&amp;isnumber&amp;round:4"/>
-				<entry name="平台系统错误率" key="apiName" value="plain(entry(api_platformSysFailCount)/entry(apiReport_1))" valuefilter="&gt;=0&amp;isnumber&amp;round:5"/>
-				<entry id="api_isvSysFailCount"/>
 				<entry id="api_v1FailCount" />
 				<entry id="apiV1Rate" name="1.0错误率(占总服务请求总次数)" key="apiName" value="plain(entry(api_v1FailCount)/entry(1))" valuefilter="&gt;=0&amp;isnumber&amp;round:3"/> 
 			<entry name="api类型" key="apiName" value="plain($apiBizType$)" />	
@@ -280,7 +157,6 @@
                     <entry id="20"/>
                     <entry id="21"/>
                     <entry name="TOP占总处理时间比值" key="localIp" value="plain(entry(21)/entry(20+21))" valuefilter="&gt;=0&amp;isnumber&amp;round:3"/>
-                    <entry id="machineTotalCount" name="有效请求总次数" key="localIp" value="plain(entry(17)-entry(machineIsvSysFailCount))" />
              </entryList>
          </report>	
 		<report id="appReport" file="appReport">
@@ -290,15 +166,10 @@
 				<entry id="22"/>
 				<entry name="占总访问比例" key="appKey" value="plain(entry(22)/entry(sum:22))" valuefilter="&gt;=0&amp;isnumber&amp;round:3"/> 
 				<entry id="23"/>
-				<entry id="appTotalReport" name="应用有效访问总量" key="appKey" value="plain(entry(23)+ entry(appIsvBizFailCount))" />
-				<entry id="appIsvBizFailCount" name="ISV业务错误数" key="appKey" value="count()" condition="$errorCode$!=0"
-					mapClass="com.taobao.top.analysis.map.IsvBizErrorCodeMap" />
 				<entry name="应用访问成功率" key="appKey" value="plain(entry(23)/entry(appTotalReport))" valuefilter="&gt;=0&amp;isnumber&amp;round:3"/>
 				<entry id="24"/>
 				<entry id="25"/>
 				<entry id="26"/>
-				<entry id="appIsvSysFailCount" name="ISV系统错误数" key="appKey" value="count()" condition="$errorCode$!=0"
-					mapClass="com.taobao.top.analysis.map.IsvSysErrorCodeMap" />
 			</entryList>
 		</report>
 		
@@ -323,10 +194,6 @@
 			    <entry name="服务名称" key="appKey,apiName" value="plain($apiName$)" condition="$version$=2.0"/>
 			    <entry id="app_api_count" name="访问总量" key="appKey,apiName" value="count()" condition="$version$=2.0" />
                             <entry id="app_api_successCount" name="访问成功总量" key="appKey,apiName" value="count()" condition="$errorCode$=0&amp;$version$=2.0" />
-                            <entry id="apiServiceAPIFailCount" name="ISV业务错误量" key="appKey,apiName" value="count()" condition="$errorCode$!=0&amp;$version$=2.0"
-                                mapClass="com.taobao.top.analysis.map.IsvBizErrorCodeMap" />
-                            <entry id="apiIsvSysFailCount" name="ISV系统错误量" key="appKey,apiName" value="count()" condition="$errorCode$!=0&amp;$version$=2.0"
-                                mapClass="com.taobao.top.analysis.map.IsvSysErrorCodeMap" />
                             <entry id="app_api_validCount" name="有效访问量" key="appKey,apiName" value="plain(entry(app_api_count) - entry(apiIsvSysFailCount))" />
 			</entryList>
 		</report>
@@ -507,37 +374,5 @@
 
 	</reports>
 
-	
-	<alerts>
-		<!-- 对比告警 alerttype:now,day,week,month。
-		 valve代表阀值：&lt;(now类型代表小于告警,如果是同期比较代表下降超过)，
-		 &gt;(now类型代表大于告警，如果是同期比较代表上升)，没有符号代表绝对值超过告警-->
-		<alert reportId="totalReportV2" entryname="访问成功率" alerttype="now" valve="&lt;0.9" />
-		<alert reportId="totalReport" entryname="请求总次数" alerttype="day" valve="100000000" />
-		<alert reportId="totalReportV2" entryname="访问成功率" alerttype="day" valve="&lt;0.02" />
-		<alert reportId="totalReportV2" entryname="平台系统错误率(占请求总次数百分比)" alerttype="day" valve="&gt;0.00005" />
-		<alert reportId="totalReportV2" entryname="服务系统错误率(占请求总次数百分比)" alerttype="day" valve="&gt;0.0003" />
-		<alert reportId="totalReport" entryname="TOP平均消耗时间(ms)" alerttype="day" valve="&gt;10" />
-		<alert reportId="totalReport" entryname="业务平均消耗时间(ms)" alerttype="day" valve="&gt;10" />
-		
-		<alert reportId="apiReport" keyentry="服务名称" entryname="占总量比例" alerttype="day" valve="&gt;0.01" />
-		<alert reportId="apiReport" keyentry="服务名称" entryname="服务请求成功率" alerttype="day" valve="&lt;0.01" />
-		<alert reportId="apiReport" keyentry="服务名称" entryname="业务平均处理时间" alerttype="day" valve="&gt;20" />
-		<alert reportId="apiReport" keyentry="服务名称" entryname="TOP平均处理时间" alerttype="day" valve="&gt;20" />
-		
-		<alert reportId="errorCodeReport" keyentry="错误码" entryname="错误比例" alerttype="day" valve="&gt;0.01" />
-		
-		<alert reportId="machineReport" keyentry="服务器IP" entryname="成功率" alerttype="day" valve="&lt;0.01" />
-		
-		<alert reportId="appReport" keyentry="应用ID" entryname="占总访问比例" alerttype="day" valve="0.01" />
-		<alert reportId="appReport" keyentry="应用ID" entryname="应用访问成功率" alerttype="day" valve="&lt;0.05" />
-		
-		<alert reportId="appAPIReport" keyentry="应用ID,服务名称" entryname="访问成功总量" alerttype="day" valve="&gt;10000000" />
-		
-		<alert reportId="verionAndSignTypeReport" keyentry="版本号,签名类型" entryname="访问成功总数" alerttype="day" valve="&lt;1000000" />
-		
-		<alert reportId="appErrorCodeReport" keyentry="应用ID,错误码" entryname="错误总数" alerttype="day" valve="&gt;100000" />
-		
-	</alerts>
 	
 </top_reports>

@@ -2,6 +2,7 @@ package com.taobao.top.analysis.job;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.commons.lang.StringUtils;
 
@@ -23,6 +24,21 @@ public class Job {
 	List<JobTask> jobTasks;
 	int taskCount = 0;
 	
+	/**
+	 * 处理后的结果池，key是entry的id， value是Map(key是entry定义的key组合,value是统计后的结果)
+	 * 采用线程不安全，只有单线程操作此结果集
+	 */
+	private Map<String, Map<String, Object>> entryResults;
+	
+	
+	public Map<String, Map<String, Object>> getEntryResults() {
+		return entryResults;
+	}
+
+	public void setEntryResults(Map<String, Map<String, Object>> entryResults) {
+		this.entryResults = entryResults;
+	}
+
 	public void generateJobTasks() throws AnalysisException
 	{
 		if (jobTasks == null)

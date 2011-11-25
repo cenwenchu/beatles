@@ -67,6 +67,7 @@ public class JobTask implements Serializable{
 		creatTime = System.currentTimeMillis();
 		recycleCounter= new AtomicInteger(0);
 		taskExecuteInfo = new TaskExecuteInfo();
+		results = new java.util.HashMap<String, Map<String, Object>>();
 	}
 	
 	public TaskExecuteInfo getTaskExecuteInfo() {

@@ -26,6 +26,7 @@ import org.apache.commons.logging.LogFactory;
 
 import com.taobao.top.analysis.statistics.data.Alias;
 import com.taobao.top.analysis.statistics.data.EntryValueOperator;
+import com.taobao.top.analysis.statistics.data.InnerKey;
 import com.taobao.top.analysis.statistics.data.Report;
 import com.taobao.top.analysis.statistics.data.ReportEntry;
 import com.taobao.top.analysis.statistics.data.ReportOrderComparator;
@@ -40,6 +41,132 @@ import com.taobao.top.analysis.statistics.data.ReportOrderComparator;
 public class ReportUtil {
 	private static final Log logger = LogFactory.getLog(ReportUtil.class);
 	private static Map<Object, Object> localCache = new ConcurrentHashMap<Object, Object>();
+	
+	/**
+	 * 根据定义获取对应日志行产生的key
+	 * 
+	 * @param entry
+	 * @param contents
+	 * @return
+	 */
+	public static String generateKey(ReportEntry entry, String[] contents,List<InnerKey> innerKeyPool) {
+		StringBuilder key = new StringBuilder();
+
+		try {
+			boolean checkResult = false;
+
+			if (entry.getConditionKStack() != null
+					&& entry.getConditionKStack().size() > 0) {
+				for (int i = 0; i < entry.getConditionKStack().size(); i++) {
+
+					Object conditionKey = entry.getConditionKStack().get(i);
+					String operator = entry.getConditionOpStack().get(i);
+					String conditionValue = entry.getConditionVStack().get(i);
+					int k = -1;
+
+					// 长度condition特殊处理，没有指定的key列
+					if (!conditionKey.equals(AnalysisConstants.RECORD_LENGTH)) {
+						k = (Integer) conditionKey;
+					}
+
+					checkResult = checkKeyCondition(operator, k,
+							conditionValue, contents);
+
+					if (entry.isAndCondition() && !checkResult)
+						return AnalysisConstants.IGNORE_PROCESS;
+
+					if (!entry.isAndCondition() && checkResult)
+						break;
+				}
+			}
+
+			if (!entry.isAndCondition() && !checkResult)
+				return AnalysisConstants.IGNORE_PROCESS;
+
+			for (String c : entry.getKeys()) {
+				// 全局统计，没有key
+				if (c.equals(AnalysisConstants.GLOBAL_KEY))
+					return AnalysisConstants.GLOBAL_KEY;
+
+				key.append(innerKeyReplace(c,contents[Integer.valueOf(c) - 1],innerKeyPool)).append(AnalysisConstants.SPLIT_KEY);
+			}
+
+		} catch (Exception ex) {
+			return AnalysisConstants.IGNORE_PROCESS;
+		}
+
+		return key.toString();
+	}
+	
+	private static String innerKeyReplace(String key,String value,List<InnerKey> innerKeyPool)
+	{
+		String result = value;
+		
+		if (innerKeyPool == null || (innerKeyPool != null && innerKeyPool.size() == 0))
+			return result;
+		
+		for(InnerKey ik : innerKeyPool)
+		{
+			if (ik.getKey().equals(key))
+			{
+				if (ik.getInnerKeys().get(value) != null)
+					result = ik.getInnerKeys().get(value);
+				
+				break;
+			}
+		}
+		
+		return result;
+	}
+	
+	/**
+	 * 返回是否符合条件
+	 * 
+	 * @param operator
+	 * @param conditionKey
+	 * @param conditionValue
+	 * @param contents
+	 * @return
+	 */
+	private static boolean checkKeyCondition(String operator, int conditionKey,
+			String conditionValue, String[] contents) {
+		boolean result = false;
+
+		if (operator.equals(AnalysisConstants.CONDITION_EQUAL)) {
+			if (conditionKey > 0)
+				result = contents[conditionKey - 1].equals(conditionValue);
+			else
+				result = contents.length == Integer.valueOf(conditionValue);
+		} else if (operator.equals(AnalysisConstants.CONDITION_NOT_EQUAL)) {
+			if (conditionKey > 0)
+				result = !contents[conditionKey - 1].equals(conditionValue);
+			else
+				result = contents.length != Integer.valueOf(conditionValue);
+		} else {
+			double cmpValue = 0;
+
+			if (conditionKey > 0)
+				cmpValue = Double.valueOf(contents[conditionKey - 1])
+						- Double.valueOf(conditionValue);
+			else
+				cmpValue = contents.length - Integer.valueOf(conditionValue);
+
+			if (operator.equals(AnalysisConstants.CONDITION_EQUALORGREATER))
+				return cmpValue >= 0;
+
+			if (operator.equals(AnalysisConstants.CONDITION_EQUALORLESSER))
+				return cmpValue <= 0;
+
+			if (operator.equals(AnalysisConstants.CONDITION_GREATER))
+				return cmpValue > 0;
+
+			if (operator.equals(AnalysisConstants.CONDITION_LESSER))
+				return cmpValue < 0;
+
+		}
+
+		return result;
+	}
 	
 	public static InputStream getInputFromFile(String file) throws IOException
 	{
