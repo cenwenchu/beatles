@@ -3,10 +3,6 @@ package com.taobao.top.analysis.node.reduce;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.Map;
-
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-
 import com.taobao.top.analysis.node.IReportReduce;
 import com.taobao.top.analysis.statistics.data.Alias;
 import com.taobao.top.analysis.statistics.data.ReportEntry;
@@ -23,8 +19,7 @@ import com.taobao.top.analysis.statistics.data.ReportEntry;
  */
 public class TimeReduce implements IReportReduce {
 
-	private static final Log logger = LogFactory.getLog(TimeReduce.class);
-	
+
 	@Override
 	public String generateValue(ReportEntry entry, String[] contents,
 			Map<String, Alias> aliasPool) {

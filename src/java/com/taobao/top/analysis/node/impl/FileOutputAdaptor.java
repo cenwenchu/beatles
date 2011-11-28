@@ -4,7 +4,9 @@
 package com.taobao.top.analysis.node.impl;
 
 
+
 import com.taobao.top.analysis.job.JobTask;
+import com.taobao.top.analysis.job.JobTaskResult;
 import com.taobao.top.analysis.node.IJobExporter;
 import com.taobao.top.analysis.node.IOutputAdaptor;
 
@@ -33,8 +35,8 @@ public class FileOutputAdaptor implements IOutputAdaptor {
 
 
 	@Override
-	public void sendResultToOutput(JobTask jobtask) {
-		jobExporter.export(jobtask, false);
+	public void sendResultToOutput(JobTask jobTask,JobTaskResult jobTaskResult) {
+		jobExporter.export(jobTask,jobTaskResult, false);
 	}
 
 	

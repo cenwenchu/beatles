@@ -24,6 +24,7 @@ import org.apache.commons.logging.LogFactory;
 import com.taobao.top.analysis.config.MasterConfig;
 import com.taobao.top.analysis.job.Job;
 import com.taobao.top.analysis.job.JobTask;
+import com.taobao.top.analysis.job.JobTaskResult;
 import com.taobao.top.analysis.node.IJobExporter;
 import com.taobao.top.analysis.statistics.data.Report;
 import com.taobao.top.analysis.statistics.data.ReportEntry;
@@ -85,12 +86,12 @@ public class FileJobExporter implements IJobExporter {
 
 	
 	@Override
-	public List<String> export(JobTask jobTask, boolean needTimeSuffix) {
+	public List<String> export(JobTask jobTask,JobTaskResult jobTaskResult, boolean needTimeSuffix) {
 		long start = System.currentTimeMillis();
 		
 		List<String> reports = new CopyOnWriteArrayList<String>();
 		
-		Map<String, Map<String, Object>> entryResultPool = jobTask.getResults();
+		Map<String, Map<String, Object>> entryResultPool = jobTaskResult.getResults();
 		
 		//清理lazy数据
 		ReportUtil.cleanLazyData(entryResultPool, jobTask.getStatisticsRule().getEntryPool());

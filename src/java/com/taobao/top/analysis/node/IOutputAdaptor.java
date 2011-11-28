@@ -4,6 +4,7 @@
 package com.taobao.top.analysis.node;
 
 import com.taobao.top.analysis.job.JobTask;
+import com.taobao.top.analysis.job.JobTaskResult;
 
 
 /**
@@ -15,7 +16,7 @@ import com.taobao.top.analysis.job.JobTask;
  */
 public interface IOutputAdaptor {
 
-	public void sendResultToOutput(JobTask jobtask);
+	public void sendResultToOutput(JobTask jobTask,JobTaskResult jobTaskResult);
 	
 	boolean ignore(String output);
 	

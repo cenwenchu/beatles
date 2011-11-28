@@ -4,6 +4,7 @@
 package com.taobao.top.analysis.node;
 
 import com.taobao.top.analysis.config.IConfig;
+import com.taobao.top.analysis.exception.AnalysisException;
 
 /**
  * 基础节点的接口定义
@@ -17,7 +18,7 @@ public interface INode<E extends INodeEvent,C extends IConfig> extends Runnable,
 	/**
 	 * 节点的主流程处理逻辑
 	 */
-	public void process();
+	public void process() throws AnalysisException;
 	
 		
 	/**

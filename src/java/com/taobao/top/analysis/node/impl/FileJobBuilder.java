@@ -54,6 +54,18 @@ public class FileJobBuilder implements IJobBuilder{
 	
 	private final Log logger = LogFactory.getLog(FileJobBuilder.class);
 	private MasterConfig config;
+	private boolean needRebuild = false;
+	private String jobSource;
+	
+	@Override
+	public boolean isNeedRebuild() {
+		return needRebuild;
+	}
+
+	@Override
+	public void setNeedRebuild(boolean needRebuild) {
+		this.needRebuild = needRebuild;
+	}
 	
 	@Override
 	public MasterConfig getConfig() {
@@ -69,6 +81,8 @@ public class FileJobBuilder implements IJobBuilder{
 	
 	public List<Job> build(String config) throws AnalysisException 
 	{
+		jobSource = config;
+		
 		List<Job> jobs = new ArrayList<Job>();
 		
 		InputStream in = null;
@@ -749,6 +763,17 @@ public class FileJobBuilder implements IJobBuilder{
 	public void releaseResource() {
 		// TODO Auto-generated method stub
 		
+	}
+
+	@Override
+	public List<Job> rebuild() throws AnalysisException {
+		if (jobSource != null)
+		{
+			this.needRebuild = false;
+			return build(this.jobSource);
+		}
+		else
+			return null;
 	}
 
 }

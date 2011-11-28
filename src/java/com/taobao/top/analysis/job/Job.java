@@ -3,6 +3,7 @@ package com.taobao.top.analysis.job;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.commons.lang.StringUtils;
 
@@ -27,20 +28,29 @@ public class Job {
 	Rule statisticsRule;
 	List<JobTask> jobTasks;
 	int taskCount = 0;
-	
+	AtomicInteger completedTaskCount;
 	/**
 	 * 处理后的结果池，key是entry的id， value是Map(key是entry定义的key组合,value是统计后的结果)
 	 * 采用线程不安全，只有单线程操作此结果集
 	 */
-	private Map<String, Map<String, Object>> entryResults;
+	private Map<String, Map<String, Object>> jobResult;
 	
+	public Job()
+	{
+		reset();
+	}
 	
-	public Map<String, Map<String, Object>> getEntryResults() {
-		return entryResults;
+	public void reset()
+	{
+		completedTaskCount = new AtomicInteger(0);
 	}
 
-	public void setEntryResults(Map<String, Map<String, Object>> entryResults) {
-		this.entryResults = entryResults;
+	public Map<String, Map<String, Object>> getJobResult() {
+		return jobResult;
+	}
+
+	public void setJobResult(Map<String, Map<String, Object>> jobResult) {
+		this.jobResult = jobResult;
 	}
 
 	public void generateJobTasks() throws AnalysisException
@@ -58,6 +68,7 @@ public class Job {
 			JobTask jobTask = new JobTask(jobConfig);
 			jobTask.setStatisticsRule(statisticsRule);
 			jobTask.setTaskId(jobName + "-" + taskCount);
+			jobTask.setJobName(jobName);
 			taskCount += 1;
 			jobTasks.add(jobTask);
 		}
@@ -76,6 +87,7 @@ public class Job {
 				JobTask jobTask = new JobTask(jobConfig);
 				jobTask.setStatisticsRule(statisticsRule);
 				jobTask.setTaskId(jobName + "-" + taskCount);
+				jobTask.setJobName(jobName);
 				jobTask.setInput(jobConfig.getInput().replace(key, ps));
 				taskCount += 1;
 				jobTasks.add(jobTask);

@@ -6,6 +6,7 @@ package com.taobao.top.analysis.node;
 import java.util.List;
 
 import com.taobao.top.analysis.config.MasterConfig;
+import com.taobao.top.analysis.exception.AnalysisException;
 import com.taobao.top.analysis.job.Job;
 
 /**
@@ -29,10 +30,10 @@ public interface IJobManager extends IComponent<MasterConfig>{
 	
 	public void setJobResultMerger(IJobResultMerger jobResultMerger);
 	
-	public boolean isNeedReloadJobs();
+	public List<Job> getJobs();
 	
-	public void setNeedReloadJobs(boolean needReloadJobs);
+	public void setJobs(List<Job> jobs);
 	
-	public void checkJobStatus(List<Job> jobs);
+	public void checkJobStatus() throws AnalysisException;
 
 }

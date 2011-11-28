@@ -23,7 +23,24 @@ public class MixJobBuilder implements IJobBuilder {
 
 	Map<String,IJobBuilder> jobBuilders;
 	private MasterConfig config;
+	private IJobBuilder jobBuilder;
+	private String jobSource;
 	
+	@Override
+	public boolean isNeedRebuild() {
+		if (jobBuilder == null)
+			return false;
+		else
+			return jobBuilder.isNeedRebuild();
+	}
+
+	@Override
+	public void setNeedRebuild(boolean needRebuild) {
+		if (jobBuilder != null)
+			jobBuilder.setNeedRebuild(true);
+	}
+
+
 	@Override
 	public MasterConfig getConfig() {
 		return config;
@@ -48,10 +65,11 @@ public class MixJobBuilder implements IJobBuilder {
 	@Override
 	public List<Job> build(String config) throws 
 			AnalysisException {
-		
+				
 		String protocol = "file";
 		String conf = config;
-		IJobBuilder jobBuilder = jobBuilders.get(protocol);
+		jobSource = config;
+		jobBuilder = jobBuilders.get(protocol);
 		
 		if (config.indexOf(":") > 0)
 		{
@@ -74,6 +92,17 @@ public class MixJobBuilder implements IJobBuilder {
 	@Override
 	public void releaseResource() {
 		jobBuilders.clear();
+	}
+
+	@Override
+	public List<Job> rebuild() throws AnalysisException {
+		if (jobSource != null)
+		{
+			this.setNeedRebuild(false);
+			return build(this.jobSource);
+		}
+		else
+			return null;
 	}
 
 }

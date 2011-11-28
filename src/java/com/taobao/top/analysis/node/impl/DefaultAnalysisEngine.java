@@ -19,6 +19,7 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import com.taobao.top.analysis.job.JobTask;
+import com.taobao.top.analysis.job.JobTaskResult;
 import com.taobao.top.analysis.job.TaskExecuteInfo;
 import com.taobao.top.analysis.node.IAnalysisEngine;
 import com.taobao.top.analysis.node.IInputAdaptor;
@@ -86,7 +87,7 @@ public class DefaultAnalysisEngine implements IAnalysisEngine{
 	}
 
 	@Override
-	public void doAnalysis(JobTask jobtask) throws UnsupportedEncodingException, IOException {
+	public void doAnalysis(JobTask jobTask) throws UnsupportedEncodingException, IOException {
 		
 		InputStream in = null;
 		
@@ -94,23 +95,23 @@ public class DefaultAnalysisEngine implements IAnalysisEngine{
 		{
 			for(IInputAdaptor inputAdaptor : inputAdaptors)
 			{
-				if (inputAdaptor.ignore(jobtask.getInput()))
+				if (inputAdaptor.ignore(jobTask.getInput()))
 					continue;
 				
-				in = inputAdaptor.getInputFormJob(jobtask);
+				in = inputAdaptor.getInputFormJob(jobTask);
 				
 				if (in != null)
 					break;
 			}
 			
-			analysis(in,jobtask);
+			JobTaskResult jobTaskResult = analysis(in,jobTask);
 			
 			for(IOutputAdaptor outputAdaptor : outputAdaptors)
 			{
-				if (outputAdaptor.ignore(jobtask.getOutput()))
+				if (outputAdaptor.ignore(jobTask.getOutput()))
 					continue;
 				
-				outputAdaptor.sendResultToOutput(jobtask);
+				outputAdaptor.sendResultToOutput(jobTask,jobTaskResult);
 			}
 		}
 		finally
@@ -125,12 +126,15 @@ public class DefaultAnalysisEngine implements IAnalysisEngine{
 
 	}
 	
-	void analysis(InputStream in,JobTask jobtask) throws UnsupportedEncodingException
+	JobTaskResult analysis(InputStream in,JobTask jobtask) throws UnsupportedEncodingException
 	{
 		
 		String encoding = jobtask.getInputEncoding();
 		String splitRegex = jobtask.getSplitRegex();
-		TaskExecuteInfo taksExecuteInfo = jobtask.getTaskExecuteInfo();
+		
+		JobTaskResult jobTaskResult = new JobTaskResult(jobtask.getTaskId());
+		
+		TaskExecuteInfo taksExecuteInfo = jobTaskResult.getTaskExecuteInfo();
 		Map<String, ReportEntry> entryPool = jobtask.getStatisticsRule().getEntryPool();
 		
 		BufferedReader reader = new BufferedReader(new InputStreamReader(in, encoding));
@@ -182,7 +186,7 @@ public class DefaultAnalysisEngine implements IAnalysisEngine{
 								continue;
 							}
 							
-							processSingleLine(entry, contents, valueTempPool,jobtask);
+							processSingleLine(entry, contents, valueTempPool,jobtask,jobTaskResult);
 							
 						} 
 						catch (Throwable e) 
@@ -204,7 +208,7 @@ public class DefaultAnalysisEngine implements IAnalysisEngine{
 						try 
 						{
 							entry = iterator.next();
-							processSingleLine(entry, contents, valueTempPool,jobtask);
+							processSingleLine(entry, contents, valueTempPool,jobtask,jobTaskResult);
 						}
 						catch (Throwable e) 
 						{
@@ -271,11 +275,13 @@ public class DefaultAnalysisEngine implements IAnalysisEngine{
 					.append(",empty line:").append(emptyLine).toString());
 		}
 		
+		return jobTaskResult;
+		
 	}
 	
 	
 	public void processSingleLine(ReportEntry entry, String[] contents,
-			Map<String, Object> valueTempPool,JobTask jobtask){
+			Map<String, Object> valueTempPool,JobTask jobtask,JobTaskResult jobTaskResult){
 		
 		boolean isChild = true;
 		
@@ -284,7 +290,7 @@ public class DefaultAnalysisEngine implements IAnalysisEngine{
 			isChild = false;
 		}
 		
-		Map<String, Map<String, Object>> entryResult = jobtask.getResults();
+		Map<String, Map<String, Object>> entryResult = jobTaskResult.getResults();
 		Map<String, ReportEntry> entryPool = jobtask.getStatisticsRule().getEntryPool();
 		Map<String, Alias> aliasPool = jobtask.getStatisticsRule().getAliasPool();
 		List<InnerKey> innerKeyPool = jobtask.getStatisticsRule().getInnerKeyPool();

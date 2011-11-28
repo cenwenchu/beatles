@@ -3,7 +3,9 @@
  */
 package com.taobao.top.analysis.node.impl;
 
+
 import com.taobao.top.analysis.job.JobTask;
+import com.taobao.top.analysis.job.JobTaskResult;
 import com.taobao.top.analysis.node.IOutputAdaptor;
 
 /**
@@ -16,14 +18,14 @@ import com.taobao.top.analysis.node.IOutputAdaptor;
 public class MasterOutputAdapter implements IOutputAdaptor{
 
 	@Override
-	public void sendResultToOutput(JobTask jobtask) {
-		// TODO Auto-generated method stub
-		
+	public boolean ignore(String output) {
+		return output.indexOf("Master:") < 0;
 	}
 
 	@Override
-	public boolean ignore(String output) {
-		return output.indexOf("Master:") < 0;
+	public void sendResultToOutput(JobTask jobTask,JobTaskResult jobTaskResult) {
+		// TODO Auto-generated method stub
+		
 	}
 
 }

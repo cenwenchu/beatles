@@ -4,9 +4,7 @@
 package com.taobao.top.analysis.job;
 
 import java.io.Serializable;
-import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
-
 import com.taobao.top.analysis.config.JobConfig;
 import com.taobao.top.analysis.statistics.data.Rule;
 
@@ -27,6 +25,7 @@ public class JobTask implements Serializable{
 	 */
 	private static final long serialVersionUID = -4539861249196752195L;
 	
+	private String jobName;
 	private String taskId;
 	private Rule statisticsRule;
 	private String input;
@@ -34,6 +33,9 @@ public class JobTask implements Serializable{
 	private String splitRegex;
 	private String inputEncoding;
 	private String outputEncoding;
+	/**
+	 * 任务执行状态
+	 */
 	private TaskStatus status;
 	
 	/**
@@ -50,17 +52,11 @@ public class JobTask implements Serializable{
 	private long endTime;
 	
 	/**
-	 * 处理后的结果池，key是entry的id， value是Map(key是entry定义的key组合,value是统计后的结果)
-	 * 采用线程不安全，只有单线程操作此结果集
-	 */
-	private Map<String, Map<String, Object>> results;
-
-	/**
 	 * 该job回收计数
 	 */
 	private AtomicInteger recycleCounter;
 	
-	private TaskExecuteInfo taskExecuteInfo;
+	
 	
 	public JobTask(JobConfig jobConfig)
 	{
@@ -72,11 +68,20 @@ public class JobTask implements Serializable{
 		status = TaskStatus.UNDO;
 		creatTime = System.currentTimeMillis();
 		recycleCounter= new AtomicInteger(0);
-		taskExecuteInfo = new TaskExecuteInfo();
-		results = new java.util.HashMap<String, Map<String, Object>>();
 	}
 		
 	
+	public String getJobName() {
+		return jobName;
+	}
+
+
+	public void setJobName(String jobName) {
+		this.jobName = jobName;
+	}
+
+
+
 	public String getOutputEncoding() {
 		return outputEncoding;
 	}
@@ -85,13 +90,7 @@ public class JobTask implements Serializable{
 		this.outputEncoding = outputEncoding;
 	}
 
-	public TaskExecuteInfo getTaskExecuteInfo() {
-		return taskExecuteInfo;
-	}
-
-	public void setTaskExecuteInfo(TaskExecuteInfo taskExecuteInfo) {
-		this.taskExecuteInfo = taskExecuteInfo;
-	}
+	
 	public TaskStatus getStatus() {
 		return status;
 	}
@@ -115,12 +114,6 @@ public class JobTask implements Serializable{
 	}
 	public void setEndTime(long endTime) {
 		this.endTime = endTime;
-	}
-	public Map<String, Map<String, Object>> getResults() {
-		return results;
-	}
-	public void setResults(Map<String, Map<String, Object>> results) {
-		this.results = results;
 	}
 	public AtomicInteger getRecycleCounter() {
 		return recycleCounter;

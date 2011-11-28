@@ -19,5 +19,11 @@ import com.taobao.top.analysis.job.Job;
 public interface IJobBuilder extends IComponent<MasterConfig>{
 	
 	public List<Job> build(String config) throws AnalysisException;
+	
+	public List<Job> rebuild() throws AnalysisException;
+	
+	public boolean isNeedRebuild();
+
+	public void setNeedRebuild(boolean needRebuild);
 
 }
