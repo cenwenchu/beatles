@@ -6,14 +6,14 @@ import org.junit.Test;
 
 import com.taobao.top.analysis.config.MasterConfig;
 import com.taobao.top.analysis.job.Job;
-import com.taobao.top.analysis.job.JobBuilder;
 import com.taobao.top.analysis.job.JobTask;
 import com.taobao.top.analysis.node.IInputAdaptor;
 import com.taobao.top.analysis.node.impl.DefaultAnalysisEngine;
-import com.taobao.top.analysis.node.impl.DefaultReportExporter;
+import com.taobao.top.analysis.node.impl.FileJobExporter;
 import com.taobao.top.analysis.node.impl.FileInputAdaptor;
 import com.taobao.top.analysis.node.impl.FileOutputAdaptor;
 import com.taobao.top.analysis.node.impl.HttpInputAdaptor;
+import com.taobao.top.analysis.node.impl.FileJobBuilder;
 
 
 /**
@@ -35,19 +35,19 @@ public class DefaultAnalysisEngineTest {
 		FileOutputAdaptor fileOutAdaptor = new FileOutputAdaptor();
 		MasterConfig masterConfig = new MasterConfig();
 		
-		DefaultReportExporter reportExporter = new DefaultReportExporter();
-		reportExporter.setMasterConfig(masterConfig);
-		reportExporter.init();
+		FileJobExporter fileJobExporter = new FileJobExporter();
+		fileJobExporter.setConfig(masterConfig);
+		fileJobExporter.init();
 		
-		fileOutAdaptor.setReportExporter(reportExporter);
+		fileOutAdaptor.setJobExporter(fileJobExporter);
 		
 		defaultAnalysisEngine.addInputAdaptor(fileInputAdaptor);
 		defaultAnalysisEngine.addInputAdaptor(httpInputAdaptor);
 		defaultAnalysisEngine.addOutputAdaptor(fileOutAdaptor);
 		
 		
-		JobBuilder jobBuilder = new JobBuilder();
-		List<Job> jobs = jobBuilder.build("analysis-job-config.properties");
+		FileJobBuilder jobBuilder = new FileJobBuilder();
+		List<Job> jobs = jobBuilder.build("jobs-config.properties");
 		
 		for(Job job : jobs)
 		{
@@ -57,7 +57,7 @@ public class DefaultAnalysisEngineTest {
 				defaultAnalysisEngine.doAnalysis(jobtask);
 		}
 
-		reportExporter.destory();
+		fileJobExporter.releaseResource();
 		
 	}
 

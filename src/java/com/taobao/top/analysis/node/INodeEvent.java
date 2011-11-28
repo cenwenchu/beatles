@@ -12,5 +12,5 @@ import java.io.Serializable;
  *
  */
 public interface INodeEvent extends Serializable {
-
+	
 }

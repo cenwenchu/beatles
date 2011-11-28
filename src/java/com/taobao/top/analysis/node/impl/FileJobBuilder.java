@@ -1,7 +1,7 @@
 /**
  * 
  */
-package com.taobao.top.analysis.job;
+package com.taobao.top.analysis.node.impl;
 
 import java.io.File;
 import java.io.IOException;
@@ -18,6 +18,7 @@ import java.util.Map.Entry;
 import javax.xml.namespace.QName;
 import javax.xml.stream.XMLEventReader;
 import javax.xml.stream.XMLInputFactory;
+import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.events.Attribute;
 import javax.xml.stream.events.EndElement;
 import javax.xml.stream.events.StartElement;
@@ -28,7 +29,10 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import com.taobao.top.analysis.config.JobConfig;
+import com.taobao.top.analysis.config.MasterConfig;
 import com.taobao.top.analysis.exception.AnalysisException;
+import com.taobao.top.analysis.job.Job;
+import com.taobao.top.analysis.node.IJobBuilder;
 import com.taobao.top.analysis.statistics.data.Alias;
 import com.taobao.top.analysis.statistics.data.InnerKey;
 import com.taobao.top.analysis.statistics.data.Report;
@@ -46,12 +50,24 @@ import com.taobao.top.analysis.util.ReportUtil;
  * 2011-11-24
  *
  */
-public class JobBuilder {
+public class FileJobBuilder implements IJobBuilder{
 	
-	private final Log logger = LogFactory.getLog(JobBuilder.class);
+	private final Log logger = LogFactory.getLog(FileJobBuilder.class);
+	private MasterConfig config;
+	
+	@Override
+	public MasterConfig getConfig() {
+		return config;
+	}
+
+
+	@Override
+	public void setConfig(MasterConfig config) {
+		this.config = config;
+	}
 	
 	
-	public List<Job> build(String config) throws Exception
+	public List<Job> build(String config) throws AnalysisException 
 	{
 		List<Job> jobs = new ArrayList<Job>();
 		
@@ -94,6 +110,10 @@ public class JobBuilder {
 					jobs.add(job);
 				}
 			}
+		}
+		catch(IOException ex)
+		{
+			logger.error(ex);
 		}
 		finally
 		{
@@ -140,9 +160,11 @@ public class JobBuilder {
 	 * @param 报表定义池
 	 * @param 别名定义池
 	 * @param 告警定义池
+	 * @throws IOException 
+	 * @throws XMLStreamException 
 	 */
 	public void buildReportModule(String configFile, Rule rule)
-			throws Exception {
+			throws AnalysisException, IOException {
 		InputStream in = null;
 		XMLEventReader r = null;
 		Report report = null;
@@ -159,7 +181,7 @@ public class JobBuilder {
 		if (configFile == null || "".equals(configFile)) {
 			String error = "configFile can not be null !";
 			logger.error(error);
-			throw new java.lang.RuntimeException(error);
+			throw new AnalysisException(error);
 		}
 
 		try {
@@ -418,9 +440,18 @@ public class JobBuilder {
 						+ invalidKeys.toString());
 			}
 
-		} finally {
+		} 
+		catch(XMLStreamException ex)
+		{
+			logger.error(ex);
+		}
+		finally {
 			if (r != null)
-				r.close();
+				try {
+					r.close();
+				} catch (XMLStreamException e) {
+					logger.error(e);
+				}
 
 			if (in != null)
 				in.close();
@@ -706,6 +737,18 @@ public class JobBuilder {
 		if (report != null)
 			report.getReportEntrys().add(entry);
 
+	}
+
+	@Override
+	public void init() {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void releaseResource() {
+		// TODO Auto-generated method stub
+		
 	}
 
 }

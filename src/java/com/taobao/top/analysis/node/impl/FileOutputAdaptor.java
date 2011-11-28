@@ -5,8 +5,8 @@ package com.taobao.top.analysis.node.impl;
 
 
 import com.taobao.top.analysis.job.JobTask;
+import com.taobao.top.analysis.node.IJobExporter;
 import com.taobao.top.analysis.node.IOutputAdaptor;
-import com.taobao.top.analysis.node.IReportExporter;
 
 /**
  * 文件输出适配器
@@ -20,21 +20,21 @@ public class FileOutputAdaptor implements IOutputAdaptor {
 	
 	//private static final Log logger = LogFactory.getLog(FileOutputAdaptor.class);
 	
-	IReportExporter reportExporter; 
-	
-	public IReportExporter getReportExporter() {
-		return reportExporter;
+	IJobExporter jobExporter; 
+
+	public IJobExporter getJobExporter() {
+		return jobExporter;
 	}
 
 
-	public void setReportExporter(IReportExporter reportExporter) {
-		this.reportExporter = reportExporter;
+	public void setJobExporter(IJobExporter jobExporter) {
+		this.jobExporter = jobExporter;
 	}
 
 
 	@Override
 	public void sendResultToOutput(JobTask jobtask) {
-		reportExporter.generateReports(jobtask, false);
+		jobExporter.export(jobtask, false);
 	}
 
 	

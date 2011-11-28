@@ -22,8 +22,9 @@ import java.util.concurrent.TimeUnit;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import com.taobao.top.analysis.config.MasterConfig;
+import com.taobao.top.analysis.job.Job;
 import com.taobao.top.analysis.job.JobTask;
-import com.taobao.top.analysis.node.IReportExporter;
+import com.taobao.top.analysis.node.IJobExporter;
 import com.taobao.top.analysis.statistics.data.Report;
 import com.taobao.top.analysis.statistics.data.ReportEntry;
 import com.taobao.top.analysis.util.AnalysisConstants;
@@ -38,45 +39,53 @@ import com.taobao.top.analysis.util.ReportUtil;
  * 2011-11-25
  *
  */
-public class DefaultReportExporter implements IReportExporter {
+public class FileJobExporter implements IJobExporter {
 
-	private final Log logger = LogFactory.getLog(DefaultReportExporter.class);
+	private final Log logger = LogFactory.getLog(FileJobExporter.class);
 	/**
 	 * 用于输出报表文件的线程池
 	 */
 	private ThreadPoolExecutor createReportFileThreadPool;
-	private MasterConfig masterConfig;
+	private MasterConfig config;
 	private long lastRuntime=(System.currentTimeMillis() + 8 * 60 * 60 * 1000) / 86400000;
-	
-	
-	public MasterConfig getMasterConfig() {
-		return masterConfig;
-	}
 
-
-	public void setMasterConfig(MasterConfig masterConfig) {
-		this.masterConfig = masterConfig;
+	
+	@Override
+	public MasterConfig getConfig() {
+		return config;
 	}
 
 
 	@Override
+	public void setConfig(MasterConfig config) {
+		this.config = config;
+	}
+
+
+	@Override
+	public List<String> export(Job job) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
 	public void init() {
 		createReportFileThreadPool = new ThreadPoolExecutor(
-				this.masterConfig.getMaxCreateReportWorker(),
-				this.masterConfig.getMaxCreateReportWorker(), 0,
+				this.config.getMaxCreateReportWorker(),
+				this.config.getMaxCreateReportWorker(), 0,
 				TimeUnit.SECONDS, new LinkedBlockingQueue<Runnable>(),
 				new NamedThreadFactory("createReportFile_worker"));
 	}
 
 	
 	@Override
-	public void destory() {
+	public void releaseResource() {
 		createReportFileThreadPool.shutdown();
 	}
 
 	
 	@Override
-	public List<String> generateReports(JobTask jobTask, boolean needTimeSuffix) {
+	public List<String> export(JobTask jobTask, boolean needTimeSuffix) {
 		long start = System.currentTimeMillis();
 		
 		List<String> reports = new CopyOnWriteArrayList<String>();
@@ -474,5 +483,6 @@ public class DefaultReportExporter implements IReportExporter {
 		}
 		
 	}
+
 
 }

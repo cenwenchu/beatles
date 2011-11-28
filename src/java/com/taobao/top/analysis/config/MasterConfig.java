@@ -3,9 +3,6 @@
  */
 package com.taobao.top.analysis.config;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-
 
 /**
  * 服务端配置类
@@ -14,8 +11,6 @@ import org.apache.commons.logging.LogFactory;
  */
 public class MasterConfig extends AbstractConfig{
 
-	private static final Log logger = LogFactory.getLog(MasterConfig.class);
-	
 	/**
 	 * 
 	 */
@@ -25,32 +20,39 @@ public class MasterConfig extends AbstractConfig{
 	
 	private final static String MASTER_PORT = "masterPort";
 	
+	/**
+	 * 用于合并任务结果的线程最大设置，默认是当前处理器数＋1
+	 */
 	private final static String MAX_MERGE_JOB_WORKER = "maxMergeJobWorker";
 	
+	/**
+	 * 最大的用于输出统计分析结果的线程数，默认2
+	 */
 	private final static String MAX_CREATE_REPORT_WORKER = "maxCreateReportWorker";
 	
 	/**
-	 * 是否是单线程阻塞方式合并结果
+	 * 任务配置的来源，可以自己扩展为DB，HTTP等方式，现在默认实现本地配置文件（file:xxxx）
 	 */
-	private final static String NEED_BLOCK_TO_MERGE_RESULT = "needBlockToMergeResult";
+	private final static String JOBS_SOURCE = "jobsSource";
+	
 
 	/**
-	 * 合并最小的结果数
+	 * 合并最小的结果数，默认为1,如果不达到这个值，等待MAX_JOB_RESULT_BUNDLE_WAITTIME到获得必要个数为止
 	 */
 	private final static String MIN_MERGE_JOB_COUNT ="minMergeJobCount";
 
 	/**
-	 * 设置了minMergeJobCount后最大等待组成一个bundle批量处理的时间，默认为1秒
+	 * 设置了minMergeJobCount,单位毫秒，最大等待组成一个bundle批量处理的时间，默认为60秒
 	 */
 	private final static String MAX_JOB_RESULT_BUNDLE_WAITTIME ="maxJobResultBundleWaitTime";
 
 	/**
-	 * 任何结果只允许并行合并一次，后续就必须合并到主干
+	 * 任何结果只允许并行合并一次，后续就必须合并到主干，减少重复合并的情况，默认为false
 	 */
 	private final static String RESULT_PROCESS_ONLY_ONCE = "resultProcessOnlyOnce";
 	
 	/**
-	 * 输出临时文件间隔
+	 * 输出临时文件间隔(单位秒，默认10分钟),如果设置了saveTmpResultToFile，该时间设置无效，每次都会有导出临时文件
 	 */
 	private final static String EXPORT_INTERVAL = "exportInterval";
 	
@@ -62,9 +64,6 @@ public class MasterConfig extends AbstractConfig{
 	//配合磁盘换内存的方式，判断什么时候可以异步载入文件
 	private final static String ASYN_LOAD_DISK_FILE_PRECENT = "asynLoadDiskFilePrecent";
 
-	// mod by fangweng 2011 performance
-	//是否采用私有导出模式
-	private final static String USE_INNER_DATA_EXPORT = "useInnerDataExport";
 	
 	public String getMasterName() {
 		if(this.properties.containsKey(MASTER_NAME))
@@ -88,6 +87,19 @@ public class MasterConfig extends AbstractConfig{
 		this.properties.put(MASTER_PORT,masterPort);
 	}
 
+	public String getJobsSource()
+	{
+		if(this.properties.containsKey(JOBS_SOURCE))
+			return (String)this.properties.get(JOBS_SOURCE);
+		else
+			return null;
+	}
+	
+	public void setJobsSource(String jobsSource)
+	{
+		this.properties.put(JOBS_SOURCE,jobsSource);
+	}
+	
 	public int getMaxMergeJobWorker() {
 		if(this.properties.containsKey(MAX_MERGE_JOB_WORKER))
 			return Integer.parseInt((String)this.properties.get(MAX_MERGE_JOB_WORKER));
@@ -110,17 +122,6 @@ public class MasterConfig extends AbstractConfig{
 		this.properties.put(MAX_CREATE_REPORT_WORKER, maxCreateReportWorker);
 	}
 
-	public boolean getNeedBlockToMergeResult() {
-		if(this.properties.containsKey(NEED_BLOCK_TO_MERGE_RESULT))
-			return Boolean.parseBoolean((String)this.properties.get(NEED_BLOCK_TO_MERGE_RESULT));
-		else
-			return false;
-	}
-
-	public void setNeedBlockToMergeResult(String needBlockToMergeResult) {
-		this.properties.put(NEED_BLOCK_TO_MERGE_RESULT, needBlockToMergeResult);
-	}
-
 	public int getMinMergeJobCount() {
 		if(this.properties.containsKey(MIN_MERGE_JOB_COUNT))
 			return Integer.parseInt((String)this.properties.get(MIN_MERGE_JOB_COUNT));
@@ -136,7 +137,7 @@ public class MasterConfig extends AbstractConfig{
 		if(this.properties.containsKey(MAX_JOB_RESULT_BUNDLE_WAITTIME))
 			return Long.parseLong((String)this.properties.get(MAX_JOB_RESULT_BUNDLE_WAITTIME)) * 1000;
 		else
-			return 1000;
+			return 60 * 1000;
 	}
 
 	public void setMaxJobResultBundleWaitTime(String maxJobResultBundleWaitTime) {
@@ -169,7 +170,7 @@ public class MasterConfig extends AbstractConfig{
 		if(this.properties.containsKey(SAVE_TMP_RESULT_TO_FILE))
 			return Boolean.parseBoolean((String)this.properties.get(SAVE_TMP_RESULT_TO_FILE));
 		else
-			return false;
+			return true;
 	}
 
 	public void setSaveTmpResultToFile(String saveTmpResultToFile) {
@@ -180,22 +181,11 @@ public class MasterConfig extends AbstractConfig{
 		if(this.properties.containsKey(ASYN_LOAD_DISK_FILE_PRECENT))
 			return Integer.parseInt((String)this.properties.get(ASYN_LOAD_DISK_FILE_PRECENT));
 		else
-			return 90;
+			return 85;
 	}
 
 	public void setAsynLoadDiskFilePrecent(String asynLoadDiskFilePrecent) {
 		this.properties.put(ASYN_LOAD_DISK_FILE_PRECENT,asynLoadDiskFilePrecent);
-	}
-
-	public boolean getUseInnerDataExport() {
-		if(this.properties.containsKey(USE_INNER_DATA_EXPORT))
-			return Boolean.parseBoolean((String)this.properties.get(USE_INNER_DATA_EXPORT));
-		else
-			return true;
-	}
-
-	public void setUseInnerDataExport(String useInnerDataExport) {
-		this.properties.put(USE_INNER_DATA_EXPORT,useInnerDataExport);
 	}
 
 }
