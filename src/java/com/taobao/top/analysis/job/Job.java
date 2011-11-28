@@ -6,10 +6,13 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.commons.lang.StringUtils;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 import com.taobao.top.analysis.config.JobConfig;
 import com.taobao.top.analysis.exception.AnalysisException;
 import com.taobao.top.analysis.statistics.data.Rule;
+import com.taobao.top.analysis.util.Threshold;
 
 /**
  * 任务结构体，自我描述了数据来源，数据输出，分析规则，包含的子任务
@@ -23,12 +26,19 @@ import com.taobao.top.analysis.statistics.data.Rule;
  */
 public class Job {
 	
+	private static final Log logger = LogFactory.getLog(Job.class);
+	
 	String jobName;
 	JobConfig jobConfig;
 	Rule statisticsRule;
 	List<JobTask> jobTasks;
 	int taskCount = 0;
 	AtomicInteger completedTaskCount;
+	AtomicInteger mergedTaskCount;
+	long startTime;
+	Threshold threshold;
+	boolean merged;
+	
 	/**
 	 * 处理后的结果池，key是entry的id， value是Map(key是entry定义的key组合,value是统计后的结果)
 	 * 采用线程不安全，只有单线程操作此结果集
@@ -37,12 +47,56 @@ public class Job {
 	
 	public Job()
 	{
+		jobTasks = new ArrayList<JobTask>();
+		threshold = new Threshold(1000);
 		reset();
+	}
+	
+	public boolean needMerge()
+	{
+		return completedTaskCount.get() > mergedTaskCount.get();
+	}
+	
+	public boolean needExport()
+	{
+		return !merged && mergedTaskCount.get() == taskCount;
+	}
+	
+	
+	public void setMerged(boolean merged) {
+		this.merged = merged;
+	}
+
+	public boolean needReset()
+	{
+		long consume = System.currentTimeMillis() - startTime;
+				
+		if ((merged && (consume >= jobConfig.getJobResetTime() * 1000))
+				||(consume > jobConfig.getJobResetTime() * 1000 * 2))
+			return true;
+		
+		if (mergedTaskCount.get() < taskCount && consume > jobConfig.getJobResetTime() * 1000)
+			if (logger.isWarnEnabled() && threshold.sholdBlock())
+				logger.warn("job : " + jobName + " can't complete in time!");
+		
+		return false;
 	}
 	
 	public void reset()
 	{
+		for(JobTask task : jobTasks)
+		{
+			task.setStatus(TaskStatus.UNDO);
+			task.setCreatTime(System.currentTimeMillis());
+			task.getRecycleCounter().set(0);
+		}
+			
+		taskCount = jobTasks.size();
+		
 		completedTaskCount = new AtomicInteger(0);
+		mergedTaskCount = new AtomicInteger(0);
+		startTime = System.currentTimeMillis();
+		merged = false;
 	}
 
 	public Map<String, Map<String, Object>> getJobResult() {
@@ -55,10 +109,8 @@ public class Job {
 
 	public void generateJobTasks() throws AnalysisException
 	{
-		if (jobTasks == null)
-			jobTasks = new ArrayList<JobTask>();
-		else
-			jobTasks.clear();
+		
+		jobTasks.clear();
 		
 		if (jobConfig == null)
 			throw new AnalysisException("generateJobTasks error, jobConfig is null.");
@@ -128,6 +180,30 @@ public class Job {
 
 	public void setStatisticsRule(Rule rule) {
 		this.statisticsRule = rule;
+	}
+
+	public int getTaskCount() {
+		return taskCount;
+	}
+
+	public void setTaskCount(int taskCount) {
+		this.taskCount = taskCount;
+	}
+
+	public AtomicInteger getCompletedTaskCount() {
+		return completedTaskCount;
+	}
+
+	public void setCompletedTaskCount(AtomicInteger completedTaskCount) {
+		this.completedTaskCount = completedTaskCount;
+	}
+
+	public AtomicInteger getMergedTaskCount() {
+		return mergedTaskCount;
+	}
+
+	public void setMergedTaskCount(AtomicInteger mergedTaskCount) {
+		this.mergedTaskCount = mergedTaskCount;
 	}
 
 }

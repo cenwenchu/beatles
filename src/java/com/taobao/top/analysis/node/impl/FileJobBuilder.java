@@ -79,11 +79,11 @@ public class FileJobBuilder implements IJobBuilder{
 	}
 	
 	
-	public List<Job> build(String config) throws AnalysisException 
+	public Map<String,Job> build(String config) throws AnalysisException 
 	{
 		jobSource = config;
 		
-		List<Job> jobs = new ArrayList<Job>();
+		Map<String,Job> jobs = new HashMap<String,Job>();
 		
 		InputStream in = null;
 		
@@ -121,7 +121,7 @@ public class FileJobBuilder implements IJobBuilder{
 						buildReportModule(conf, rule);
 					
 					job.generateJobTasks();
-					jobs.add(job);
+					jobs.put(job.getJobName(), job);
 				}
 			}
 		}
@@ -766,7 +766,7 @@ public class FileJobBuilder implements IJobBuilder{
 	}
 
 	@Override
-	public List<Job> rebuild() throws AnalysisException {
+	public Map<String,Job> rebuild() throws AnalysisException {
 		if (jobSource != null)
 		{
 			this.needRebuild = false;

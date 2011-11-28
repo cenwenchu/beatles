@@ -33,6 +33,7 @@ public class JobTask implements Serializable{
 	private String splitRegex;
 	private String inputEncoding;
 	private String outputEncoding;
+	private int taskRecycleTime;
 	/**
 	 * 任务执行状态
 	 */
@@ -65,6 +66,7 @@ public class JobTask implements Serializable{
 		splitRegex = jobConfig.getSplitRegex();
 		inputEncoding = jobConfig.getInputEncoding();
 		outputEncoding = jobConfig.getOutputEncoding();
+		taskRecycleTime = jobConfig.getTaskRecycleTime();
 		status = TaskStatus.UNDO;
 		creatTime = System.currentTimeMillis();
 		recycleCounter= new AtomicInteger(0);
@@ -156,6 +158,14 @@ public class JobTask implements Serializable{
 	}
 	public void setInputEncoding(String inputEncoding) {
 		this.inputEncoding = inputEncoding;
+	}
+
+	public int getTaskRecycleTime() {
+		return taskRecycleTime;
+	}
+
+	public void setTaskRecycleTime(int taskRecycleTime) {
+		this.taskRecycleTime = taskRecycleTime;
 	}
 
 }

@@ -61,37 +61,37 @@ public class JobConfig extends AbstractConfig {
 	/**
 	 * 单个任务重置时间，单位（秒），多久时间没有被执行完毕任务可以被回收再分配
 	 */
-	private final static String JOB_RECYCLE_TIME = "jobRecycleTime";
+	private final static String TASK_RECYCLE_TIME = "taskRecycleTime";
 
 	/**
 	 * 任务组重置时间，单位（秒）
 	 */
-	private final static String JOBBUNDLE_RESET_TIME = "jobBundleResetTime";
+	private final static String JOB_RESET_TIME = "jobResetTime";
 	
-	public int getJobBundleResetTime()
+	public int getJobResetTime()
 	{
-		if(this.properties.containsKey(JOBBUNDLE_RESET_TIME))
-			return Integer.parseInt((String)this.properties.get(JOBBUNDLE_RESET_TIME));
+		if(this.properties.containsKey(JOB_RESET_TIME))
+			return Integer.parseInt((String)this.properties.get(JOB_RESET_TIME));
 		else
 			return 0;
 	}
 	
-	public void setJobBundleResetTime(String jobBundleResetTime)
+	public void setJobResetTime(String jobResetTime)
 	{
-		this.properties.put(JOBBUNDLE_RESET_TIME,jobBundleResetTime);
+		this.properties.put(JOB_RESET_TIME,jobResetTime);
 	}
 	
-	public int getJobRecycleTime()
+	public int getTaskRecycleTime()
 	{
-		if(this.properties.containsKey(JOB_RECYCLE_TIME))
-			return Integer.parseInt((String)this.properties.get(JOB_RECYCLE_TIME));
+		if(this.properties.containsKey(TASK_RECYCLE_TIME))
+			return Integer.parseInt((String)this.properties.get(TASK_RECYCLE_TIME));
 		else
 			return 0;
 	}
 	
-	public void setJobRecycleTime(String jobRecycleTime)
+	public void setTaskRecycleTime(String taskRecycleTime)
 	{
-		this.properties.put(JOB_RECYCLE_TIME,jobRecycleTime);
+		this.properties.put(TASK_RECYCLE_TIME,taskRecycleTime);
 	}
 	
 	public String[] getReportConfigs() {

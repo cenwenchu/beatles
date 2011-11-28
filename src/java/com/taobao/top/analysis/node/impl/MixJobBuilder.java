@@ -4,7 +4,6 @@
 package com.taobao.top.analysis.node.impl;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 import com.taobao.top.analysis.config.MasterConfig;
@@ -63,7 +62,7 @@ public class MixJobBuilder implements IJobBuilder {
 	}
 	
 	@Override
-	public List<Job> build(String config) throws 
+	public Map<String,Job> build(String config) throws 
 			AnalysisException {
 				
 		String protocol = "file";
@@ -95,7 +94,7 @@ public class MixJobBuilder implements IJobBuilder {
 	}
 
 	@Override
-	public List<Job> rebuild() throws AnalysisException {
+	public Map<String,Job> rebuild() throws AnalysisException {
 		if (jobSource != null)
 		{
 			this.setNeedRebuild(false);

@@ -2,6 +2,8 @@ package com.taobao.top.analysis.node.base.impl;
 
 
 import java.util.List;
+import java.util.Map;
+
 import org.junit.Test;
 
 import com.taobao.top.analysis.config.MasterConfig;
@@ -47,9 +49,9 @@ public class DefaultAnalysisEngineTest {
 		
 		
 		FileJobBuilder jobBuilder = new FileJobBuilder();
-		List<Job> jobs = jobBuilder.build("jobs-config.properties");
+		Map<String,Job> jobs = jobBuilder.build("jobs-config.properties");
 		
-		for(Job job : jobs)
+		for(Job job : jobs.values())
 		{
 			List<JobTask> tasks = job.getJobTasks();
 			

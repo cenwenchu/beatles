@@ -3,7 +3,9 @@
  */
 package com.taobao.top.analysis.node.impl;
 
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -34,7 +36,7 @@ public class JobManager implements IJobManager {
 	private IJobResultMerger jobResultMerger;
 	private MasterConfig config;
 	
-	private List<Job> jobs;
+	private Map<String,Job> jobs;
 	
 	
 	/**
@@ -67,7 +69,8 @@ public class JobManager implements IJobManager {
 		statusPool = new ConcurrentHashMap<String, TaskStatus>();
 		resultQueue = new LinkedBlockingQueue<MergedJobResult>();
 		jobTaskResultsQueue = new LinkedBlockingQueue<JobTaskResult>();
-		
+			
+		addJobsToPool();
 		
 		jobBuilder.init();
 		jobExporter.init();
@@ -97,12 +100,83 @@ public class JobManager implements IJobManager {
 		{
 			jobs = jobBuilder.rebuild();
 			
+			addJobsToPool();
+			
 			if (jobs == null || (jobs != null && jobs.size() == 0))
 				throw new AnalysisException("jobs should not be empty!");
 		}
 		
+		checkTaskStatus();
 		
+		mergeAndExportJobs();
 		
+	}
+	
+	protected void addJobsToPool()
+	{
+		for(Job job : jobs.values())
+		{
+			List<JobTask> tasks = job.getJobTasks();
+			
+			for(JobTask task : tasks)
+			{
+				jobTaskPool.put(task.getTaskId(), task);
+				statusPool.put(task.getTaskId(), task.getStatus());
+			}	
+		}
+		
+	}
+	
+	protected void mergeAndExportJobs()
+	{
+		for(Job job : jobs.values())
+		{
+			if (job.needMerge())
+			{
+				jobResultMerger.merge(job);		
+			}
+			
+			if (job.needExport())
+			{
+				jobExporter.export(job);
+			}
+			
+			if (job.needReset())
+			{
+				job.reset();
+				
+				List<JobTask> tasks = job.getJobTasks();
+				
+				for(JobTask task : tasks)
+				{
+					statusPool.put(task.getTaskId(), task.getStatus());
+				}	
+			}
+		}
+	}
+	
+	
+	//重置在指定时间内未完成的任务
+	protected void checkTaskStatus()
+	{
+		Iterator<String> taskIds = statusPool.keySet().iterator();
+		
+		while(taskIds.hasNext())
+		{
+			String taskId = taskIds.next();
+			
+			TaskStatus taskStatus = statusPool.get(taskId);
+			JobTask jobTask = jobTaskPool.get(taskId);
+			
+			if (taskStatus == TaskStatus.DOING && 
+					System.currentTimeMillis() - jobTask.getStartTime() >= jobTask.getTaskRecycleTime())
+			{
+				if (statusPool.replace(taskId, TaskStatus.DOING, TaskStatus.UNDO))
+				{
+					jobTask.setStatus(TaskStatus.UNDO);
+				}
+			}	
+		}
 	}
 	
 	@Override
@@ -117,12 +191,12 @@ public class JobManager implements IJobManager {
 	}
 
 	@Override
-	public List<Job> getJobs() {
+	public Map<String,Job> getJobs() {
 		return jobs;
 	}
 
 	@Override
-	public void setJobs(List<Job> jobs) {
+	public void setJobs(Map<String,Job> jobs) {
 		this.jobs = jobs;
 	}
 	

@@ -4,7 +4,7 @@
 package com.taobao.top.analysis.node;
 
 
-import java.util.List;
+import java.util.Map;
 
 import com.taobao.top.analysis.config.MasterConfig;
 import com.taobao.top.analysis.exception.AnalysisException;
@@ -18,9 +18,9 @@ import com.taobao.top.analysis.job.Job;
  */
 public interface IJobBuilder extends IComponent<MasterConfig>{
 	
-	public List<Job> build(String config) throws AnalysisException;
+	public Map<String,Job> build(String config) throws AnalysisException;
 	
-	public List<Job> rebuild() throws AnalysisException;
+	public Map<String,Job> rebuild() throws AnalysisException;
 	
 	public boolean isNeedRebuild();
 

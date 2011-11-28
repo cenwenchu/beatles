@@ -3,8 +3,8 @@
  */
 package com.taobao.top.analysis.node;
 
-import java.util.List;
 
+import java.util.Map;
 import com.taobao.top.analysis.config.MasterConfig;
 import com.taobao.top.analysis.exception.AnalysisException;
 import com.taobao.top.analysis.job.Job;
@@ -30,9 +30,9 @@ public interface IJobManager extends IComponent<MasterConfig>{
 	
 	public void setJobResultMerger(IJobResultMerger jobResultMerger);
 	
-	public List<Job> getJobs();
+	public Map<String,Job> getJobs();
 	
-	public void setJobs(List<Job> jobs);
+	public void setJobs(Map<String,Job> jobs);
 	
 	public void checkJobStatus() throws AnalysisException;
 
