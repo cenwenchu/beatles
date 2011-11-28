@@ -133,18 +133,18 @@
 		<report id="periodReport" file="periodReport">
 			<entryList>
 			    <entry name="整点时间段" key="timestamp" value="plain($timestamp$)" 
-			    	mapClass="com.taobao.top.analysis.node.base.map.TimeMap"
-			    	reduceClass="com.taobao.top.analysis.node.base.reduce.TimeReduce"/> 
+			    	mapClass="com.taobao.top.analysis.node.map.TimeMap"
+			    	reduceClass="com.taobao.top.analysis.node.reduce.TimeReduce"/> 
 				<entry name="时间段内访问总量" key="timestamp" value="count()" 
-						mapClass="com.taobao.top.analysis.node.base.map.TimeMap"/>
+						mapClass="com.taobao.top.analysis.node.map.TimeMap"/>
 				<entry name="时间段内访问成功总量" key="timestamp" value="count()" condition="$errorCode$=0"
-						mapClass="com.taobao.top.analysis.node.base.map.TimeMap"/>
+						mapClass="com.taobao.top.analysis.node.map.TimeMap"/>
 				<entry name="时间段内访问失败总量" key="timestamp" value="count()" condition="$errorCode$!=0"
-						mapClass="com.taobao.top.analysis.node.base.map.TimeMap" valuefilter="&gt;=0&amp;isnumber&amp;round:3"/>
+						mapClass="com.taobao.top.analysis.node.map.TimeMap" valuefilter="&gt;=0&amp;isnumber&amp;round:3"/>
 				<entry name="时间段内访问业务平均耗时(ms)" key="timestamp" value="average($responseTime$ - $platformConsumeTime$)"  
-						mapClass="com.taobao.top.analysis.node.base.map.TimeMap" valuefilter="&gt;=0&amp;isnumber&amp;round:3"/>
+						mapClass="com.taobao.top.analysis.node.map.TimeMap" valuefilter="&gt;=0&amp;isnumber&amp;round:3"/>
 				<entry name="时间段内访问平台平均耗时(ms)" key="timestamp" value="average($platformConsumeTime$)"  
-						mapClass="com.taobao.top.analysis.node.base.map.TimeMap" valuefilter="&gt;=0&amp;isnumber&amp;round:3"/>
+						mapClass="com.taobao.top.analysis.node.map.TimeMap" valuefilter="&gt;=0&amp;isnumber&amp;round:3"/>
 			</entryList>
 		</report>
 		

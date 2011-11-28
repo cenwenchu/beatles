@@ -8,7 +8,12 @@ import com.taobao.top.analysis.config.MasterConfig;
 import com.taobao.top.analysis.job.Job;
 import com.taobao.top.analysis.job.JobBuilder;
 import com.taobao.top.analysis.job.JobTask;
-import com.taobao.top.analysis.node.base.IInputAdaptor;
+import com.taobao.top.analysis.node.IInputAdaptor;
+import com.taobao.top.analysis.node.impl.DefaultAnalysisEngine;
+import com.taobao.top.analysis.node.impl.DefaultReportExporter;
+import com.taobao.top.analysis.node.impl.FileInputAdaptor;
+import com.taobao.top.analysis.node.impl.FileOutputAdaptor;
+import com.taobao.top.analysis.node.impl.HttpInputAdaptor;
 
 
 /**
