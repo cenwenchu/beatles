@@ -3,7 +3,6 @@ package com.taobao.top.analysis.node.reduce;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.Map;
-import com.taobao.top.analysis.node.IReportReduce;
 import com.taobao.top.analysis.statistics.data.Alias;
 import com.taobao.top.analysis.statistics.data.ReportEntry;
 

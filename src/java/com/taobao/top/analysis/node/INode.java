@@ -5,6 +5,7 @@ package com.taobao.top.analysis.node;
 
 import com.taobao.top.analysis.config.IConfig;
 import com.taobao.top.analysis.exception.AnalysisException;
+import com.taobao.top.analysis.node.event.INodeEvent;
 
 /**
  * 基础节点的接口定义
@@ -32,6 +33,6 @@ public interface INode<E extends INodeEvent,C extends IConfig> extends Runnable,
 	 * 节点如何处理事件的实现
 	 * @param event
 	 */
-	public void processEvent(E event);
+	public void processEvent(E event) throws AnalysisException;
 	
 }

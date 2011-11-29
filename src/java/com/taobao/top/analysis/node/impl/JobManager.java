@@ -16,12 +16,14 @@ import com.taobao.top.analysis.exception.AnalysisException;
 import com.taobao.top.analysis.job.Job;
 import com.taobao.top.analysis.job.JobTask;
 import com.taobao.top.analysis.job.JobTaskResult;
-import com.taobao.top.analysis.job.MergedJobResult;
-import com.taobao.top.analysis.job.TaskStatus;
+import com.taobao.top.analysis.job.JobMergedResult;
+import com.taobao.top.analysis.job.JobTaskStatus;
 import com.taobao.top.analysis.node.IJobBuilder;
 import com.taobao.top.analysis.node.IJobExporter;
 import com.taobao.top.analysis.node.IJobManager;
 import com.taobao.top.analysis.node.IJobResultMerger;
+import com.taobao.top.analysis.node.event.JobRequestEvent;
+import com.taobao.top.analysis.node.event.JobResponseEvent;
 
 /**
  * @author fangweng
@@ -50,11 +52,11 @@ public class JobManager implements IJobManager {
 	/**
 	 * 任务状态池
 	 */
-	private ConcurrentMap<String, TaskStatus> statusPool;
+	private ConcurrentMap<String, JobTaskStatus> statusPool;
 	/**
 	 * 未何并的中间结果
 	 */
-	private BlockingQueue<MergedJobResult> resultQueue;
+	private BlockingQueue<JobMergedResult> resultQueue;
 	
 
 	@Override
@@ -66,8 +68,8 @@ public class JobManager implements IJobManager {
 			throw new AnalysisException("jobs should not be empty!");
 		
 		jobTaskPool = new ConcurrentHashMap<String, JobTask>();
-		statusPool = new ConcurrentHashMap<String, TaskStatus>();
-		resultQueue = new LinkedBlockingQueue<MergedJobResult>();
+		statusPool = new ConcurrentHashMap<String, JobTaskStatus>();
+		resultQueue = new LinkedBlockingQueue<JobMergedResult>();
 		jobTaskResultsQueue = new LinkedBlockingQueue<JobTaskResult>();
 			
 		addJobsToPool();
@@ -165,15 +167,15 @@ public class JobManager implements IJobManager {
 		{
 			String taskId = taskIds.next();
 			
-			TaskStatus taskStatus = statusPool.get(taskId);
+			JobTaskStatus taskStatus = statusPool.get(taskId);
 			JobTask jobTask = jobTaskPool.get(taskId);
 			
-			if (taskStatus == TaskStatus.DOING && 
+			if (taskStatus == JobTaskStatus.DOING && 
 					System.currentTimeMillis() - jobTask.getStartTime() >= jobTask.getTaskRecycleTime())
 			{
-				if (statusPool.replace(taskId, TaskStatus.DOING, TaskStatus.UNDO))
+				if (statusPool.replace(taskId, JobTaskStatus.DOING, JobTaskStatus.UNDO))
 				{
-					jobTask.setStatus(TaskStatus.UNDO);
+					jobTask.setStatus(JobTaskStatus.UNDO);
 				}
 			}	
 		}
@@ -233,6 +235,39 @@ public class JobManager implements IJobManager {
 	@Override
 	public void setJobResultMerger(IJobResultMerger jobResultMerger) {
 		this.jobResultMerger = jobResultMerger;
+	}
+
+
+	@Override
+	public void getUnDoJobTasks(JobRequestEvent requestEvent) {
+		
+	}
+
+
+	@Override
+	public void addTaskResultToQueue(JobResponseEvent jobResponseEvent) {
+		
+	}
+
+
+	@Override
+	public void exportJobData(String jobName) {
+		// TODO Auto-generated method stub
+		
+	}
+
+
+	@Override
+	public void loadJobData(String jobName) {
+		// TODO Auto-generated method stub
+		
+	}
+
+
+	@Override
+	public void clearJobData(String jobName) {
+		// TODO Auto-generated method stub
+		
 	}
 
 }

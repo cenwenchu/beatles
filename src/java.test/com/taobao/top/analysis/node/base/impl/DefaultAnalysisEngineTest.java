@@ -9,13 +9,13 @@ import org.junit.Test;
 import com.taobao.top.analysis.config.MasterConfig;
 import com.taobao.top.analysis.job.Job;
 import com.taobao.top.analysis.job.JobTask;
-import com.taobao.top.analysis.node.IInputAdaptor;
-import com.taobao.top.analysis.node.impl.DefaultAnalysisEngine;
 import com.taobao.top.analysis.node.impl.FileJobExporter;
-import com.taobao.top.analysis.node.impl.FileInputAdaptor;
-import com.taobao.top.analysis.node.impl.FileOutputAdaptor;
-import com.taobao.top.analysis.node.impl.HttpInputAdaptor;
 import com.taobao.top.analysis.node.impl.FileJobBuilder;
+import com.taobao.top.analysis.node.io.FileInputAdaptor;
+import com.taobao.top.analysis.node.io.FileOutputAdaptor;
+import com.taobao.top.analysis.node.io.HttpInputAdaptor;
+import com.taobao.top.analysis.node.io.IInputAdaptor;
+import com.taobao.top.analysis.statistics.StatisticsEngine;
 
 
 /**
@@ -31,7 +31,7 @@ public class DefaultAnalysisEngineTest {
 
 	@Test
 	public void testDoAnalysis() throws Exception {
-		DefaultAnalysisEngine defaultAnalysisEngine = new DefaultAnalysisEngine();
+		StatisticsEngine defaultAnalysisEngine = new StatisticsEngine();
 		IInputAdaptor fileInputAdaptor =  new FileInputAdaptor();
 		IInputAdaptor httpInputAdaptor = new HttpInputAdaptor();
 		FileOutputAdaptor fileOutAdaptor = new FileOutputAdaptor();

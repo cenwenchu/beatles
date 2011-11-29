@@ -19,7 +19,7 @@ public class JobTaskResult implements Serializable {
 	 */
 	private static final long serialVersionUID = -150184766178723011L;
 	
-	private String taskId;
+	private String[] taskIds;
 	
 	/**
 	 * 处理后的结果池，key是entry的id， value是Map(key是entry定义的key组合,value是统计后的结果)
@@ -27,24 +27,24 @@ public class JobTaskResult implements Serializable {
 	 */
 	private Map<String, Map<String, Object>> results;
 
-	private TaskExecuteInfo taskExecuteInfo;
+	private JobTaskExecuteInfo taskExecuteInfo;
 	
-	public JobTaskResult(String taskId)
+	public JobTaskResult(String... taskId)
 	{
-		this.taskId = taskId;
-		taskExecuteInfo = new TaskExecuteInfo();
+		this.taskIds = taskId;
+		taskExecuteInfo = new JobTaskExecuteInfo();
 		results = new java.util.HashMap<String, Map<String, Object>>();
 	}
 	
-	public String getTaskId() {
-		return taskId;
+	public String[] getTaskIds() {
+		return taskIds;
 	}
 
-	public TaskExecuteInfo getTaskExecuteInfo() {
+	public JobTaskExecuteInfo getTaskExecuteInfo() {
 		return taskExecuteInfo;
 	}
 
-	public void setTaskExecuteInfo(TaskExecuteInfo taskExecuteInfo) {
+	public void setTaskExecuteInfo(JobTaskExecuteInfo taskExecuteInfo) {
 		this.taskExecuteInfo = taskExecuteInfo;
 	}
 	

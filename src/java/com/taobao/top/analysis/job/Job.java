@@ -86,7 +86,7 @@ public class Job {
 	{
 		for(JobTask task : jobTasks)
 		{
-			task.setStatus(TaskStatus.UNDO);
+			task.setStatus(JobTaskStatus.UNDO);
 			task.setCreatTime(System.currentTimeMillis());
 			task.getRecycleCounter().set(0);
 		}

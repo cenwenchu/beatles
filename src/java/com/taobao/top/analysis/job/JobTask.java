@@ -37,7 +37,7 @@ public class JobTask implements Serializable{
 	/**
 	 * 任务执行状态
 	 */
-	private TaskStatus status;
+	private JobTaskStatus status;
 	
 	/**
 	 * 任务创建时间
@@ -67,7 +67,7 @@ public class JobTask implements Serializable{
 		inputEncoding = jobConfig.getInputEncoding();
 		outputEncoding = jobConfig.getOutputEncoding();
 		taskRecycleTime = jobConfig.getTaskRecycleTime();
-		status = TaskStatus.UNDO;
+		status = JobTaskStatus.UNDO;
 		creatTime = System.currentTimeMillis();
 		recycleCounter= new AtomicInteger(0);
 	}
@@ -93,10 +93,10 @@ public class JobTask implements Serializable{
 	}
 
 	
-	public TaskStatus getStatus() {
+	public JobTaskStatus getStatus() {
 		return status;
 	}
-	public void setStatus(TaskStatus status) {
+	public void setStatus(JobTaskStatus status) {
 		this.status = status;
 	}
 	public long getCreatTime() {
