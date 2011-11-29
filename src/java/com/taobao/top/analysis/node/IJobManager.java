@@ -8,8 +8,9 @@ import java.util.Map;
 import com.taobao.top.analysis.config.MasterConfig;
 import com.taobao.top.analysis.exception.AnalysisException;
 import com.taobao.top.analysis.job.Job;
-import com.taobao.top.analysis.node.event.JobRequestEvent;
-import com.taobao.top.analysis.node.event.JobResponseEvent;
+import com.taobao.top.analysis.node.event.GetTaskRequestEvent;
+import com.taobao.top.analysis.node.event.SendResultsRequestEvent;
+import com.taobao.top.analysis.node.impl.MasterNode;
 
 /**
  * @author fangweng
@@ -29,13 +30,13 @@ public interface IJobManager extends IComponent<MasterConfig>{
 	 * 获取没有完成的任务
 	 * @param 个数
 	 */
-	public void getUnDoJobTasks(JobRequestEvent jobRequestEvent);
+	public void getUnDoJobTasks(GetTaskRequestEvent jobRequestEvent);
 	
 	/**
 	 * 增加Slave计算后的返回结果
 	 * @param 分析后结果
 	 */
-	public void addTaskResultToQueue(JobResponseEvent jobResponseEvent);
+	public void addTaskResultToQueue(SendResultsRequestEvent jobResponseEvent);
 	
 	/**
 	 * 导出内存任务数据到磁盘
@@ -55,6 +56,7 @@ public interface IJobManager extends IComponent<MasterConfig>{
 	 */
 	public void clearJobData(String jobName);
 	
+	public void setMasterNode(MasterNode masterNode);
 	
 	public IJobBuilder getJobBuilder();
 	

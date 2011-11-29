@@ -11,7 +11,7 @@ import com.taobao.top.analysis.job.JobTaskResult;
  * 2011-11-29
  *
  */
-public class JobResponseEvent extends MasterNodeEvent{
+public class SendResultsRequestEvent extends MasterNodeEvent{
 
 	/**
 	 * 
@@ -19,6 +19,12 @@ public class JobResponseEvent extends MasterNodeEvent{
 	private static final long serialVersionUID = -914311533130990196L;
 	
 	JobTaskResult jobTaskResult;
+	
+	public SendResultsRequestEvent(String sequence)
+	{
+		this.sequence = sequence;
+		this.eventCode = MasterEventCode.SEND_RESULT;
+	}
 
 	public JobTaskResult getJobTaskResult() {
 		return jobTaskResult;

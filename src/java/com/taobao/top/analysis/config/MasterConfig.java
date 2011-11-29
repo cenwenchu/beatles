@@ -21,12 +21,17 @@ public class MasterConfig extends AbstractConfig{
 	private final static String MASTER_PORT = "masterPort";
 	
 	/**
+	 * JobManager处理消息事件最大线程池线程数量
+	 */
+	private final static String MAX_JOBEVENT_WORKER = "maxJobEventWorker";
+	
+	/**
 	 * 用于合并任务结果的线程最大设置，默认是当前处理器数＋1
 	 */
 	private final static String MAX_MERGE_JOB_WORKER = "maxMergeJobWorker";
 	
 	/**
-	 * 最大的用于输出统计分析结果的线程数，默认2
+	 * 最大的用于输出统计分析结果的线程数，默认5
 	 */
 	private final static String MAX_CREATE_REPORT_WORKER = "maxCreateReportWorker";
 	
@@ -100,6 +105,18 @@ public class MasterConfig extends AbstractConfig{
 		this.properties.put(JOBS_SOURCE,jobsSource);
 	}
 	
+	public int getMaxJobEventWorker() {
+		if(this.properties.containsKey(MAX_JOBEVENT_WORKER))
+			return Integer.parseInt((String)this.properties.get(MAX_JOBEVENT_WORKER));
+		else
+			return 50;
+	}
+
+	public void setMaxJobEventWorker(String maxJobEventWorker) {
+		this.properties.put(MAX_JOBEVENT_WORKER, maxJobEventWorker);
+	}
+	
+	
 	public int getMaxMergeJobWorker() {
 		if(this.properties.containsKey(MAX_MERGE_JOB_WORKER))
 			return Integer.parseInt((String)this.properties.get(MAX_MERGE_JOB_WORKER));
@@ -115,7 +132,7 @@ public class MasterConfig extends AbstractConfig{
 		if(this.properties.containsKey(MAX_CREATE_REPORT_WORKER))
 			return Integer.parseInt((String)this.properties.get(MAX_CREATE_REPORT_WORKER));
 		else
-			return 2;
+			return 5;
 	}
 
 	public void setMaxCreateReportWorker(String maxCreateReportWorker) {

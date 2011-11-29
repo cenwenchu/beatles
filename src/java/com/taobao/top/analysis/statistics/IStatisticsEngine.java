@@ -6,7 +6,10 @@ package com.taobao.top.analysis.statistics;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
+
+import com.taobao.top.analysis.config.SlaveConfig;
 import com.taobao.top.analysis.job.JobTask;
+import com.taobao.top.analysis.node.IComponent;
 import com.taobao.top.analysis.node.io.IInputAdaptor;
 import com.taobao.top.analysis.node.io.IOutputAdaptor;
 
@@ -20,7 +23,7 @@ import com.taobao.top.analysis.node.io.IOutputAdaptor;
  * 2011-11-24
  *
  */
-public interface IStatisticsEngine{
+public interface IStatisticsEngine extends IComponent<SlaveConfig>{
 	
 	public void addInputAdaptor(IInputAdaptor inputAdaptor);
 	public void removeInputAdaptor(IInputAdaptor inputAdaptor);

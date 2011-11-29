@@ -20,6 +20,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import com.taobao.top.analysis.config.SlaveConfig;
+import com.taobao.top.analysis.exception.AnalysisException;
 import com.taobao.top.analysis.job.JobTask;
 import com.taobao.top.analysis.job.JobTaskResult;
 import com.taobao.top.analysis.job.JobTaskExecuteInfo;
@@ -60,12 +61,27 @@ public class StatisticsEngine implements IStatisticsEngine{
 	
 	List<IInputAdaptor> inputAdaptors;
 	List<IOutputAdaptor> outputAdaptors;
-
-	public StatisticsEngine()
-	{
+	
+	@Override
+	public void init() throws AnalysisException {
 		inputAdaptors = new ArrayList<IInputAdaptor>();
 		outputAdaptors = new ArrayList<IOutputAdaptor>();
 		threshold = new Threshold(1000);
+	}
+
+	@Override
+	public void releaseResource() {
+		
+	}
+
+	@Override
+	public SlaveConfig getConfig() {
+		return config;
+	}
+
+	@Override
+	public void setConfig(SlaveConfig config) {
+		this.config = config;
 	}
 	
 	@Override

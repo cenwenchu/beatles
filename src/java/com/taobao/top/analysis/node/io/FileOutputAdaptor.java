@@ -35,7 +35,7 @@ public class FileOutputAdaptor implements IOutputAdaptor {
 
 	@Override
 	public void sendResultToOutput(JobTask jobTask,JobTaskResult jobTaskResult) {
-		jobExporter.export(jobTask,jobTaskResult, false);
+		jobExporter.exportReport(jobTask,jobTaskResult, false);
 	}
 
 	

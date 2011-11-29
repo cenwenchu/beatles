@@ -16,6 +16,26 @@ public class SlaveNodeEvent implements INodeEvent {
 	 * 
 	 */
 	private static final long serialVersionUID = 2299360116837673453L;
+	
+	SlaveEventCode eventCode;
+	
+	String sequence;
+
+	public String getSequence() {
+		return sequence;
+	}
+
+	public void setSequence(String sequence) {
+		this.sequence = sequence;
+	}
+
+	public SlaveEventCode getEventCode() {
+		return eventCode;
+	}
+
+	public void setEventCode(SlaveEventCode eventCode) {
+		this.eventCode = eventCode;
+	}	
 
 
 }

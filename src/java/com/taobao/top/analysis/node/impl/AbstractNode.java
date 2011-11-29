@@ -1,7 +1,7 @@
 /**
  * 
  */
-package com.taobao.top.analysis.node;
+package com.taobao.top.analysis.node.impl;
 
 
 import java.util.concurrent.BlockingQueue;
@@ -13,6 +13,7 @@ import org.apache.commons.logging.LogFactory;
 
 import com.taobao.top.analysis.config.IConfig;
 import com.taobao.top.analysis.exception.AnalysisException;
+import com.taobao.top.analysis.node.INode;
 import com.taobao.top.analysis.node.event.INodeEvent;
 
 

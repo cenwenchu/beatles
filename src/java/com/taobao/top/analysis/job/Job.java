@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
@@ -38,6 +39,7 @@ public class Job {
 	long startTime;
 	Threshold threshold;
 	boolean merged;
+	ReentrantReadWriteLock trunckLock;
 	
 	/**
 	 * 处理后的结果池，key是entry的id， value是Map(key是entry定义的key组合,value是统计后的结果)
@@ -49,9 +51,22 @@ public class Job {
 	{
 		jobTasks = new ArrayList<JobTask>();
 		threshold = new Threshold(1000);
+		trunckLock = new ReentrantReadWriteLock();
 		reset();
 	}
 	
+	
+	public ReentrantReadWriteLock getTrunckLock() {
+		return trunckLock;
+	}
+
+
+	public void setTrunckLock(ReentrantReadWriteLock trunckLock) {
+		this.trunckLock = trunckLock;
+	}
+
+
+
 	public boolean needMerge()
 	{
 		return completedTaskCount.get() > mergedTaskCount.get();

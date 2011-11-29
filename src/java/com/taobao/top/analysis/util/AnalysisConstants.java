@@ -39,20 +39,12 @@ public class AnalysisConstants {
 	public final static String EXPORT_DOUBLE_SPLIT = "d(!)";
 	
 	
-	//导出文件的后缀名
-	public final static String COMMON_DATAFILE_SUFFIX = ".adata";
+	//导出文件的后缀名	
 	public final static String INNER_DATAFILE_SUFFIX = ".idata";
-	public final static String CBCK_DATAFILE_SUFFIX = ".bck";
 	public final static String IBCK_DATAFILE_SUFFIX = ".ibck";
 	
 
-	// 分布式交互命令定义
-
-	public final static long COMMAND_HEARTBEAT = 0x00000001;
-	public final static long COMMAND_GETJOB = 0x10000000;
-	public final static long COMMAND_SEND_ANALYSIS_RESULT = 0x10000001;
-	public final static long COMMAND_GETRULE = 0x10000002;
-
+	
 	public final static String CHART_FILENAME = "topanalysis.html";
 	public final static String DATA_RESULT = "topresult.data";
 	public final static String DATA_JOBSTATUSPOOL = "topjobstatus.data";
@@ -61,5 +53,8 @@ public class AnalysisConstants {
 
 	public final static String JOBFILEFROM_FTP = "ftp";
 	public final static String JOBFILEFROM_MACHINE = "machine";
+	
+	public final static String JOBMANAGER_EVENT_LOADDATA = "loadData";
+	public final static String JOBMANAGER_EVENT_EXPORTDATA = "exportData";
 
 }

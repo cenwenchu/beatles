@@ -20,6 +20,16 @@ public class MasterNodeEvent implements INodeEvent{
 	
 	MasterEventCode eventCode;
 	
+	String sequence;
+
+	public String getSequence() {
+		return sequence;
+	}
+
+	public void setSequence(String sequence) {
+		this.sequence = sequence;
+	}
+
 	public MasterEventCode getEventCode() {
 		return eventCode;
 	}
