@@ -72,11 +72,6 @@ public class JobTask implements Serializable{
 		recycleCounter= new AtomicInteger(0);
 	}
 	
-	public boolean equal(JobTask jobTask)
-	{
-		return jobName.equals(jobTask.jobName) && taskId.equals(jobTask.taskId);
-	}
-	
 	public String getJobName() {
 		return jobName;
 	}

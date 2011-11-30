@@ -5,6 +5,10 @@ package com.taobao.top.analysis.node.component;
 
 
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.commons.logging.Log;
@@ -17,6 +21,7 @@ import com.taobao.top.analysis.node.connect.ISlaveConnector;
 import com.taobao.top.analysis.node.event.GetTaskRequestEvent;
 import com.taobao.top.analysis.node.event.SlaveNodeEvent;
 import com.taobao.top.analysis.node.job.JobTask;
+import com.taobao.top.analysis.node.job.JobTaskResult;
 import com.taobao.top.analysis.statistics.IStatisticsEngine;
 
 /**
@@ -83,26 +88,85 @@ public class SlaveNode extends AbstractNode<SlaveNodeEvent,SlaveConfig>{
 		if (config.getJobName() != null)
 			event.setJobName(config.getJobName());
 		
-		JobTask[] jobTasks = slaveConnector.getJobTasks(event);
+		JobTask[] jobTasks = slaveConnector.getJobTasks(event);	
 		
 		if (jobTasks != null && jobTasks.length > 0)
 		{
-			for(JobTask task : jobTasks)
+			if (jobTasks.length == 1)
 			{
 				try 
 				{
-					statisticsEngine.doAnalysis(task);
+					statisticsEngine.doExport(jobTasks[0],statisticsEngine.doAnalysis(jobTasks[0]));
 				} 
 				catch (Exception e) {
 					logger.error(e);
 				}
 			}
+			else
+			{
+				//同一个job的任务可以合并后在发送
+				Map<String,List<JobTask>> taskBundle = new HashMap<String,List<JobTask>>();
+				
+				for(JobTask task : jobTasks)
+				{
+					String jobName = task.getJobName();
+					
+					List<JobTask> jobtasks = taskBundle.get(jobName);
+					
+					if (jobtasks == null)
+					{
+						jobtasks = new ArrayList<JobTask>();
+						taskBundle.put(jobName, jobtasks);
+					}
+					
+					jobtasks.add(task);
+				}
+				
+				for(List<JobTask> tasks : taskBundle.values())
+				{
+					if (tasks.size() == 1)
+					{
+						try 
+						{
+							statisticsEngine.doExport(tasks.get(0),statisticsEngine.doAnalysis(tasks.get(0)));
+						} 
+						catch (Exception e) {
+							logger.error(e);
+						}
+					}
+					else
+					{
+						List<JobTaskResult> taskResults = new ArrayList<JobTaskResult>();
+						
+						for(JobTask jobtask : tasks)
+						{
+							try 
+							{
+								taskResults.add(statisticsEngine.doAnalysis(jobtask));
+							} 
+							catch (Exception e) 
+							{
+								logger.error(e);
+							} 
+						}
+						
+						JobTaskResult jobTaskResult = jobResultMerger.merge(tasks.get(0), taskResults,true);
+						
+						statisticsEngine.doExport(tasks.get(0), jobTaskResult);
+					}
+				}
+				
+			}
+			
 		}
 		else
 		{
-			try {
+			try 
+			{
 				Thread.sleep(config.getGetJobInterval());
-			} catch (InterruptedException e) {
+			} 
+			catch (InterruptedException e) 
+			{
 				logger.error(e);
 			}
 		}
