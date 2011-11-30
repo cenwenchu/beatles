@@ -11,11 +11,11 @@ import org.apache.commons.logging.LogFactory;
 
 import com.taobao.top.analysis.config.MasterConfig;
 import com.taobao.top.analysis.exception.AnalysisException;
+import com.taobao.top.analysis.node.component.MasterNode;
 import com.taobao.top.analysis.node.event.GetTaskResponseEvent;
 import com.taobao.top.analysis.node.event.MasterEventCode;
 import com.taobao.top.analysis.node.event.MasterNodeEvent;
 import com.taobao.top.analysis.node.event.SendResultsResponseEvent;
-import com.taobao.top.analysis.node.impl.MasterNode;
 
 /**
  * 用于单机的分布式模拟，采用内存作为通信的服务端实现

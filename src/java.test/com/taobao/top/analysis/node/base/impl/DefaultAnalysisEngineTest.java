@@ -6,9 +6,10 @@ import java.util.List;
 import java.util.Map;
 
 import org.junit.Test;
-import com.taobao.top.analysis.node.impl.FileJobExporter;
-import com.taobao.top.analysis.node.impl.FileJobBuilder;
-import com.taobao.top.analysis.node.impl.JobResultMerger;
+
+import com.taobao.top.analysis.node.component.FileJobBuilder;
+import com.taobao.top.analysis.node.component.FileJobExporter;
+import com.taobao.top.analysis.node.component.JobResultMerger;
 import com.taobao.top.analysis.node.io.FileInputAdaptor;
 import com.taobao.top.analysis.node.io.FileOutputAdaptor;
 import com.taobao.top.analysis.node.io.HttpInputAdaptor;

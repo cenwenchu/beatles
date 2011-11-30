@@ -7,9 +7,9 @@ package com.taobao.top.analysis.node;
 import java.util.Map;
 import com.taobao.top.analysis.config.MasterConfig;
 import com.taobao.top.analysis.exception.AnalysisException;
+import com.taobao.top.analysis.node.component.MasterNode;
 import com.taobao.top.analysis.node.event.GetTaskRequestEvent;
 import com.taobao.top.analysis.node.event.SendResultsRequestEvent;
-import com.taobao.top.analysis.node.impl.MasterNode;
 import com.taobao.top.analysis.node.job.Job;
 
 /**

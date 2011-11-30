@@ -3,9 +3,9 @@ package com.taobao.top.analysis.node.connect;
 
 import com.taobao.top.analysis.config.MasterConfig;
 import com.taobao.top.analysis.node.IComponent;
+import com.taobao.top.analysis.node.component.MasterNode;
 import com.taobao.top.analysis.node.event.GetTaskResponseEvent;
 import com.taobao.top.analysis.node.event.SendResultsResponseEvent;
-import com.taobao.top.analysis.node.impl.MasterNode;
 
 /**
  * @author fangweng

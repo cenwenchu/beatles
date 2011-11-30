@@ -1,7 +1,7 @@
 /**
  * 
  */
-package com.taobao.top.analysis.node.impl;
+package com.taobao.top.analysis.node.component;
 
 
 
