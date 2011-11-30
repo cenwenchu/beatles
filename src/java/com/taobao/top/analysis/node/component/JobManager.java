@@ -356,6 +356,7 @@ public class JobManager implements IJobManager {
 								try
 								{
 									jobExporter.exportReport(j,false);
+									j.setExported(true);
 								}
 								finally
 								{
