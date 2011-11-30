@@ -4,8 +4,8 @@
 package com.taobao.top.analysis.node.io;
 
 
-import com.taobao.top.analysis.job.JobTask;
-import com.taobao.top.analysis.job.JobTaskResult;
+import com.taobao.top.analysis.node.job.JobTask;
+import com.taobao.top.analysis.node.job.JobTaskResult;
 
 /**
  * 返回到Master的适配器
@@ -18,7 +18,7 @@ public class MasterOutputAdapter implements IOutputAdaptor{
 
 	@Override
 	public boolean ignore(String output) {
-		return output.indexOf("Master:") < 0;
+		return output.indexOf("master:") < 0;
 	}
 
 	@Override

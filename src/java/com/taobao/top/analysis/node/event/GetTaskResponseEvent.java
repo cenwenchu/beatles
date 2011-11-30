@@ -5,7 +5,7 @@ package com.taobao.top.analysis.node.event;
 
 import java.util.List;
 
-import com.taobao.top.analysis.job.JobTask;
+import com.taobao.top.analysis.node.job.JobTask;
 
 /**
  * @author fangweng

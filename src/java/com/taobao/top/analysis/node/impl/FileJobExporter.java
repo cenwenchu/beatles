@@ -21,10 +21,10 @@ import java.util.concurrent.TimeUnit;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import com.taobao.top.analysis.config.MasterConfig;
-import com.taobao.top.analysis.job.Job;
-import com.taobao.top.analysis.job.JobTask;
-import com.taobao.top.analysis.job.JobTaskResult;
 import com.taobao.top.analysis.node.IJobExporter;
+import com.taobao.top.analysis.node.job.Job;
+import com.taobao.top.analysis.node.job.JobTask;
+import com.taobao.top.analysis.node.job.JobTaskResult;
 import com.taobao.top.analysis.node.operation.CreateReportOperation;
 import com.taobao.top.analysis.node.operation.JobDataOperation;
 import com.taobao.top.analysis.statistics.data.Report;
@@ -49,9 +49,19 @@ public class FileJobExporter implements IJobExporter {
 	 */
 	private ThreadPoolExecutor createReportFileThreadPool;
 	private MasterConfig config;
+	private int maxCreateReportWorker = 2;
 	private long lastRuntime=(System.currentTimeMillis() + 8 * 60 * 60 * 1000) / 86400000;
-
 	
+	
+	public int getMaxCreateReportWorker() {
+		return maxCreateReportWorker;
+	}
+
+
+	public void setMaxCreateReportWorker(int maxCreateReportWorker) {
+		this.maxCreateReportWorker = maxCreateReportWorker;
+	}
+
 	@Override
 	public MasterConfig getConfig() {
 		return config;
@@ -72,9 +82,13 @@ public class FileJobExporter implements IJobExporter {
 
 	@Override
 	public void init() {
+		
+		if (this.config != null)
+			maxCreateReportWorker = this.config.getMaxCreateReportWorker();
+		
 		createReportFileThreadPool = new ThreadPoolExecutor(
-				this.config.getMaxCreateReportWorker(),
-				this.config.getMaxCreateReportWorker(), 0,
+				maxCreateReportWorker,
+				maxCreateReportWorker, 0,
 				TimeUnit.SECONDS, new LinkedBlockingQueue<Runnable>(),
 				new NamedThreadFactory("createReportFile_worker"));
 	}
@@ -192,7 +206,6 @@ public class FileJobExporter implements IJobExporter {
 		
 				}
 				
-
 
 				File tmpDir = new java.io.File(reportDir);
 

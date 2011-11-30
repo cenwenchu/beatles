@@ -8,10 +8,11 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 
 import com.taobao.top.analysis.config.SlaveConfig;
-import com.taobao.top.analysis.job.JobTask;
 import com.taobao.top.analysis.node.IComponent;
 import com.taobao.top.analysis.node.io.IInputAdaptor;
 import com.taobao.top.analysis.node.io.IOutputAdaptor;
+import com.taobao.top.analysis.node.job.JobTask;
+import com.taobao.top.analysis.node.job.JobTaskResult;
 
 /**
  * 每个计算节点的抽象接口，可以植入多种输入适配器，输出适配器
@@ -31,6 +32,8 @@ public interface IStatisticsEngine extends IComponent<SlaveConfig>{
 	public void addOutputAdaptor(IOutputAdaptor outputAdaptor);
 	public void removeOutputAdaptor(IOutputAdaptor outputAdaptor);
 	
-	public void doAnalysis(JobTask jobTask) throws UnsupportedEncodingException,IOException;
+	public JobTaskResult doAnalysis(JobTask jobTask) throws UnsupportedEncodingException,IOException;
+	
+	public void doExport(JobTask jobTask,JobTaskResult jobTaskResult);
 
 }

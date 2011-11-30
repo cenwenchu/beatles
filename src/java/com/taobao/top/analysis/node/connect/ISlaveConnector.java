@@ -4,10 +4,10 @@
 package com.taobao.top.analysis.node.connect;
 
 import com.taobao.top.analysis.config.SlaveConfig;
-import com.taobao.top.analysis.job.JobTask;
 import com.taobao.top.analysis.node.IComponent;
 import com.taobao.top.analysis.node.event.GetTaskRequestEvent;
 import com.taobao.top.analysis.node.event.SendResultsRequestEvent;
+import com.taobao.top.analysis.node.job.JobTask;
 
 /**
  * @author fangweng

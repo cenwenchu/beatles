@@ -3,8 +3,12 @@
  */
 package com.taobao.top.analysis.node;
 
+import java.util.List;
+
 import com.taobao.top.analysis.config.MasterConfig;
-import com.taobao.top.analysis.job.Job;
+import com.taobao.top.analysis.node.job.Job;
+import com.taobao.top.analysis.node.job.JobTask;
+import com.taobao.top.analysis.node.job.JobTaskResult;
 
 /**
  * @author fangweng
@@ -14,6 +18,8 @@ import com.taobao.top.analysis.job.Job;
  */
 public interface IJobResultMerger extends IComponent<MasterConfig>{
 	
-	public void merge(Job job);
+	public void merge(Job job,boolean needMergeLazy);
+	
+	public JobTaskResult merge(JobTask jobTask,List<JobTaskResult> jobTaskResults,boolean needMergeLazy);
 
 }

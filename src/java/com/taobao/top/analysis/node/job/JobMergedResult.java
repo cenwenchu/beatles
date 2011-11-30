@@ -1,7 +1,7 @@
 /**
  * 
  */
-package com.taobao.top.analysis.job;
+package com.taobao.top.analysis.node.job;
 
 import java.util.Map;
 

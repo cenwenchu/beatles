@@ -22,6 +22,11 @@ public class SlaveConfig extends AbstractConfig {
 	private final static String MASTER_PORT = "masterPort";
 	
 	/**
+	 * 是否指定只处理某一个Job的Task，默认不设置
+	 */
+	private final static String JOB_NAME = "jobName";
+	
+	/**
 	 * 获取Job的间隔时间，当发现master没有任务的时候，用于slave休息，避免频繁获取Master的任务，单位毫秒,默认3秒
 	 */
 	private final static String GET_JOB_INTERVAL = "getJobInterval";
@@ -58,6 +63,17 @@ public class SlaveConfig extends AbstractConfig {
 
 	public void setMasterPort(String masterPort) {
 		this.properties.put(MASTER_PORT,masterPort);
+	}
+	
+	public String getJobName() {
+		if(this.properties.containsKey(JOB_NAME))
+			return (String)this.properties.get(JOB_NAME);
+		else
+			return null;
+	}
+
+	public void setJobName(String jobName) {
+		this.properties.put(JOB_NAME,jobName);
 	}
 
 	public int getGetJobInterval() {

@@ -8,7 +8,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
 
-import com.taobao.top.analysis.job.JobTask;
+import com.taobao.top.analysis.node.job.JobTask;
 
 /**
  * Http数据源适配器

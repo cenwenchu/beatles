@@ -3,8 +3,8 @@
  */
 package com.taobao.top.analysis.node.io;
 
-import com.taobao.top.analysis.job.JobTask;
-import com.taobao.top.analysis.job.JobTaskResult;
+import com.taobao.top.analysis.node.job.JobTask;
+import com.taobao.top.analysis.node.job.JobTaskResult;
 
 
 /**

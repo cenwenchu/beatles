@@ -13,7 +13,7 @@ import java.net.URL;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
-import com.taobao.top.analysis.job.JobTask;
+import com.taobao.top.analysis.node.job.JobTask;
 
 /**
  * 文件输入适配器

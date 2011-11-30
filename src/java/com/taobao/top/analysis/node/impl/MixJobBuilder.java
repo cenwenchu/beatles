@@ -8,8 +8,8 @@ import java.util.Map;
 
 import com.taobao.top.analysis.config.MasterConfig;
 import com.taobao.top.analysis.exception.AnalysisException;
-import com.taobao.top.analysis.job.Job;
 import com.taobao.top.analysis.node.IJobBuilder;
+import com.taobao.top.analysis.node.job.Job;
 
 /**
  * 支持多个扩展的JobBuilder,默认集成了本地文件的builder

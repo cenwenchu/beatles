@@ -8,7 +8,7 @@ import java.util.Map;
 
 import com.taobao.top.analysis.config.MasterConfig;
 import com.taobao.top.analysis.exception.AnalysisException;
-import com.taobao.top.analysis.job.Job;
+import com.taobao.top.analysis.node.job.Job;
 
 /**
  * @author fangweng

@@ -3,7 +3,7 @@
  */
 package com.taobao.top.analysis.node.event;
 
-import com.taobao.top.analysis.job.JobTaskResult;
+import com.taobao.top.analysis.node.job.JobTaskResult;
 
 /**
  * @author fangweng

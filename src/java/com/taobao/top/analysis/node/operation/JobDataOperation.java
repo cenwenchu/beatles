@@ -28,7 +28,7 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import com.taobao.top.analysis.exception.AnalysisException;
-import com.taobao.top.analysis.job.Job;
+import com.taobao.top.analysis.node.job.Job;
 import com.taobao.top.analysis.util.AnalysisConstants;
 import com.taobao.top.analysis.util.AnalyzerFilenameFilter;
 

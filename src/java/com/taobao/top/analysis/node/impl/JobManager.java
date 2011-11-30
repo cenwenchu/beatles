@@ -19,17 +19,17 @@ import org.apache.commons.logging.LogFactory;
 
 import com.taobao.top.analysis.config.MasterConfig;
 import com.taobao.top.analysis.exception.AnalysisException;
-import com.taobao.top.analysis.job.Job;
-import com.taobao.top.analysis.job.JobTask;
-import com.taobao.top.analysis.job.JobTaskResult;
-import com.taobao.top.analysis.job.JobMergedResult;
-import com.taobao.top.analysis.job.JobTaskStatus;
 import com.taobao.top.analysis.node.IJobBuilder;
 import com.taobao.top.analysis.node.IJobExporter;
 import com.taobao.top.analysis.node.IJobManager;
 import com.taobao.top.analysis.node.IJobResultMerger;
 import com.taobao.top.analysis.node.event.GetTaskRequestEvent;
 import com.taobao.top.analysis.node.event.SendResultsRequestEvent;
+import com.taobao.top.analysis.node.job.Job;
+import com.taobao.top.analysis.node.job.JobMergedResult;
+import com.taobao.top.analysis.node.job.JobTask;
+import com.taobao.top.analysis.node.job.JobTaskResult;
+import com.taobao.top.analysis.node.job.JobTaskStatus;
 import com.taobao.top.analysis.util.NamedThreadFactory;
 
 /**
@@ -185,11 +185,11 @@ public class JobManager implements IJobManager {
 		
 		JobTaskResult jobTaskResult = jobResponseEvent.getJobTaskResult();
 		
-		if (jobTaskResult.getTaskIds() != null && jobTaskResult.getTaskIds().length > 0)
+		if (jobTaskResult.getTaskIds() != null && jobTaskResult.getTaskIds().size() > 0)
 		{
-			for(int i = 0 ; i < jobTaskResult.getTaskIds().length; i++)
+			for(int i = 0 ; i < jobTaskResult.getTaskIds().size(); i++)
 			{
-				String taskId = jobTaskResult.getTaskIds()[i];
+				String taskId = jobTaskResult.getTaskIds().get(i);
 				JobTask jobTask = jobTaskPool.get(taskId);
 				Job job = jobs.get(jobTask.getJobName());
 				
@@ -288,7 +288,7 @@ public class JobManager implements IJobManager {
 		{
 			if (job.needMerge())
 			{
-				jobResultMerger.merge(job);		
+				jobResultMerger.merge(job,true);		
 			}
 			
 			if (job.needExport())

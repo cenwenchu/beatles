@@ -1,20 +1,21 @@
 package com.taobao.top.analysis.node.base.impl;
 
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
 import org.junit.Test;
-
-import com.taobao.top.analysis.config.MasterConfig;
-import com.taobao.top.analysis.job.Job;
-import com.taobao.top.analysis.job.JobTask;
 import com.taobao.top.analysis.node.impl.FileJobExporter;
 import com.taobao.top.analysis.node.impl.FileJobBuilder;
+import com.taobao.top.analysis.node.impl.JobResultMerger;
 import com.taobao.top.analysis.node.io.FileInputAdaptor;
 import com.taobao.top.analysis.node.io.FileOutputAdaptor;
 import com.taobao.top.analysis.node.io.HttpInputAdaptor;
 import com.taobao.top.analysis.node.io.IInputAdaptor;
+import com.taobao.top.analysis.node.job.Job;
+import com.taobao.top.analysis.node.job.JobTask;
+import com.taobao.top.analysis.node.job.JobTaskResult;
 import com.taobao.top.analysis.statistics.StatisticsEngine;
 
 
@@ -32,22 +33,25 @@ public class DefaultAnalysisEngineTest {
 	@Test
 	public void testDoAnalysis() throws Exception {
 		StatisticsEngine defaultAnalysisEngine = new StatisticsEngine();
+		defaultAnalysisEngine.init();
+		
 		IInputAdaptor fileInputAdaptor =  new FileInputAdaptor();
 		IInputAdaptor httpInputAdaptor = new HttpInputAdaptor();
 		FileOutputAdaptor fileOutAdaptor = new FileOutputAdaptor();
-		MasterConfig masterConfig = new MasterConfig();
 		
 		FileJobExporter fileJobExporter = new FileJobExporter();
-		fileJobExporter.setConfig(masterConfig);
+		fileJobExporter.setMaxCreateReportWorker(2);
 		fileJobExporter.init();
 		
 		fileOutAdaptor.setJobExporter(fileJobExporter);
 		
+		JobResultMerger jobResultMerger = new JobResultMerger();
+		jobResultMerger.init();
+		
 		defaultAnalysisEngine.addInputAdaptor(fileInputAdaptor);
 		defaultAnalysisEngine.addInputAdaptor(httpInputAdaptor);
 		defaultAnalysisEngine.addOutputAdaptor(fileOutAdaptor);
-		
-		
+			
 		FileJobBuilder jobBuilder = new FileJobBuilder();
 		Map<String,Job> jobs = jobBuilder.build("jobs-config.properties");
 		
@@ -55,11 +59,21 @@ public class DefaultAnalysisEngineTest {
 		{
 			List<JobTask> tasks = job.getJobTasks();
 			
+			List<JobTaskResult> taskResults = new ArrayList<JobTaskResult>();
+			
 			for(JobTask jobtask : tasks)
-				defaultAnalysisEngine.doAnalysis(jobtask);
+			{
+				taskResults.add(defaultAnalysisEngine.doAnalysis(jobtask));
+			}
+			
+			JobTaskResult jobTaskResult = jobResultMerger.merge(tasks.get(0), taskResults,true);
+			
+			defaultAnalysisEngine.doExport(tasks.get(0), jobTaskResult);
 		}
 
 		fileJobExporter.releaseResource();
+		jobResultMerger.releaseResource();
+		defaultAnalysisEngine.releaseResource();
 		
 	}
 

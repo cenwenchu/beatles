@@ -1,7 +1,7 @@
 /**
  * 
  */
-package com.taobao.top.analysis.job;
+package com.taobao.top.analysis.node.job;
 
 import java.io.Serializable;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -71,7 +71,11 @@ public class JobTask implements Serializable{
 		creatTime = System.currentTimeMillis();
 		recycleCounter= new AtomicInteger(0);
 	}
-		
+	
+	public boolean equal(JobTask jobTask)
+	{
+		return jobName.equals(jobTask.jobName) && taskId.equals(jobTask.taskId);
+	}
 	
 	public String getJobName() {
 		return jobName;

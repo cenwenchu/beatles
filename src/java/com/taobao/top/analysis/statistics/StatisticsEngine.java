@@ -21,11 +21,11 @@ import org.apache.commons.logging.LogFactory;
 
 import com.taobao.top.analysis.config.SlaveConfig;
 import com.taobao.top.analysis.exception.AnalysisException;
-import com.taobao.top.analysis.job.JobTask;
-import com.taobao.top.analysis.job.JobTaskResult;
-import com.taobao.top.analysis.job.JobTaskExecuteInfo;
 import com.taobao.top.analysis.node.io.IInputAdaptor;
 import com.taobao.top.analysis.node.io.IOutputAdaptor;
+import com.taobao.top.analysis.node.job.JobTask;
+import com.taobao.top.analysis.node.job.JobTaskExecuteInfo;
+import com.taobao.top.analysis.node.job.JobTaskResult;
 import com.taobao.top.analysis.node.map.IReportMap;
 import com.taobao.top.analysis.node.reduce.IReportReduce;
 import com.taobao.top.analysis.statistics.data.Alias;
@@ -62,11 +62,15 @@ public class StatisticsEngine implements IStatisticsEngine{
 	List<IInputAdaptor> inputAdaptors;
 	List<IOutputAdaptor> outputAdaptors;
 	
-	@Override
-	public void init() throws AnalysisException {
+	public StatisticsEngine()
+	{
 		inputAdaptors = new ArrayList<IInputAdaptor>();
 		outputAdaptors = new ArrayList<IOutputAdaptor>();
 		threshold = new Threshold(1000);
+	}
+	
+	@Override
+	public void init() throws AnalysisException {
 	}
 
 	@Override
@@ -103,9 +107,21 @@ public class StatisticsEngine implements IStatisticsEngine{
 	public void removeOutputAdaptor(IOutputAdaptor outputAdaptor) {
 		outputAdaptors.remove(outputAdaptor);
 	}
+	
+	@Override
+	public void doExport(JobTask jobTask,JobTaskResult jobTaskResult)
+	{
+		for(IOutputAdaptor outputAdaptor : outputAdaptors)
+		{
+			if (outputAdaptor.ignore(jobTask.getOutput()))
+				continue;
+			
+			outputAdaptor.sendResultToOutput(jobTask,jobTaskResult);
+		}
+	}
 
 	@Override
-	public void doAnalysis(JobTask jobTask) throws UnsupportedEncodingException, IOException {
+	public JobTaskResult doAnalysis(JobTask jobTask) throws UnsupportedEncodingException, IOException {
 		
 		InputStream in = null;
 		
@@ -122,15 +138,7 @@ public class StatisticsEngine implements IStatisticsEngine{
 					break;
 			}
 			
-			JobTaskResult jobTaskResult = analysis(in,jobTask);
-			
-			for(IOutputAdaptor outputAdaptor : outputAdaptors)
-			{
-				if (outputAdaptor.ignore(jobTask.getOutput()))
-					continue;
-				
-				outputAdaptor.sendResultToOutput(jobTask,jobTaskResult);
-			}
+			return analysis(in,jobTask);
 		}
 		finally
 		{
@@ -150,9 +158,12 @@ public class StatisticsEngine implements IStatisticsEngine{
 		String encoding = jobtask.getInputEncoding();
 		String splitRegex = jobtask.getSplitRegex();
 		
-		JobTaskResult jobTaskResult = new JobTaskResult(jobtask.getTaskId());
+		JobTaskResult jobTaskResult = new JobTaskResult();
+		jobTaskResult.addTaskId(jobtask.getTaskId());
 		
-		JobTaskExecuteInfo taksExecuteInfo = jobTaskResult.getTaskExecuteInfo();
+		JobTaskExecuteInfo taskExecuteInfo = new JobTaskExecuteInfo();
+		jobTaskResult.addTaskExecuteInfo(taskExecuteInfo);
+		
 		Map<String, ReportEntry> entryPool = jobtask.getStatisticsRule().getEntryPool();
 		
 		BufferedReader reader = new BufferedReader(new InputStreamReader(in, encoding));
@@ -263,7 +274,7 @@ public class StatisticsEngine implements IStatisticsEngine{
 			
 		}
 		catch (Throwable ex) {
-			taksExecuteInfo.setSuccess(false);
+			taskExecuteInfo.setSuccess(false);
 			logger.error(ex);
 		} 
 		finally 
@@ -279,12 +290,12 @@ public class StatisticsEngine implements IStatisticsEngine{
 				}
 			}
 
-			taksExecuteInfo.setAnalysisConsume(System.currentTimeMillis() - beg);
-			taksExecuteInfo.setEmptyLine(emptyLine);
-			taksExecuteInfo.setErrorLine(exceptionLine);
-			taksExecuteInfo.setJobDataSize(size*2);
-			taksExecuteInfo.setTotalLine(normalLine+exceptionLine+emptyLine);
-			taksExecuteInfo.setWorkerIp(ip);
+			taskExecuteInfo.setAnalysisConsume(System.currentTimeMillis() - beg);
+			taskExecuteInfo.setEmptyLine(emptyLine);
+			taskExecuteInfo.setErrorLine(exceptionLine);
+			taskExecuteInfo.setJobDataSize(size*2);
+			taskExecuteInfo.setTotalLine(normalLine+exceptionLine+emptyLine);
+			taskExecuteInfo.setWorkerIp(ip);
 			
 			if (logger.isWarnEnabled())
 				logger.warn(new StringBuilder("jobtask ").append(jobtask.getTaskId())

@@ -12,10 +12,11 @@ import org.apache.commons.logging.LogFactory;
 
 import com.taobao.top.analysis.config.SlaveConfig;
 import com.taobao.top.analysis.exception.AnalysisException;
-import com.taobao.top.analysis.job.JobTask;
+import com.taobao.top.analysis.node.IJobResultMerger;
 import com.taobao.top.analysis.node.connect.ISlaveConnector;
 import com.taobao.top.analysis.node.event.GetTaskRequestEvent;
 import com.taobao.top.analysis.node.event.SlaveNodeEvent;
+import com.taobao.top.analysis.node.job.JobTask;
 import com.taobao.top.analysis.statistics.IStatisticsEngine;
 
 /**
@@ -30,7 +31,8 @@ public class SlaveNode extends AbstractNode<SlaveNodeEvent,SlaveConfig>{
 	
 	ISlaveConnector slaveConnector;
 	IStatisticsEngine statisticsEngine;
-	AtomicLong counter;
+	IJobResultMerger jobResultMerger;
+	AtomicLong sequenceGen;
 
 	public IStatisticsEngine getStatisticsEngine() {
 		return statisticsEngine;
@@ -48,15 +50,24 @@ public class SlaveNode extends AbstractNode<SlaveNodeEvent,SlaveConfig>{
 		this.slaveConnector = slaveConnector;
 	}
 
+	public IJobResultMerger getJobResultMerger() {
+		return jobResultMerger;
+	}
+
+	public void setJobResultMerger(IJobResultMerger jobResultMerger) {
+		this.jobResultMerger = jobResultMerger;
+	}
+
 	@Override
 	public void init() throws AnalysisException {
-		counter = new AtomicLong(0);
+		sequenceGen = new AtomicLong(0);
 		slaveConnector.init();
 		statisticsEngine.init();
 	}
 
 	@Override
 	public void releaseResource() {
+		sequenceGen.set(0);
 		slaveConnector.releaseResource();
 		statisticsEngine.releaseResource();
 	}
@@ -66,8 +77,11 @@ public class SlaveNode extends AbstractNode<SlaveNodeEvent,SlaveConfig>{
 		
 		//尝试获取任务
 		GetTaskRequestEvent event = new GetTaskRequestEvent(new StringBuilder()
-			.append(System.currentTimeMillis()).append("-").append(counter.incrementAndGet()).toString());
+			.append(System.currentTimeMillis()).append("-").append(sequenceGen.incrementAndGet()).toString());
 		event.setRequestJobCount(config.getMaxTransJobCount());
+		
+		if (config.getJobName() != null)
+			event.setJobName(config.getJobName());
 		
 		JobTask[] jobTasks = slaveConnector.getJobTasks(event);
 		

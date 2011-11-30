@@ -9,7 +9,6 @@ import java.util.List;
 
 import com.taobao.top.analysis.config.MasterConfig;
 import com.taobao.top.analysis.exception.AnalysisException;
-import com.taobao.top.analysis.job.JobTask;
 import com.taobao.top.analysis.node.IJobManager;
 import com.taobao.top.analysis.node.connect.IMasterConnector;
 import com.taobao.top.analysis.node.event.GetTaskResponseEvent;
@@ -18,6 +17,7 @@ import com.taobao.top.analysis.node.event.GetTaskRequestEvent;
 import com.taobao.top.analysis.node.event.SendResultsRequestEvent;
 import com.taobao.top.analysis.node.event.MasterNodeEvent;
 import com.taobao.top.analysis.node.event.SendResultsResponseEvent;
+import com.taobao.top.analysis.node.job.JobTask;
 
 /**
  * Master
