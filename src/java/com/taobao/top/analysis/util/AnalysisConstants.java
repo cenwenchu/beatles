@@ -55,6 +55,8 @@ public class AnalysisConstants {
 	public final static String JOBFILEFROM_MACHINE = "machine";
 	
 	public final static String JOBMANAGER_EVENT_LOADDATA = "loadData";
+	public final static String JOBMANAGER_EVENT_LOADDATA_TO_TMP = "loadDataToTmp";
 	public final static String JOBMANAGER_EVENT_EXPORTDATA = "exportData";
+	
 
 }

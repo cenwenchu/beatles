@@ -77,17 +77,25 @@ public class JobDataOperation implements Runnable {
 					logger.error(e);
 				}
 			}
+			else
+				if (operation.equals(AnalysisConstants.JOBMANAGER_EVENT_LOADDATA_TO_TMP))
+				{
+					try {
+						loadDataToTmp();
+					} catch (AnalysisException e) {
+						logger.error(e);
+					}
+				}
 		}
 	}
 	
-	void loadData() throws AnalysisException 
+	Map<String, Map<String, Object>> innerLoad() throws AnalysisException
 	{
-			
 		String destDir = getDestDir();	
 		
 		File dest = new File(destDir);
 		if (!dest.exists() || (dest.exists() && !dest.isDirectory()))
-			return;
+			return null;
 		
 		String _fileSuffix = AnalysisConstants.INNER_DATAFILE_SUFFIX;
 		String _bckSuffix = AnalysisConstants.IBCK_DATAFILE_SUFFIX;
@@ -97,7 +105,7 @@ public class JobDataOperation implements Runnable {
 		File[] bckfiles = dest.listFiles(new AnalyzerFilenameFilter(_bckSuffix));
 		
 		if (files.length + bckfiles.length == 0)
-			return;
+			return null;
 		
 		File[] totalFiles = new File[files.length + bckfiles.length];
 		
@@ -114,9 +122,37 @@ public class JobDataOperation implements Runnable {
 			}
 		}
 
-		Map<String, Map<String, Object>> resultPool = load(totalFiles);
+		return load(totalFiles);
+	}
+	
+	void loadDataToTmp() throws AnalysisException
+	{
+		job.getLoadLock().lock();
 		
-		WriteLock writeLock = job.getTrunckLock().writeLock();
+		try
+		{
+			Map<String, Map<String, Object>> resultPool = innerLoad();	
+			
+			if (resultPool == null)
+				return;
+			
+			job.setDiskResult(resultPool);
+		}
+		finally
+		{
+			job.getLoadLock().unlock();
+		}
+	}
+	
+	void loadData() throws AnalysisException 
+	{
+		Map<String, Map<String, Object>> resultPool = innerLoad();	
+		
+		if (resultPool == null)
+			return;
+		
+		
+		WriteLock writeLock = job.getTrunkLock().writeLock();
 		
 		try 
 		{
@@ -279,7 +315,7 @@ public class JobDataOperation implements Runnable {
 					f.renameTo(new File(destfile.replace(_fileSuffix,_bckSuffix)));
 				}
 					
-				ReadLock readLock = job.getTrunckLock().readLock();
+				ReadLock readLock = job.getTrunkLock().readLock();
 				
 				try
 				{

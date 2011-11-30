@@ -3,16 +3,27 @@
  */
 package com.taobao.top.analysis.node.component;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 import com.taobao.top.analysis.config.MasterConfig;
 import com.taobao.top.analysis.exception.AnalysisException;
 import com.taobao.top.analysis.node.IJobResultMerger;
 import com.taobao.top.analysis.node.job.Job;
+import com.taobao.top.analysis.node.job.JobMergedResult;
 import com.taobao.top.analysis.node.job.JobTask;
 import com.taobao.top.analysis.node.job.JobTaskResult;
+import com.taobao.top.analysis.node.operation.JobDataOperation;
+import com.taobao.top.analysis.node.operation.MergeJobOperation;
+import com.taobao.top.analysis.util.AnalysisConstants;
+import com.taobao.top.analysis.util.NamedThreadFactory;
 import com.taobao.top.analysis.util.ReportUtil;
+
 
 /**
  * @author fangweng
@@ -24,23 +35,46 @@ public class JobResultMerger implements IJobResultMerger {
 
 	MasterConfig config;
 	
+	/**
+	 * 用于合并结果集的线程池
+	 */
+	private ThreadPoolExecutor mergeJobResultThreadPool;
+	
+	int maxMergeJobWorker = 2;
+	
+	
+	public int getMaxMergeJobWorker() {
+		return maxMergeJobWorker;
+	}
+
+
+	public void setMaxMergeJobWorker(int maxMergeJobWorker) {
+		this.maxMergeJobWorker = maxMergeJobWorker;
+	}
+
+
 	@Override
 	public void init() throws AnalysisException {
-		// TODO Auto-generated method stub
-
+		
+		if (config != null)
+			maxMergeJobWorker = config.getMaxMergeJobWorker();
+		
+		mergeJobResultThreadPool = new ThreadPoolExecutor(
+				maxMergeJobWorker,
+				maxMergeJobWorker, 0,
+				TimeUnit.SECONDS, new LinkedBlockingQueue<Runnable>(),
+				new NamedThreadFactory("mergeJobResult_worker"));
 	}
 
 	
 	@Override
 	public void releaseResource() {
-		// TODO Auto-generated method stub
-
+		mergeJobResultThreadPool.shutdown();
 	}
 
 	
 	@Override
 	public MasterConfig getConfig() {
-		// TODO Auto-generated method stub
 		return config;
 	}
 
@@ -52,9 +86,80 @@ public class JobResultMerger implements IJobResultMerger {
 
 	
 	@Override
-	public void merge(Job job,boolean needMergeLazy) {
-		// TODO Auto-generated method stub
+	public void merge(Job job,BlockingQueue<JobMergedResult> branchResultQueue
+			,BlockingQueue<JobTaskResult> jobTaskResultsQueue,boolean needMergeLazy) {
+		
+		// 检查job列表
+		List<Map<String, Map<String, Object>>> mergeResults = new ArrayList<Map<String, Map<String, Object>>>();
+		int mergeResultCount = 0;
 
+		long collectJobTime = System.currentTimeMillis();
+
+		// 小于批量操作的数目,实际数目
+		while (mergeResults.size() < config
+				.getMinMergeJobCount()) {
+			
+			JobTaskResult jt = jobTaskResultsQueue.poll();
+
+			while (jt != null) {
+				mergeResults.add(jt.getResults());
+				mergeResultCount += jt.getTaskIds().size();
+				jt = jobTaskResultsQueue.poll();
+			}
+
+			
+			JobMergedResult jr = branchResultQueue.poll();
+
+			// 将未何并到主干的结果也继续交给线程去做合并
+			while (jr != null) {
+				mergeResults.add(jr.getMergedResult());
+				mergeResultCount += jr.getMergeCount();
+				jr = branchResultQueue.poll();
+			}
+			
+			// 最后一拨需要合并的数据,不需要再等待批量去做
+			if (job.getMergedTaskCount().get() + mergeResultCount >= job.getTaskCount())
+				break;
+
+			if (System.currentTimeMillis() - collectJobTime > config.getMaxJobResultBundleWaitTime())
+				break;
+			
+			// 放缓一些节奏
+			if (mergeResultCount == 0) {
+				try {
+					Thread.sleep(50);
+				} catch (InterruptedException e) {}
+			}
+		}
+		
+		//判断是否可以开始载入外部磁盘换存储的文件,大于AsynLoadDiskFilePrecent的时候开始载入数据等待分析
+		if (config.getSaveTmpResultToFile())
+			if (job.getMergedTaskCount().get() * 100 
+					/ job.getTaskCount() >= config.getAsynLoadDiskFilePrecent())
+			{			
+				if (job.getNeedLoadResultFile().compareAndSet(true, false))
+				{
+					new Thread(new JobDataOperation(job,AnalysisConstants.JOBMANAGER_EVENT_LOADDATA_TO_TMP)).start();
+				}
+			}
+
+		// ========================================================
+		if (mergeResultCount > 0) 
+		{			
+				mergeJobResultThreadPool
+						.execute(new MergeJobOperation(job,
+								mergeResultCount,
+								mergeResults,config,branchResultQueue));
+		}
+		else
+		{
+			// 放缓一点节奏
+			try {
+				Thread.sleep(1000);
+			} catch (InterruptedException e) {
+				
+			}
+		}
 	}
 
 	

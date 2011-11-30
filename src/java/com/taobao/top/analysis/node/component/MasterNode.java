@@ -38,8 +38,6 @@ public class MasterNode extends AbstractNode<MasterNodeEvent,MasterConfig> {
 	public void setJobManager(IJobManager jobManager) {
 		this.jobManager = jobManager;
 	}
-	
-	
 
 	public IMasterConnector getMasterConnector() {
 		return masterConnector;
@@ -52,7 +50,9 @@ public class MasterNode extends AbstractNode<MasterNodeEvent,MasterConfig> {
 	@Override
 	public void init() throws AnalysisException {
 		jobManager.setMasterNode(this);
+		jobManager.setConfig(config);
 		masterConnector.setMasterNode(this);
+		masterConnector.setConfig(config);
 		jobManager.init();	
 		masterConnector.init();
 	}
@@ -117,6 +117,9 @@ public class MasterNode extends AbstractNode<MasterNodeEvent,MasterConfig> {
 			case LOAD_DATA:
 				jobManager.loadJobData(((JobManageEvent)event).getJobName());
 				break;
+				
+			case LOAD_DATA_TO_TMP:
+				jobManager.loadJobDataToTmp(((JobManageEvent)event).getJobName());
 		
 			default:
 				throw new AnalysisException("Not support such Event : " + event.getEventCode().toString());

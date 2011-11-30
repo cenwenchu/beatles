@@ -3,7 +3,9 @@ package com.taobao.top.analysis.node.job;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import org.apache.commons.lang.StringUtils;
@@ -36,10 +38,18 @@ public class Job {
 	int taskCount = 0;
 	AtomicInteger completedTaskCount;
 	AtomicInteger mergedTaskCount;
+	AtomicBoolean needLoadResultFile;
 	long startTime;
 	Threshold threshold;
-	boolean merged;
-	ReentrantReadWriteLock trunckLock;
+	ReentrantReadWriteLock trunkLock;
+	ReentrantLock loadLock;
+	
+	//一个job只需要一个线程负责merge和export，由于外部jobmanager是单线程，这里直接采用非原子操作
+	boolean merging = false;
+	boolean exporting = false;
+	boolean merged = false;
+	boolean exported = false;
+	
 	
 	/**
 	 * 处理后的结果池，key是entry的id， value是Map(key是entry定义的key组合,value是统计后的结果)
@@ -47,25 +57,39 @@ public class Job {
 	 */
 	private Map<String, Map<String, Object>> jobResult;
 	
+	/**
+	 * 被交换到磁盘上的结果集
+	 */
+	private Map<String, Map<String, Object>> diskResult;
+	
 	public Job()
 	{
 		jobTasks = new ArrayList<JobTask>();
 		threshold = new Threshold(1000);
-		trunckLock = new ReentrantReadWriteLock();
+		trunkLock = new ReentrantReadWriteLock();
+		loadLock = new ReentrantLock();
 		reset();
 	}
 	
 	
-	public ReentrantReadWriteLock getTrunckLock() {
-		return trunckLock;
+	public ReentrantLock getLoadLock() {
+		return loadLock;
 	}
 
 
-	public void setTrunckLock(ReentrantReadWriteLock trunckLock) {
-		this.trunckLock = trunckLock;
+	public void setLoadLock(ReentrantLock loadLock) {
+		this.loadLock = loadLock;
 	}
 
 
+	public ReentrantReadWriteLock getTrunkLock() {
+		return trunkLock;
+	}
+
+
+	public void setTrunkLock(ReentrantReadWriteLock trunkLock) {
+		this.trunkLock = trunkLock;
+	}
 
 	public boolean needMerge()
 	{
@@ -74,19 +98,14 @@ public class Job {
 	
 	public boolean needExport()
 	{
-		return !merged && mergedTaskCount.get() == taskCount;
-	}
-	
-	
-	public void setMerged(boolean merged) {
-		this.merged = merged;
+		return merged && mergedTaskCount.get() == taskCount;
 	}
 
 	public boolean needReset()
 	{
 		long consume = System.currentTimeMillis() - startTime;
 				
-		if ((merged && (consume >= jobConfig.getJobResetTime() * 1000))
+		if ((exported && (consume >= jobConfig.getJobResetTime() * 1000))
 				||(consume > jobConfig.getJobResetTime() * 1000 * 2))
 			return true;
 		
@@ -110,9 +129,26 @@ public class Job {
 		
 		completedTaskCount = new AtomicInteger(0);
 		mergedTaskCount = new AtomicInteger(0);
+		needLoadResultFile = new AtomicBoolean(true);
 		startTime = System.currentTimeMillis();
 		merged = false;
+		merging = false;
+		exporting = false;
+		exported = false;
+		diskResult.clear();
+		diskResult = null;
 	}
+	
+
+	public AtomicBoolean getNeedLoadResultFile() {
+		return needLoadResultFile;
+	}
+
+
+	public void setNeedLoadResultFile(AtomicBoolean needLoadResultFile) {
+		this.needLoadResultFile = needLoadResultFile;
+	}
+
 
 	public Map<String, Map<String, Object>> getJobResult() {
 		return jobResult;
@@ -162,8 +198,38 @@ public class Job {
 			
 		}
 		
-	}
+	}	
 	
+	public boolean isMerged() {
+		return merged;
+	}
+
+
+	public void setMerged(boolean merged) {
+		this.merged = merged;
+	}
+
+
+	public boolean isMerging() {
+		return merging;
+	}
+
+
+	public void setMerging(boolean merging) {
+		this.merging = merging;
+	}
+
+
+	public boolean isExporting() {
+		return exporting;
+	}
+
+
+	public void setExporting(boolean exporting) {
+		this.exporting = exporting;
+	}
+
+
 	public List<JobTask> getJobTasks() {
 		return jobTasks;
 	}
@@ -220,5 +286,25 @@ public class Job {
 	public void setMergedTaskCount(AtomicInteger mergedTaskCount) {
 		this.mergedTaskCount = mergedTaskCount;
 	}
+
+
+	public boolean isExported() {
+		return exported;
+	}
+
+	public void setExported(boolean exported) {
+		this.exported = exported;
+	}
+
+
+	public Map<String, Map<String, Object>> getDiskResult() {
+		return diskResult;
+	}
+
+
+	public void setDiskResult(Map<String, Map<String, Object>> diskResult) {
+		this.diskResult = diskResult;
+	}
+	
 
 }

@@ -160,6 +160,7 @@ public class StatisticsEngine implements IStatisticsEngine{
 		
 		JobTaskResult jobTaskResult = new JobTaskResult();
 		jobTaskResult.addTaskId(jobtask.getTaskId());
+		jobTaskResult.setCreatTime(jobtask.getCreatTime());
 		
 		JobTaskExecuteInfo taskExecuteInfo = new JobTaskExecuteInfo();
 		jobTaskResult.addTaskExecuteInfo(taskExecuteInfo);

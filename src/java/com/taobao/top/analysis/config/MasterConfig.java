@@ -10,7 +10,13 @@ package com.taobao.top.analysis.config;
  *
  */
 public class MasterConfig extends AbstractConfig{
+	
+	static
+	{
+		processorCount = Runtime.getRuntime().availableProcessors();
+	}
 
+	private static int processorCount = 1;
 	/**
 	 * 
 	 */
@@ -26,12 +32,12 @@ public class MasterConfig extends AbstractConfig{
 	private final static String MAX_JOBEVENT_WORKER = "maxJobEventWorker";
 	
 	/**
-	 * 用于合并任务结果的线程最大设置，默认是当前处理器数＋1
+	 * 用于合并任务结果的线程最大设置，默认是当前处理器数-1
 	 */
 	private final static String MAX_MERGE_JOB_WORKER = "maxMergeJobWorker";
 	
 	/**
-	 * 最大的用于输出统计分析结果的线程数，默认5
+	 * 最大的用于输出统计分析结果或者载入导出临时结果的线程数，默认10
 	 */
 	private final static String MAX_CREATE_REPORT_WORKER = "maxCreateReportWorker";
 	
@@ -51,11 +57,6 @@ public class MasterConfig extends AbstractConfig{
 	 */
 	private final static String MAX_JOB_RESULT_BUNDLE_WAITTIME ="maxJobResultBundleWaitTime";
 
-	/**
-	 * 任何结果只允许并行合并一次，后续就必须合并到主干，减少重复合并的情况，默认为false
-	 */
-	private final static String RESULT_PROCESS_ONLY_ONCE = "resultProcessOnlyOnce";
-	
 	/**
 	 * 输出临时文件间隔(单位秒，默认10分钟),如果设置了saveTmpResultToFile，该时间设置无效，每次都会有导出临时文件
 	 */
@@ -121,7 +122,9 @@ public class MasterConfig extends AbstractConfig{
 		if(this.properties.containsKey(MAX_MERGE_JOB_WORKER))
 			return Integer.parseInt((String)this.properties.get(MAX_MERGE_JOB_WORKER));
 		else
-			return Runtime.getRuntime().availableProcessors();
+		{
+			return  processorCount + 1;
+		}
 	}
 
 	public void setMaxMergeJobWorker(String maxMergeJobWorker) {
@@ -132,7 +135,7 @@ public class MasterConfig extends AbstractConfig{
 		if(this.properties.containsKey(MAX_CREATE_REPORT_WORKER))
 			return Integer.parseInt((String)this.properties.get(MAX_CREATE_REPORT_WORKER));
 		else
-			return 5;
+			return 10;
 	}
 
 	public void setMaxCreateReportWorker(String maxCreateReportWorker) {
@@ -159,17 +162,6 @@ public class MasterConfig extends AbstractConfig{
 
 	public void setMaxJobResultBundleWaitTime(String maxJobResultBundleWaitTime) {
 		this.properties.put(MAX_JOB_RESULT_BUNDLE_WAITTIME,maxJobResultBundleWaitTime);
-	}
-
-	public boolean getResultProcessOnlyOnce() {
-		if(this.properties.containsKey(RESULT_PROCESS_ONLY_ONCE))
-			return Boolean.parseBoolean((String)this.properties.get(RESULT_PROCESS_ONLY_ONCE));
-		else
-			return false;
-	}
-
-	public void setResultProcessOnlyOnce(String resultProcessOnlyOnce) {
-		this.properties.put(RESULT_PROCESS_ONLY_ONCE,resultProcessOnlyOnce);
 	}
 
 	public long getExportInterval() {

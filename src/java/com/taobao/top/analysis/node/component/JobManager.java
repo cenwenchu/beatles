@@ -4,6 +4,7 @@
 package com.taobao.top.analysis.node.component;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -55,7 +56,7 @@ public class JobManager implements IJobManager {
 	/**
 	 * slave 返回得结果数据
 	 */
-	private java.util.concurrent.BlockingQueue<JobTaskResult> jobTaskResultsQueue;
+	private Map<String,BlockingQueue<JobTaskResult>> jobTaskResultsQueuePool;
 	/**
 	 * 任务池
 	 */
@@ -67,7 +68,7 @@ public class JobManager implements IJobManager {
 	/**
 	 * 未何并的中间结果
 	 */
-	private BlockingQueue<JobMergedResult> resultQueue;
+	private Map<String,BlockingQueue<JobMergedResult>> branchResultQueuePool;
 	
 	private ThreadPoolExecutor eventProcessThreadPool;
 	
@@ -75,6 +76,10 @@ public class JobManager implements IJobManager {
 	@Override
 	public void init() throws AnalysisException {
 		//获得任务数量
+		jobBuilder.setConfig(config);
+		jobExporter.setConfig(config);
+		jobResultMerger.setConfig(config);
+		
 		jobs = jobBuilder.build(config.getJobsSource());		
 		
 		if (jobs == null || (jobs != null && jobs.size() == 0))
@@ -82,8 +87,14 @@ public class JobManager implements IJobManager {
 		
 		jobTaskPool = new ConcurrentHashMap<String, JobTask>();
 		statusPool = new ConcurrentHashMap<String, JobTaskStatus>();
-		resultQueue = new LinkedBlockingQueue<JobMergedResult>();
-		jobTaskResultsQueue = new LinkedBlockingQueue<JobTaskResult>();
+		jobTaskResultsQueuePool = new HashMap<String,BlockingQueue<JobTaskResult>>();
+		branchResultQueuePool = new HashMap<String,BlockingQueue<JobMergedResult>>();
+		
+		for(String jobName : jobs.keySet())
+		{
+			jobTaskResultsQueuePool.put(jobName, new LinkedBlockingQueue<JobTaskResult>());
+			branchResultQueuePool.put(jobName, new LinkedBlockingQueue<JobMergedResult>());
+		}
 		
 		eventProcessThreadPool = new ThreadPoolExecutor(
 				this.config.getMaxJobEventWorker(),
@@ -112,8 +123,8 @@ public class JobManager implements IJobManager {
 			jobs.clear();
 			jobTaskPool.clear();
 			statusPool.clear();
-			resultQueue.clear();
-			jobTaskResultsQueue.clear();	
+			jobTaskResultsQueuePool.clear();
+			branchResultQueuePool.clear();	
 		
 		
 			jobBuilder.releaseResource();
@@ -187,6 +198,16 @@ public class JobManager implements IJobManager {
 		
 		if (jobTaskResult.getTaskIds() != null && jobTaskResult.getTaskIds().size() > 0)
 		{
+			//判断是否是过期的一些老任务数据，根据task和taskresult的createtime来判断
+			if (jobTaskResult.getCreatTime() != jobTaskPool.get(jobTaskResult.getTaskIds().get(0)).getCreatTime())
+			{
+				logger.warn("old task result will be discard!");
+				return;
+			}
+			
+			//先放入队列，防止小概率多线程并发问题
+			jobTaskResultsQueuePool.get(jobs.get(jobTaskResult.getTaskIds().get(0)).getJobName()).offer(jobTaskResult);
+			
 			for(int i = 0 ; i < jobTaskResult.getTaskIds().size(); i++)
 			{
 				String taskId = jobTaskResult.getTaskIds().get(i);
@@ -200,9 +221,8 @@ public class JobManager implements IJobManager {
 					jobTask.setEndTime(System.currentTimeMillis());
 					job.getCompletedTaskCount().incrementAndGet();
 				}
-			}
+			}	
 			
-			jobTaskResultsQueue.offer(jobTaskResult);
 		}
 		
 		masterNode.echoSendJobTaskResults(jobResponseEvent.getSequence(),"success");
@@ -229,6 +249,18 @@ public class JobManager implements IJobManager {
 		if (jobs.containsKey(jobName))
 		{
 			jobExporter.loadEntryData(jobs.get(jobName));
+		}
+		else
+		{
+			logger.error("exportJobData do nothing, jobName " +  jobName + " not exist!");
+		}
+	}
+	
+	@Override
+	public void loadJobDataToTmp(String jobName) {
+		if (jobs.containsKey(jobName))
+		{
+			jobExporter.loadEntryDataToTmp(jobs.get(jobName));
 		}
 		else
 		{
@@ -286,14 +318,51 @@ public class JobManager implements IJobManager {
 	{
 		for(Job job : jobs.values())
 		{
-			if (job.needMerge())
+			//一个job只有一个线程会去处理，多个job不干扰
+			if (!job.isMerging() && job.needMerge())
 			{
-				jobResultMerger.merge(job,true);		
+				final Job j = job;
+				final BlockingQueue<JobMergedResult> branchResultQueue = branchResultQueuePool.get(j.getJobName());
+				final BlockingQueue<JobTaskResult> jobTaskResultsQueue = jobTaskResultsQueuePool.get(j.getJobName());
+				
+				eventProcessThreadPool.execute
+						(new Runnable()
+						{
+							public void run()
+							{
+								j.setMerging(true);
+								try
+								{
+									jobResultMerger.merge(j,branchResultQueue,jobTaskResultsQueue,true);
+								}
+								finally
+								{
+									j.setMerging(false);
+								}
+							}
+						});			
 			}
 			
-			if (job.needExport())
+			//一个job只有一个线程会去处理,多个job不干扰
+			if (!job.isExporting() && job.needExport())
 			{
-				jobExporter.exportReport(job,false);
+				final Job j = job;
+				eventProcessThreadPool.execute
+						(new Runnable()
+						{
+							public void run()
+							{
+								j.setExporting(true);
+								try
+								{
+									jobExporter.exportReport(j,false);
+								}
+								finally
+								{
+									j.setExporting(false);
+								}
+							}
+						});	
 			}
 			
 			if (job.needReset())

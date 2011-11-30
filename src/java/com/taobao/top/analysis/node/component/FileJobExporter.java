@@ -50,7 +50,7 @@ public class FileJobExporter implements IJobExporter {
 	 */
 	private ThreadPoolExecutor createReportFileThreadPool;
 	private MasterConfig config;
-	private int maxCreateReportWorker = 2;
+	private int maxCreateReportWorker = 8;
 	private long lastRuntime=(System.currentTimeMillis() + 8 * 60 * 60 * 1000) / 86400000;
 	
 	
@@ -315,14 +315,21 @@ public class FileJobExporter implements IJobExporter {
 
 	@Override
 	public void exportEntryData(Job job) {
-		JobDataOperation jobDataOperation = new JobDataOperation(job,AnalysisConstants.JOBMANAGER_EVENT_LOADDATA);
+		JobDataOperation jobDataOperation = new JobDataOperation(job,AnalysisConstants.JOBMANAGER_EVENT_EXPORTDATA);
 		createReportFileThreadPool.execute(jobDataOperation);
 	}
 
 
 	@Override
 	public void loadEntryData(Job job) {
-		JobDataOperation jobDataOperation = new JobDataOperation(job,AnalysisConstants.JOBMANAGER_EVENT_EXPORTDATA);
+		JobDataOperation jobDataOperation = new JobDataOperation(job,AnalysisConstants.JOBMANAGER_EVENT_LOADDATA);
+		createReportFileThreadPool.submit(jobDataOperation);
+	}
+
+
+	@Override
+	public void loadEntryDataToTmp(Job job) {
+		JobDataOperation jobDataOperation = new JobDataOperation(job,AnalysisConstants.JOBMANAGER_EVENT_LOADDATA_TO_TMP);
 		createReportFileThreadPool.submit(jobDataOperation);
 	}
 

@@ -45,10 +45,16 @@ public interface IJobManager extends IComponent<MasterConfig>{
 	public void exportJobData(String jobName);
 	
 	/**
-	 * 从磁盘载入任务数据到内存
+	 * 从磁盘载入任务数据到内存，Job主干
 	 * @param 需要导入的任务
 	 */
 	public void loadJobData(String jobName);
+	
+	/**
+	 * 从磁盘载入任务数据到内存,非Job主干
+	 * @param 需要导入的任务
+	 */
+	public void loadJobDataToTmp(String jobName);
 	
 	/**
 	 * 清除掉某一个job在内存的数据

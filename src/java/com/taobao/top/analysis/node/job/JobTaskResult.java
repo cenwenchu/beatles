@@ -23,6 +23,8 @@ public class JobTaskResult implements Serializable {
 	
 	private List<String> taskIds;
 	
+	private long creatTime;
+	
 	/**
 	 * 处理后的结果池，key是entry的id， value是Map(key是entry定义的key组合,value是统计后的结果)
 	 * 采用线程不安全，只有单线程操作此结果集
@@ -79,6 +81,14 @@ public class JobTaskResult implements Serializable {
 	}
 	public void setResults(Map<String, Map<String, Object>> results) {
 		this.results = results;
+	}
+
+	public long getCreatTime() {
+		return creatTime;
+	}
+
+	public void setCreatTime(long creatTime) {
+		this.creatTime = creatTime;
 	}
 
 }

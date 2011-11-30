@@ -66,6 +66,9 @@ public class SlaveNode extends AbstractNode<SlaveNodeEvent,SlaveConfig>{
 	@Override
 	public void init() throws AnalysisException {
 		sequenceGen = new AtomicLong(0);
+		slaveConnector.setConfig(config);
+		statisticsEngine.setConfig(config);
+		
 		slaveConnector.init();
 		statisticsEngine.init();
 	}

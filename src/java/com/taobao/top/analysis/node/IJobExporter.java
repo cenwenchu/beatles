@@ -25,5 +25,7 @@ public interface IJobExporter extends IComponent<MasterConfig>{
 	public void exportEntryData(Job job);
 	
 	public void loadEntryData(Job job);
+	
+	public void loadEntryDataToTmp(Job job);
 
 }

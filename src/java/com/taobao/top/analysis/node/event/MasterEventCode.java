@@ -16,6 +16,7 @@ public enum MasterEventCode {
 	RELOAD_JOBS("reloadJobs"),
 	EXPORT_DATA("exportData"),
 	LOAD_DATA("loadData"),
+	LOAD_DATA_TO_TMP("loadDataToTmp"),
 	CLEAR_DATA("clearData");
 	
 	
