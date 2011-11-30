@@ -293,7 +293,7 @@ public class JobManager implements IJobManager {
 			
 			if (job.needExport())
 			{
-				jobExporter.exportReport(job);
+				jobExporter.exportReport(job,false);
 			}
 			
 			if (job.needReset())

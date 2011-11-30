@@ -28,6 +28,7 @@ import com.taobao.top.analysis.node.job.JobTaskResult;
 import com.taobao.top.analysis.node.operation.CreateReportOperation;
 import com.taobao.top.analysis.node.operation.JobDataOperation;
 import com.taobao.top.analysis.statistics.data.Report;
+import com.taobao.top.analysis.statistics.data.Rule;
 import com.taobao.top.analysis.util.AnalysisConstants;
 import com.taobao.top.analysis.util.NamedThreadFactory;
 import com.taobao.top.analysis.util.ReportUtil;
@@ -73,13 +74,6 @@ public class FileJobExporter implements IJobExporter {
 		this.config = config;
 	}
 
-
-	@Override
-	public List<String> exportReport(Job job) {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
 	@Override
 	public void init() {
 		
@@ -99,24 +93,35 @@ public class FileJobExporter implements IJobExporter {
 		createReportFileThreadPool.shutdown();
 	}
 
+	@Override
+	public List<String> exportReport(Job job,boolean needTimeSuffix) {
+		return exportReport(job.getStatisticsRule(),job.getJobConfig().getOutput(),
+				job.getJobName(),needTimeSuffix,job.getJobResult(),job.getJobConfig().getOutputEncoding());
+	}
 	
 	@Override
-	public List<String> exportReport(JobTask jobTask,JobTaskResult jobTaskResult, boolean needTimeSuffix) {
+	public List<String> exportReport(JobTask jobTask,JobTaskResult jobTaskResult,boolean needTimeSuffix) {
+		
+		return exportReport(jobTask.getStatisticsRule(),jobTask.getOutput()
+				,jobTask.getTaskId(),needTimeSuffix,jobTaskResult.getResults(),jobTask.getOutputEncoding());
+	}
+	
+	protected List<String> exportReport(Rule statisticsRule,String reportOutput,String id,boolean needTimeSuffix
+			,Map<String, Map<String, Object>> entryResultPool,String outputEncoding)
+	{
 		long start = System.currentTimeMillis();
 		
 		List<String> reports = new CopyOnWriteArrayList<String>();
-		
-		Map<String, Map<String, Object>> entryResultPool = jobTaskResult.getResults();
-		
+				
 		//清理lazy数据
-		ReportUtil.cleanLazyData(entryResultPool, jobTask.getStatisticsRule().getEntryPool());
+		ReportUtil.cleanLazyData(entryResultPool, statisticsRule.getEntryPool());
 		//做一下lazy处理，用于输出
-		ReportUtil.lazyMerge(entryResultPool, jobTask.getStatisticsRule().getEntryPool());
+		ReportUtil.lazyMerge(entryResultPool, statisticsRule.getEntryPool());
 		
-		if (entryResultPool == null || jobTask.getStatisticsRule().getReportPool() == null
+		if (entryResultPool == null || statisticsRule.getReportPool() == null
 				|| (entryResultPool != null && entryResultPool.size() == 0)
-				|| (jobTask.getStatisticsRule().getReportPool() != null
-					&& jobTask.getStatisticsRule().getReportPool().size() == 0))
+				|| (statisticsRule.getReportPool() != null
+					&& statisticsRule.getReportPool().size() == 0))
 			return reports;
 
 		Calendar calendar = Calendar.getInstance();
@@ -131,7 +136,7 @@ public class FileJobExporter implements IJobExporter {
 				.append(calendar.get(Calendar.MONTH) + 1).append("-")
 				.append(calendar.get(Calendar.DAY_OF_MONTH)).toString();
 
-		String rootDir = jobTask.getOutput();
+		String rootDir = reportOutput;
 		
 		//去掉前缀，主要用于协议的前缀
 		if (rootDir.indexOf(":") > 0)
@@ -140,7 +145,7 @@ public class FileJobExporter implements IJobExporter {
 		if (!rootDir.endsWith(File.separator))
 			rootDir = new StringBuilder(rootDir).append(File.separator).toString();
 		
-		rootDir = new StringBuilder(rootDir).append(jobTask.getTaskId()).append(File.separator).toString();
+		rootDir = new StringBuilder(rootDir).append(id).append(File.separator).toString();
 		
 		StringBuilder periodRootDir = new StringBuilder();
 		StringBuilder periodDir = new StringBuilder();
@@ -173,10 +178,10 @@ public class FileJobExporter implements IJobExporter {
 			}
 		}
 
-		Iterator<Report> iter = jobTask.getStatisticsRule().getReportPool()
+		Iterator<Report> iter = statisticsRule.getReportPool()
 				.values().iterator();
 		
-		CountDownLatch countDownLatch = new CountDownLatch(jobTask.getStatisticsRule().getReportPool().size());
+		CountDownLatch countDownLatch = new CountDownLatch(statisticsRule.getReportPool().size());
 		List<String> reportFiles = new ArrayList<String>();
 		
 		while (iter.hasNext()) {
@@ -206,7 +211,6 @@ public class FileJobExporter implements IJobExporter {
 		
 				}
 				
-
 				File tmpDir = new java.io.File(reportDir);
 
 				if (!tmpDir.exists()
@@ -248,7 +252,7 @@ public class FileJobExporter implements IJobExporter {
 			}
 			
 			createReportFileThreadPool.execute(
-					new CreateReportOperation(jobTask,reportFile,report,entryResultPool,reports,countDownLatch));
+					new CreateReportOperation(reportFile,report,entryResultPool,reports,countDownLatch,outputEncoding));
 			reportFiles.add(reportFile);
 		}
 		
@@ -270,7 +274,7 @@ public class FileJobExporter implements IJobExporter {
 		createTimeStampFile(normalDir.toString());	
 		
 		//清理lazy数据
-		ReportUtil.cleanLazyData(entryResultPool, jobTask.getStatisticsRule().getEntryPool());
+		ReportUtil.cleanLazyData(entryResultPool, statisticsRule.getEntryPool());
 
 		if (logger.isInfoEnabled())
 			logger.info(new StringBuilder("generate report end")
@@ -279,6 +283,7 @@ public class FileJobExporter implements IJobExporter {
 					.toString());
 		return reports;
 	}
+	
 	
 	protected void createTimeStampFile(String dir) {
 		// 创建一个报表输出时间戳文件，用于增量分析

@@ -13,8 +13,6 @@ import java.util.concurrent.CountDownLatch;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-
-import com.taobao.top.analysis.node.job.JobTask;
 import com.taobao.top.analysis.statistics.data.Report;
 import com.taobao.top.analysis.statistics.data.ReportEntry;
 import com.taobao.top.analysis.util.AnalysisConstants;
@@ -29,34 +27,34 @@ import com.taobao.top.analysis.util.ReportUtil;
 public class CreateReportOperation implements Runnable {
 
 	private final Log logger = LogFactory.getLog(CreateReportOperation.class);
-	JobTask jobTask;
 	String reportFile;
 	Report report;
 	Map<String,Map<String, Object>> entryResultPool;
 	List<String> reports;
 	CountDownLatch countDownLatch;
+	String outputEncoding;
 	
-	public CreateReportOperation(JobTask jobTask,String reportFile,Report report,Map<String,
-			Map<String, Object>> entryResultPool,List<String> reports,CountDownLatch countDownLatch)
+	public CreateReportOperation(String reportFile,Report report,Map<String,
+			Map<String, Object>> entryResultPool,List<String> reports,CountDownLatch countDownLatch,String outputEncoding)
 	{
-		this.jobTask = jobTask;
 		this.reportFile = reportFile;
 		this.report = report;
 		this.entryResultPool = entryResultPool;
 		this.reports = reports;
 		this.countDownLatch = countDownLatch;
+		this.outputEncoding = outputEncoding;
 	}
 	
 	@Override
 	public void run() 
 	{	
-		createReportFile(jobTask,reportFile,report,entryResultPool,reports,countDownLatch);
+		createReportFile(reportFile,report,entryResultPool,reports,countDownLatch,outputEncoding);
 	}
 	
 	//add by fangweng 2011 performance
 	//通过不排序和增加对map访问来减少对mem的利用，但是在性能上或者速度上也许有影响
-	private void createReportFile(JobTask jobTask,String reportFile,Report report,Map<String,
-			Map<String, Object>> entryResultPool,List<String> reports,CountDownLatch countDownLatch)
+	private void createReportFile(String reportFile,Report report,Map<String,
+			Map<String, Object>> entryResultPool,List<String> reports,CountDownLatch countDownLatch,String outputEncoding)
 	{
 		BufferedWriter bout = null;
 		boolean needTitle=false;
@@ -70,11 +68,11 @@ public class CreateReportOperation implements Runnable {
 			if(report.isAppend()){
 				bout = new BufferedWriter(new java.io.OutputStreamWriter(
 						new java.io.FileOutputStream(file,true),
-						jobTask.getOutputEncoding()));
+						outputEncoding));
 			}else{
 				bout = new BufferedWriter(new java.io.OutputStreamWriter(
 						new java.io.FileOutputStream(file),
-						jobTask.getOutputEncoding()));
+						outputEncoding));
 			}
 
 			

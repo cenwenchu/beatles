@@ -18,7 +18,7 @@ import com.taobao.top.analysis.node.job.JobTaskResult;
  */
 public interface IJobExporter extends IComponent<MasterConfig>{
 	
-	public List<String> exportReport(Job job);
+	public List<String> exportReport(Job job,boolean needTimeSuffix);
 	
 	public List<String> exportReport(JobTask jobTask,JobTaskResult jobTaskResult,boolean needTimeSuffix);
 	
