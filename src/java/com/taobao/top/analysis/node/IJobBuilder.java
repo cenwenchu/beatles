@@ -27,6 +27,13 @@ public interface IJobBuilder extends IComponent<MasterConfig>{
 	public Map<String,Job> build() throws AnalysisException;
 	
 	/**
+	 * 构建某一个Job的任务
+	 * @param job
+	 * @throws AnalysisException
+	 */
+	public void buildTasks(Job job) throws AnalysisException;
+	
+	/**
 	 * 从某一个位置获取任务集
 	 * @param 可以自己扩展是从本地文件载入还是http等其他方式载入
 	 * @return

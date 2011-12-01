@@ -112,4 +112,10 @@ public class MixJobBuilder implements IJobBuilder {
 			return null;
 	}
 
+	@Override
+	public void buildTasks(Job job) throws AnalysisException {
+		// TODO Auto-generated method stub
+		
+	}
+
 }

@@ -7,13 +7,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-
-import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-
 import com.taobao.top.analysis.config.JobConfig;
-import com.taobao.top.analysis.exception.AnalysisException;
 import com.taobao.top.analysis.statistics.data.Rule;
 import com.taobao.top.analysis.util.Threshold;
 
@@ -156,48 +152,6 @@ public class Job {
 	public void setJobResult(Map<String, Map<String, Object>> jobResult) {
 		this.jobResult = jobResult;
 	}
-
-	public void generateJobTasks() throws AnalysisException
-	{
-		
-		jobTasks.clear();
-		
-		if (jobConfig == null)
-			throw new AnalysisException("generateJobTasks error, jobConfig is null.");
-		
-		if (jobConfig.getInputParams() == null)
-		{
-			JobTask jobTask = new JobTask(jobConfig);
-			jobTask.setStatisticsRule(statisticsRule);
-			jobTask.setTaskId(jobName + "-" + taskCount);
-			jobTask.setJobName(jobName);
-			taskCount += 1;
-			jobTasks.add(jobTask);
-		}
-		else
-		{
-			String[] p = StringUtils.split(jobConfig.getInputParams(),":");
-			String key = new StringBuilder("$").append(p[0]).append("$").toString();
-			
-			if (p.length != 2 || jobConfig.getInput().indexOf(key) < 0)
-				throw new AnalysisException("inputParams invalidate : " + jobConfig.getInputParams());
-			
-			String[] params = StringUtils.split(p[1],",");
-			
-			for(String ps : params)
-			{
-				JobTask jobTask = new JobTask(jobConfig);
-				jobTask.setStatisticsRule(statisticsRule);
-				jobTask.setTaskId(jobName + "-" + taskCount);
-				jobTask.setJobName(jobName);
-				jobTask.setInput(jobConfig.getInput().replace(key, ps));
-				taskCount += 1;
-				jobTasks.add(jobTask);
-			}
-			
-		}
-		
-	}	
 	
 	public boolean isMerged() {
 		return merged;
@@ -260,6 +214,11 @@ public class Job {
 
 	public void setStatisticsRule(Rule rule) {
 		this.statisticsRule = rule;
+	}
+	
+	public void addTaskCount()
+	{
+		this.taskCount += 1;
 	}
 
 	public int getTaskCount() {

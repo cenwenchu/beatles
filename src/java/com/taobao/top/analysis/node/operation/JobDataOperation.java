@@ -293,6 +293,8 @@ public class JobDataOperation implements Runnable {
 				String _fileSuffix = AnalysisConstants.INNER_DATAFILE_SUFFIX;
 				String _bckSuffix = AnalysisConstants.IBCK_DATAFILE_SUFFIX;
 									
+				if (!dir.endsWith(File.separator))
+					dir += File.separator;
 
 				destfile = new StringBuilder(dir)
 					.append(calendar.get(Calendar.YEAR))
@@ -354,7 +356,7 @@ public class JobDataOperation implements Runnable {
 		String output = job.getJobConfig().getOutput();
 		
 		if (output.indexOf(":") > 0)
-			output = output.substring(0,output.indexOf(":"));
+			output = output.substring(output.indexOf(":")+1);
 		
 		if (!output.endsWith(File.separator))
 			output = output + File.separator;

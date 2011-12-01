@@ -33,6 +33,7 @@ import com.taobao.top.analysis.config.MasterConfig;
 import com.taobao.top.analysis.exception.AnalysisException;
 import com.taobao.top.analysis.node.IJobBuilder;
 import com.taobao.top.analysis.node.job.Job;
+import com.taobao.top.analysis.node.job.JobTask;
 import com.taobao.top.analysis.statistics.data.Alias;
 import com.taobao.top.analysis.statistics.data.InnerKey;
 import com.taobao.top.analysis.statistics.data.Report;
@@ -136,7 +137,7 @@ public class FileJobBuilder implements IJobBuilder{
 					for(String conf : jobconfig.getReportConfigs() )
 						buildReportModule(conf, rule);
 					
-					job.generateJobTasks();
+					buildTasks(job);
 					jobs.put(job.getJobName(), job);
 				}
 			}
@@ -790,6 +791,69 @@ public class FileJobBuilder implements IJobBuilder{
 		}
 		else
 			return null;
+	}
+
+	@Override
+	public void buildTasks(Job job) throws AnalysisException {
+		
+		if (job.getJobTasks() != null)
+			job.getJobTasks().clear();
+		
+		JobConfig jobConfig = job.getJobConfig();
+		
+		if (jobConfig == null)
+			throw new AnalysisException("generateJobTasks error, jobConfig is null.");
+		
+		//允许定义多个job通过逗号分割
+		if (jobConfig.getInputParams() == null && jobConfig.getInput().indexOf(",") <= 0)
+		{
+			JobTask jobTask = new JobTask(jobConfig);
+			jobTask.setStatisticsRule(job.getStatisticsRule());
+			jobTask.setTaskId(job.getJobName() + "-" + job.getTaskCount());
+			jobTask.setJobName(job.getJobName());
+			job.addTaskCount();
+			job.getJobTasks().add(jobTask);
+		}
+		else
+		{
+			if (jobConfig.getInputParams() != null)
+			{
+				String[] p = StringUtils.split(jobConfig.getInputParams(),":");
+				String key = new StringBuilder("$").append(p[0]).append("$").toString();
+				
+				if (p.length != 2 || jobConfig.getInput().indexOf(key) < 0)
+					throw new AnalysisException("inputParams invalidate : " + jobConfig.getInputParams());
+				
+				String[] params = StringUtils.split(p[1],",");
+				
+				for(String ps : params)
+				{
+					JobTask jobTask = new JobTask(jobConfig);
+					jobTask.setStatisticsRule(job.getStatisticsRule());
+					jobTask.setTaskId(job.getJobName() + "-" + job.getTaskCount());
+					jobTask.setJobName(job.getJobName());
+					jobTask.setInput(jobConfig.getInput().replace(key, ps));
+					job.addTaskCount();
+					job.getJobTasks().add(jobTask);
+				}
+			}
+			else
+			{
+				String[] inputs = StringUtils.split(jobConfig.getInput(),",");
+				
+				for(String input : inputs)
+				{
+					JobTask jobTask = new JobTask(jobConfig);
+					jobTask.setStatisticsRule(job.getStatisticsRule());
+					jobTask.setTaskId(job.getJobName() + "-" + job.getTaskCount());
+					jobTask.setJobName(job.getJobName());
+					jobTask.setInput(input);
+					job.addTaskCount();
+					job.getJobTasks().add(jobTask);
+				}
+				
+			}
+		}	
 	}
 
 }

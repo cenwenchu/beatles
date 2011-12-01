@@ -3,11 +3,12 @@
  */
 package com.taobao.top.analysis.node.component;
 
-import static org.junit.Assert.*;
-
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.util.Map;
+
+import junit.framework.Assert;
+
 import org.junit.Test;
 import com.taobao.top.analysis.config.MasterConfig;
 import com.taobao.top.analysis.exception.AnalysisException;
@@ -103,20 +104,57 @@ public class FileJobExporterTest {
 
 	
 	@Test
-	public void testExportEntryData() {
-		fail("Not yet implemented");
-	}
-
-	
-	@Test
-	public void testLoadEntryData() {
-		fail("Not yet implemented");
-	}
-
-	
-	@Test
-	public void testLoadEntryDataToTmp() {
-		fail("Not yet implemented");
+	public void testExportEntryDataAndLoadEntryData() throws AnalysisException, UnsupportedEncodingException, IOException, InterruptedException {
+		
+		StatisticsEngine defaultAnalysisEngine = new StatisticsEngine();
+		defaultAnalysisEngine.init();
+		
+		IInputAdaptor fileInputAdaptor =  new FileInputAdaptor();
+		IInputAdaptor httpInputAdaptor = new HttpInputAdaptor();
+		
+		defaultAnalysisEngine.addInputAdaptor(fileInputAdaptor);
+		defaultAnalysisEngine.addInputAdaptor(httpInputAdaptor);
+		
+		MixJobBuilder mixJobBuilder = new MixJobBuilder();
+		FileJobExporter fileJobExporter = new FileJobExporter();
+		MasterConfig config = new MasterConfig();
+		config.load("master-config.properties");
+		fileJobExporter.setConfig(config);
+		mixJobBuilder.setConfig(config);
+		mixJobBuilder.init();
+		fileJobExporter.init();
+		
+		Map<String, Job> jobs = mixJobBuilder.build();
+		Job job = jobs.values().iterator().next();
+		
+		JobTask task = job.getJobTasks().get(0);
+		
+		job.setJobResult(defaultAnalysisEngine.doAnalysis(task).getResults());
+		
+		fileJobExporter.exportEntryData(job);
+		
+		Thread.sleep(1000);
+		
+		Map<String, Map<String, Object>> result = job.getJobResult();
+		job.setJobResult(null);
+		
+		fileJobExporter.loadEntryData(job);
+		fileJobExporter.loadEntryDataToTmp(job);
+		
+		Thread.sleep(1000);
+		
+		String key = result.keySet().iterator().next();
+		String key2 = result.get(key).keySet().iterator().next();
+		Object value = result.get(key).get(key2);
+		
+		Assert.assertEquals(job.getJobResult().get(key).get(key2), value);
+		Assert.assertEquals(job.getDiskResult().get(key).get(key2), value);
+		
+			
+		defaultAnalysisEngine.releaseResource();
+		mixJobBuilder.releaseResource();
+		fileJobExporter.releaseResource();
+		
 	}
 
 }
