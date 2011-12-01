@@ -35,4 +35,14 @@ public interface INode<E extends INodeEvent,C extends IConfig> extends Runnable,
 	 */
 	public void processEvent(E event) throws AnalysisException;
 	
+	/**
+	 * 启动节点
+	 */
+	public void startNode();
+	
+	/**
+	 * 停止节点
+	 */
+	public void stopNode();
+	
 }

@@ -416,6 +416,10 @@ public class JobManager implements IJobManager {
 		}
 	}
 	
+	/**
+	 * 在导出数据以后，判断是否需要清空主干，是否需要导出主干
+	 * @param job
+	 */
 	protected void exportOrCleanTrunk(Job job)
 	{
 		boolean needToSetJobResultNull = false;

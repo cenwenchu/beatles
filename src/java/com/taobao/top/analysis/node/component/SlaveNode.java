@@ -72,6 +72,9 @@ public class SlaveNode extends AbstractNode<SlaveNodeEvent,SlaveConfig>{
 		slaveConnector.init();
 		statisticsEngine.init();
 		jobResultMerger.init();
+		
+		if (logger.isInfoEnabled())
+			logger.info("Slave init complete.");
 	}
 
 	@Override
@@ -80,6 +83,10 @@ public class SlaveNode extends AbstractNode<SlaveNodeEvent,SlaveConfig>{
 		slaveConnector.releaseResource();
 		statisticsEngine.releaseResource();
 		jobResultMerger.releaseResource();
+		
+		if (logger.isInfoEnabled())
+			logger.info("Slave releaseResource complete.");
+		
 	}
 
 	@Override
@@ -172,7 +179,7 @@ public class SlaveNode extends AbstractNode<SlaveNodeEvent,SlaveConfig>{
 			} 
 			catch (InterruptedException e) 
 			{
-				logger.error(e);
+				//do nothing
 			}
 		}
 		

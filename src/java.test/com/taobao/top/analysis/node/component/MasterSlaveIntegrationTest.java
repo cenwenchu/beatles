@@ -50,7 +50,7 @@ public class MasterSlaveIntegrationTest {
 		MasterConfig config = new MasterConfig();
 		config.load("master-config-ms.properties");
 		masterNode.setConfig(config);
-		masterNode.init();
+		masterNode.startNode();
 		
 		
 		//build SlaveNode
@@ -65,7 +65,6 @@ public class MasterSlaveIntegrationTest {
 		slaveNode.setSlaveConnector(slaveConnector);
 		slaveNode.setStatisticsEngine(statisticsEngine);
 		slaveNode.setJobResultMerger(jobResultMerger2);
-		slaveNode.init();
 		
 		IInputAdaptor fileInputAdaptor =  new FileInputAdaptor();
 		IInputAdaptor httpInputAdaptor = new HttpInputAdaptor();
@@ -83,14 +82,10 @@ public class MasterSlaveIntegrationTest {
 		statisticsEngine.addInputAdaptor(httpInputAdaptor);
 		statisticsEngine.addOutputAdaptor(fileOutAdaptor);
 		statisticsEngine.addOutputAdaptor(masterOutputAdaptor);
+		slaveNode.startNode();
 		
-		Thread master = new Thread(masterNode);
-		Thread slave = new Thread(slaveNode);
 		
-		master.start();
-		slave.start();
-		
-		Thread.sleep(30000000);
+		Thread.sleep(250 * 1000);
 		
 		masterNode.stopNode();
 		slaveNode.stopNode();

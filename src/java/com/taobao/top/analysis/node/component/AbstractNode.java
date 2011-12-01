@@ -42,12 +42,34 @@ public abstract class AbstractNode<E extends INodeEvent,C extends IConfig> imple
 	 */
 	private Inspector inspector;
 	
+	private Thread innerThread;
+	
 	
 	public AbstractNode()
 	{
 		queue = new LinkedBlockingQueue<E>();
 		inspector = new Inspector();
 		inspector.start();
+	}
+	
+	/**
+	 * 启动节点
+	 */
+	@Override
+	public void startNode()
+	{
+		innerThread = new Thread(this);
+		innerThread.start();
+	}
+	
+	/**
+	 * 停止节点
+	 */
+	@Override
+	public void stopNode()
+	{
+		running = false;
+		innerThread.interrupt();
 	}
 
 	public C getConfig() {
@@ -82,11 +104,6 @@ public abstract class AbstractNode<E extends INodeEvent,C extends IConfig> imple
 		}
 	}
 	
-	public void stopNode()
-	{
-		running = false;
-	}
-	
 	@Override
 	public boolean addEvent(E event)
 	{
@@ -110,11 +127,17 @@ public abstract class AbstractNode<E extends INodeEvent,C extends IConfig> imple
 					}
 					
 				}
+				catch(InterruptedException e)
+				{
+					//do nothing
+				}
 				catch(Exception ex)
 				{
 					logger.error(ex);
 				}
 			}
+			
+			logger.warn("Node Inspector stop now.");
 		}
 		
 		public void stopInspector()

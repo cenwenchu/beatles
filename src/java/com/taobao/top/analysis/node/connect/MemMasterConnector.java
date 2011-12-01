@@ -91,6 +91,10 @@ public class MemMasterConnector implements IMasterConnector,Runnable {
 				}
 				
 			}
+			catch (InterruptedException e) 
+			{
+				//do nothing
+			}
 			catch(Exception ex)
 			{
 				logger.error(ex);
