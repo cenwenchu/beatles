@@ -98,6 +98,9 @@ public class FileJobBuilder implements IJobBuilder{
 	 */
 	public Map<String,Job> build(String config) throws AnalysisException 
 	{
+		if (logger.isInfoEnabled())
+			logger.info("start build job from :" + config);
+		
 		jobSource = config;
 		
 		Map<String,Job> jobs = new HashMap<String,Job>();
@@ -466,7 +469,8 @@ public class FileJobBuilder implements IJobBuilder{
 
 				}
 
-				logger.error("File: " + configFile
+				if (invalidKeys.length() > 0)
+					logger.error("File: " + configFile
 						+ " ----- remove invalid entry define : "
 						+ invalidKeys.toString());
 			}

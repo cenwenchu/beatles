@@ -28,23 +28,43 @@ public class Job {
 	private static final Log logger = LogFactory.getLog(Job.class);
 	
 	String jobName;
+	//job的配置信息
 	JobConfig jobConfig;
+	//业务分析规则解析后的内容，会被传递到slave
 	Rule statisticsRule;
+	//job下的子任务
 	List<JobTask> jobTasks;
+	//任务总数
 	int taskCount = 0;
+	//完成的任务数
 	AtomicInteger completedTaskCount;
+	//合并的任务数
 	AtomicInteger mergedTaskCount;
+	//是否需要载入结果文件从磁盘，是开启了磁盘换内存才会有用
 	AtomicBoolean needLoadResultFile;
+	//job的创建时间
 	long startTime;
+	//防止大量写日志的阀
 	Threshold threshold;
+	//主干读写锁，控制并发
 	ReentrantReadWriteLock trunkLock;
+	//载入的锁，防止重复载入
 	ReentrantLock loadLock;
 	
-	//一个job只需要一个线程负责merge和export，由于外部jobmanager是单线程，这里直接采用非原子操作
-	boolean merging = false;
-	boolean exporting = false;
-	boolean merged = false;
-	boolean exported = false;
+	//是否正在合并检查和处理，只允许一个线程做
+	AtomicBoolean merging;
+	//是否正在导出检查和处理，只允许一个线程做
+	AtomicBoolean exporting;
+	//是否合并完毕，可以进入导出阶段
+	AtomicBoolean merged;
+	//是否导出完毕，可以被重置任务
+	AtomicBoolean exported;
+	
+	//最后一次导出临时文件的时间，用于在非磁盘换空间的模式下，固定一段时间导出作为容灾，时间间隔参考masterconfig 的exportInterval
+	long lastExportTime;
+	
+	//用于纪录报表最近一次的时间戳，比较是否要重置报表
+	int reportPeriodFlag;
 	
 	
 	/**
@@ -61,9 +81,11 @@ public class Job {
 	public Job()
 	{
 		jobTasks = new ArrayList<JobTask>();
-		threshold = new Threshold(1000);
+		threshold = new Threshold(5000);
 		trunkLock = new ReentrantReadWriteLock();
 		loadLock = new ReentrantLock();
+		lastExportTime = 0;
+		reportPeriodFlag = -1;
 		reset();
 	}
 	
@@ -89,19 +111,19 @@ public class Job {
 
 	public boolean needMerge()
 	{
-		return completedTaskCount.get() > mergedTaskCount.get();
+		return !merged.get() && completedTaskCount.get() > mergedTaskCount.get();
 	}
 	
 	public boolean needExport()
 	{
-		return merged && mergedTaskCount.get() == taskCount;
+		return !exported.get() && merged.get() && mergedTaskCount.get() == taskCount;
 	}
 
 	public boolean needReset()
 	{
 		long consume = System.currentTimeMillis() - startTime;
 				
-		if ((exported && (consume >= jobConfig.getJobResetTime() * 1000))
+		if ((exported.get() && (consume >= jobConfig.getJobResetTime() * 1000))
 				||(consume > jobConfig.getJobResetTime() * 1000 * 2))
 			return true;
 		
@@ -127,10 +149,10 @@ public class Job {
 		mergedTaskCount = new AtomicInteger(0);
 		needLoadResultFile = new AtomicBoolean(true);
 		startTime = System.currentTimeMillis();
-		merged = false;
-		merging = false;
-		exporting = false;
-		exported = false;
+		merged = new AtomicBoolean(false);
+		merging = new AtomicBoolean(false);
+		exporting = new AtomicBoolean(false);
+		exported = new AtomicBoolean(false);
 		diskResult = null;
 	}
 	
@@ -153,33 +175,18 @@ public class Job {
 		this.jobResult = jobResult;
 	}
 	
-	public boolean isMerged() {
+	public AtomicBoolean isMerged() {
 		return merged;
 	}
 
 
-	public void setMerged(boolean merged) {
-		this.merged = merged;
-	}
-
-
-	public boolean isMerging() {
+	public AtomicBoolean isMerging() {
 		return merging;
 	}
 
 
-	public void setMerging(boolean merging) {
-		this.merging = merging;
-	}
-
-
-	public boolean isExporting() {
+	public AtomicBoolean isExporting() {
 		return exporting;
-	}
-
-
-	public void setExporting(boolean exporting) {
-		this.exporting = exporting;
 	}
 
 
@@ -246,12 +253,8 @@ public class Job {
 	}
 
 
-	public boolean isExported() {
+	public AtomicBoolean isExported() {
 		return exported;
-	}
-
-	public void setExported(boolean exported) {
-		this.exported = exported;
 	}
 
 
@@ -262,6 +265,26 @@ public class Job {
 
 	public void setDiskResult(Map<String, Map<String, Object>> diskResult) {
 		this.diskResult = diskResult;
+	}
+
+
+	public long getLastExportTime() {
+		return lastExportTime;
+	}
+
+
+	public void setLastExportTime(long lastExportTime) {
+		this.lastExportTime = lastExportTime;
+	}
+
+
+	public int getReportPeriodFlag() {
+		return reportPeriodFlag;
+	}
+
+
+	public void setReportPeriodFlag(int reportPeriodFlag) {
+		this.reportPeriodFlag = reportPeriodFlag;
 	}
 	
 

@@ -80,6 +80,9 @@ public class FileJobExporter implements IJobExporter {
 		if (this.config != null)
 			maxCreateReportWorker = this.config.getMaxCreateReportWorker();
 		
+		if(logger.isInfoEnabled())
+			logger.info("filejobExporter init end, maxCreateReportWorker size : " + maxCreateReportWorker);
+		
 		createReportFileThreadPool = new ThreadPoolExecutor(
 				maxCreateReportWorker,
 				maxCreateReportWorker, 0,
@@ -109,6 +112,9 @@ public class FileJobExporter implements IJobExporter {
 	protected List<String> exportReport(Rule statisticsRule,String reportOutput,String id,boolean needTimeSuffix
 			,Map<String, Map<String, Object>> entryResultPool,String outputEncoding)
 	{
+		if (logger.isInfoEnabled())
+			logger.info("start exportReport now, id : " + id + ", output : " + reportOutput);
+		
 		long start = System.currentTimeMillis();
 		
 		List<String> reports = new CopyOnWriteArrayList<String>();

@@ -195,7 +195,7 @@ public class MergeJobOperation implements Runnable {
 		
 		//全部合并结束，后续可以输出数据了
 		if (job.getMergedTaskCount().get() == job.getTaskCount())
-			job.setMerged(true);
+			job.isMerged().set(true);
 		
 		results = null;
 		mergeResults.clear();

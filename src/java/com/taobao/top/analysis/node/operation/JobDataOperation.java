@@ -62,31 +62,73 @@ public class JobDataOperation implements Runnable {
 	}
 
 	@Override
-	public void run() {
+	public void run() 
+	{
+		//先设置主干为空，然后再导出，不影响后续的合并处理，适用于磁盘换内存模式的导出
+		if (operation.equals(AnalysisConstants.JOBMANAGER_EVENT_SETNULL_EXPORTDATA))
+		{
+			if (logger.isInfoEnabled())
+				logger.info(job.getJobName() +  " start set trunk null and exportData now...");
+				
+			exportData(true);
+			
+			return;
+		}
+		
 		if(operation.equals(AnalysisConstants.JOBMANAGER_EVENT_EXPORTDATA))
 		{
-			exportData();
+			if (logger.isInfoEnabled())
+				logger.info(job.getJobName() +  " start exportData now...");
+				
+			exportData(false);
+			
+			return;
 		}
-		else
+		
+		if (operation.equals(AnalysisConstants.JOBMANAGER_EVENT_DEL_DATAFILE))
 		{
-			if (operation.equals(AnalysisConstants.JOBMANAGER_EVENT_LOADDATA))
-			{
-				try {
-					loadData();
-				} catch (AnalysisException e) {
-					logger.error(e);
-				}
-			}
-			else
-				if (operation.equals(AnalysisConstants.JOBMANAGER_EVENT_LOADDATA_TO_TMP))
-				{
-					try {
-						loadDataToTmp();
-					} catch (AnalysisException e) {
-						logger.error(e);
-					}
-				}
+			if (logger.isInfoEnabled())
+				logger.info(job.getJobName() +  " delete exportData now...");
+				
+			deleteData();
+			
+			return;
 		}
+		
+		if (operation.equals(AnalysisConstants.JOBMANAGER_EVENT_LOADDATA))
+		{
+			try 
+			{
+				if (logger.isInfoEnabled())
+					logger.info(job.getJobName() +  " start loadData now...");
+				
+				loadData();
+			} 
+			catch (AnalysisException e) 
+			{
+				logger.error(e);
+			}
+			
+			return;
+		}
+			
+		if (operation.equals(AnalysisConstants.JOBMANAGER_EVENT_LOADDATA_TO_TMP))
+		{
+			try 
+			{
+				if (logger.isInfoEnabled())
+					logger.info(job.getJobName() +  " start loadDataToTmp now...");
+				
+				loadDataToTmp();
+			} 
+			catch (AnalysisException e) 
+			{
+				logger.error(e);
+			}
+			
+			return;
+		}
+		
 	}
 	
 	Map<String, Map<String, Object>> innerLoad() throws AnalysisException
@@ -123,6 +165,56 @@ public class JobDataOperation implements Runnable {
 		}
 
 		return load(totalFiles);
+	}
+	
+	void deleteData()
+	{
+		String destDir = getDestDir();	
+		
+		File dest = new File(destDir);
+		if (!dest.exists() || (dest.exists() && !dest.isDirectory()))
+			return;
+		
+		String _fileSuffix = AnalysisConstants.INNER_DATAFILE_SUFFIX;
+		String _bckSuffix = AnalysisConstants.IBCK_DATAFILE_SUFFIX;
+		
+		
+		File[] files = dest.listFiles(new AnalyzerFilenameFilter(_fileSuffix));
+		File[] bckfiles = dest.listFiles(new AnalyzerFilenameFilter(_bckSuffix));
+		
+		if (files.length + bckfiles.length == 0)
+			return;
+		
+		File[] totalFiles = new File[files.length + bckfiles.length];
+		
+		if (files.length == 0)
+			totalFiles = bckfiles;
+		else
+		{
+			if (bckfiles.length == 0)
+				totalFiles = files;
+			else
+			{
+				System.arraycopy(files, 0, totalFiles, 0, files.length);
+				System.arraycopy(bckfiles, 0, totalFiles, files.length, bckfiles.length);
+			}
+		}
+		
+		// 当天的备份数据
+		Calendar calendar = Calendar.getInstance();
+		String prefix = new StringBuilder()
+				.append(calendar.get(Calendar.YEAR)).append("-")
+				.append(String.valueOf(calendar.get(Calendar.MONTH) + 1))
+				.append("-").append(calendar.get(Calendar.DAY_OF_MONTH))
+				.toString();
+		
+		for (File f : totalFiles) 
+		{
+			if (!f.getName().startsWith(prefix))
+				continue;
+			
+			f.delete();
+		}
 	}
 	
 	void loadDataToTmp() throws AnalysisException
@@ -270,7 +362,7 @@ public class JobDataOperation implements Runnable {
 			return null;
 	}
 	
-	void exportData() {
+	void exportData(boolean setTrunkNull) {
 		
 		Map<String, Map<String, Object>> resultPool = job.getJobResult();
 		
@@ -316,31 +408,39 @@ public class JobDataOperation implements Runnable {
 						
 					f.renameTo(new File(destfile.replace(_fileSuffix,_bckSuffix)));
 				}
-					
-				ReadLock readLock = job.getTrunkLock().readLock();
 				
-				try
+				if (setTrunkNull)
 				{
-					if (readLock.tryLock(10, TimeUnit.MINUTES))
+					job.setJobResult(null);
+					export(resultPool,destfile);
+				}
+				else
+				{
+					ReadLock readLock = job.getTrunkLock().readLock();
+					
+					try
 					{
-						try
+						if (readLock.tryLock(10, TimeUnit.MINUTES))
 						{
-							export(resultPool,destfile);
+							try
+							{
+								export(resultPool,destfile);
+							}
+							finally{
+								readLock.unlock();
+							}
+							
 						}
-						finally{
-							readLock.unlock();
+						else
+						{
+							logger.error("exportData error! can't got readLock!");
 						}
 						
 					}
-					else
+					catch(InterruptedException ie)
 					{
-						logger.error("exportData error! can't got readLock!");
+						//do nothing
 					}
-					
-				}
-				catch(InterruptedException ie)
-				{
-					//do nothing
 				}
 					
 			}

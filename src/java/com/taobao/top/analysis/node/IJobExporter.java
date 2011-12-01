@@ -20,7 +20,7 @@ import com.taobao.top.analysis.node.job.JobTaskResult;
 public interface IJobExporter extends IComponent<MasterConfig>{
 	
 	/**
-	 * 导出报表
+	 * 导出报表,可以实现多线程，但必须是阻塞模式
 	 * @param 需要导出的Job
 	 * @param 是否需要时间后缀
 	 * @return

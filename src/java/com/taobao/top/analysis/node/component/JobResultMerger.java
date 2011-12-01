@@ -11,6 +11,9 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
 import com.taobao.top.analysis.config.MasterConfig;
 import com.taobao.top.analysis.exception.AnalysisException;
 import com.taobao.top.analysis.node.IJobResultMerger;
@@ -33,6 +36,8 @@ import com.taobao.top.analysis.util.ReportUtil;
  */
 public class JobResultMerger implements IJobResultMerger {
 
+	private final Log logger = LogFactory.getLog(JobResultMerger.class);
+	
 	MasterConfig config;
 	
 	/**
@@ -64,6 +69,9 @@ public class JobResultMerger implements IJobResultMerger {
 				maxMergeJobWorker, 0,
 				TimeUnit.SECONDS, new LinkedBlockingQueue<Runnable>(),
 				new NamedThreadFactory("mergeJobResult_worker"));
+		
+		if (logger.isInfoEnabled())
+			logger.info("JobResultMerger init end. maxMergeJobWorker size : " + maxMergeJobWorker);
 	}
 
 	
@@ -88,6 +96,9 @@ public class JobResultMerger implements IJobResultMerger {
 	@Override
 	public void merge(Job job,BlockingQueue<JobMergedResult> branchResultQueue
 			,BlockingQueue<JobTaskResult> jobTaskResultsQueue,boolean needMergeLazy) {
+		
+		if (logger.isInfoEnabled())
+			logger.info("start merge check jobName : " + job.getJobName());
 		
 		// 检查job列表
 		List<Map<String, Map<String, Object>>> mergeResults = new ArrayList<Map<String, Map<String, Object>>>();
@@ -132,18 +143,24 @@ public class JobResultMerger implements IJobResultMerger {
 			}
 		}
 		
+		if (logger.isInfoEnabled())
+			logger.info("jobName : " + job.getJobName() + ", got " + mergeResultCount + " need to merge");
+		
 		//判断是否可以开始载入外部磁盘换存储的文件,大于AsynLoadDiskFilePrecent的时候开始载入数据等待分析
 		if (config.getSaveTmpResultToFile())
 			if (job.getMergedTaskCount().get() * 100 
 					/ job.getTaskCount() >= config.getAsynLoadDiskFilePrecent())
-			{			
+			{		
+				if (logger.isInfoEnabled())
+					logger.info("start asyn load " + job.getJobName() + " trunkData from disk");
+				
 				if (job.getNeedLoadResultFile().compareAndSet(true, false))
 				{
 					new Thread(new JobDataOperation(job,AnalysisConstants.JOBMANAGER_EVENT_LOADDATA_TO_TMP)).start();
 				}
 			}
 
-		// ========================================================
+		
 		if (mergeResultCount > 0) 
 		{			
 				mergeJobResultThreadPool
@@ -172,6 +189,17 @@ public class JobResultMerger implements IJobResultMerger {
 		
 		if (jobTaskResults.size() == 1)
 			return jobTaskResults.get(0);
+		
+		if (logger.isInfoEnabled())
+		{
+			StringBuilder info = new StringBuilder("start merge check jobTask : ");
+			
+			for(JobTaskResult taskResult : jobTaskResults)
+				for(String id : taskResult.getTaskIds())
+					info.append(id).append(" , ");
+			
+			logger.info(info.toString());
+		}
 		
 		JobTaskResult base = jobTaskResults.get(0);
 		

@@ -4,6 +4,7 @@
 package com.taobao.top.analysis.node.component;
 
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -31,6 +32,8 @@ import com.taobao.top.analysis.node.job.JobMergedResult;
 import com.taobao.top.analysis.node.job.JobTask;
 import com.taobao.top.analysis.node.job.JobTaskResult;
 import com.taobao.top.analysis.node.job.JobTaskStatus;
+import com.taobao.top.analysis.node.operation.JobDataOperation;
+import com.taobao.top.analysis.util.AnalysisConstants;
 import com.taobao.top.analysis.util.NamedThreadFactory;
 
 /**
@@ -107,6 +110,10 @@ public class JobManager implements IJobManager {
 				new NamedThreadFactory("jobManagerEventProcess_worker"));
 			
 		addJobsToPool();
+		
+		if(logger.isInfoEnabled())
+			logger.info("jobManager init end, MaxJobEventWorker size : " + config.getMaxJobEventWorker());
+		
 	}
 
 	
@@ -130,6 +137,9 @@ public class JobManager implements IJobManager {
 			jobBuilder.releaseResource();
 			jobExporter.releaseResource();
 			jobResultMerger.releaseResource();
+			
+			logger.info("jobManager releaseResource end");
+			
 		}
 	}
 	
@@ -141,6 +151,12 @@ public class JobManager implements IJobManager {
 		String jobName = requestEvent.getJobName();
 		int jobCount = requestEvent.getRequestJobCount();
 		List<JobTask> jobTasks = new ArrayList<JobTask>();
+		
+		if(logger.isInfoEnabled())
+			if (jobName != null && jobs.containsKey(jobName))
+				logger.info("receive event about get undoTask, jobName : " + jobName + "jobCount :" + jobCount);
+			else
+				logger.info("receive event about get undoTask, jobCount :" + jobCount);
 		
 		//指定job
 		if (jobName != null && jobs.containsKey(jobName))
@@ -205,6 +221,15 @@ public class JobManager implements IJobManager {
 				return;
 			}
 			
+			if (logger.isInfoEnabled())
+			{
+				StringBuilder ts = new StringBuilder("Receive slave analysis result, jobTaskIds : ");
+				
+				for(String id : jobTaskResult.getTaskIds())
+					ts.append(id).append(" , ");
+				
+				logger.info(ts.toString());
+			}
 			
 			//先放入队列，防止小概率多线程并发问题
 			jobTaskResultsQueuePool.get(jobTaskPool.get(jobTaskResult.getTaskIds().get(0)).getJobName()).offer(jobTaskResult);
@@ -272,11 +297,15 @@ public class JobManager implements IJobManager {
 
 	@Override
 	public void clearJobData(String jobName) {
+		
 		Job job = jobs.get(jobName);
 		
 		if (job != null)
 		{
 			job.getJobResult().clear();
+			
+			if (logger.isInfoEnabled())
+				logger.info("clear job :" + job.getJobName() + " data.");
 		}
 	}
 	
@@ -319,54 +348,60 @@ public class JobManager implements IJobManager {
 	{
 		for(Job job : jobs.values())
 		{
-			//一个job只有一个线程会去处理，多个job不干扰
-			if (!job.isMerging() && job.needMerge())
+			//需要合并该job的task
+			if (!job.isMerging().get() && job.needMerge())
 			{
 				final Job j = job;
 				final BlockingQueue<JobMergedResult> branchResultQueue = branchResultQueuePool.get(j.getJobName());
 				final BlockingQueue<JobTaskResult> jobTaskResultsQueue = jobTaskResultsQueuePool.get(j.getJobName());
 				
-				eventProcessThreadPool.execute
+				if (j.isMerging().compareAndSet(false, true))
+					eventProcessThreadPool.execute
 						(new Runnable()
 						{
 							public void run()
 							{
-								j.setMerging(true);
 								try
 								{
 									jobResultMerger.merge(j,branchResultQueue,jobTaskResultsQueue,true);
 								}
 								finally
 								{
-									j.setMerging(false);
+									j.isMerging().set(false);
 								}
 							}
 						});			
 			}
 			
-			//一个job只有一个线程会去处理,多个job不干扰
-			if (!job.isExporting() && job.needExport())
+			//需要导出该job的数据
+			if (!job.isExporting().get() && job.needExport())
 			{
 				final Job j = job;
-				eventProcessThreadPool.execute
+				
+				if (j.isExporting().compareAndSet(false, true))
+					eventProcessThreadPool.execute
 						(new Runnable()
 						{
 							public void run()
 							{
-								j.setExporting(true);
 								try
 								{
+									//虽然是多线程，但还是阻塞模式来做
 									jobExporter.exportReport(j,false);
-									j.setExported(true);
+									j.isExported().set(true);
 								}
 								finally
 								{
-									j.setExporting(false);
+									j.isExporting().set(false);
 								}
+								
+								//判断是否需要开始导出中间结果,放在外部不妨碍下一次的处理
+								exportOrCleanTrunk(j);
 							}
 						});	
 			}
 			
+			//任务是否需要被重置
 			if (job.needReset())
 			{
 				job.reset();
@@ -377,6 +412,82 @@ public class JobManager implements IJobManager {
 				{
 					statusPool.put(task.getTaskId(), task.getStatus());
 				}	
+			}
+		}
+	}
+	
+	protected void exportOrCleanTrunk(Job job)
+	{
+		boolean needToSetJobResultNull = false;
+		
+		//判断是否到了报表的有效时间段
+		if (job.getJobConfig().getReportPeriodDefine().equals(AnalysisConstants.REPORT_PERIOD_DAY))
+		{
+			Calendar calendar = Calendar.getInstance();
+			int now = calendar.get(Calendar.DAY_OF_MONTH);
+			
+			if (job.getReportPeriodFlag() != -1 && now != job.getReportPeriodFlag())
+				needToSetJobResultNull = true;
+			
+			job.setReportPeriodFlag(now);
+		}
+		else
+		{
+			if (job.getJobConfig().getReportPeriodDefine().equals(AnalysisConstants.REPORT_PERIOD_HOUR))
+			{
+				Calendar calendar = Calendar.getInstance();
+				int now = calendar.get(Calendar.HOUR_OF_DAY);
+				
+				if (job.getReportPeriodFlag() != -1 && now != job.getReportPeriodFlag())
+					needToSetJobResultNull = true;
+				
+				job.setReportPeriodFlag(now);
+			}
+			else
+			{
+				if (job.getJobConfig().getReportPeriodDefine().equals(AnalysisConstants.REPORT_PERIOD_MONTH))
+				{
+					Calendar calendar = Calendar.getInstance();
+					int now = calendar.get(Calendar.MONTH);
+					
+					if (job.getReportPeriodFlag() != -1 && now != job.getReportPeriodFlag())
+						needToSetJobResultNull = true;
+					
+					job.setReportPeriodFlag(now);
+				}
+			}
+		}
+		
+		if (needToSetJobResultNull)
+		{
+			job.setJobResult(null);
+			
+			//删除临时文件，防止重复载入使得清空不生效
+			if (config.getSaveTmpResultToFile())
+			{
+				JobDataOperation jobDataOperation = new JobDataOperation(job,AnalysisConstants.JOBMANAGER_EVENT_DEL_DATAFILE);
+				jobDataOperation.run();
+			}
+		}
+		
+		//清除主干数据，到时候自然会载入
+		if (config.getSaveTmpResultToFile())
+		{
+			logger.warn("@ disk2Mem mode: " + job.getJobName() + " store trunk to disk now .");
+			
+			JobDataOperation jobDataOperation = new JobDataOperation(job,AnalysisConstants.JOBMANAGER_EVENT_SETNULL_EXPORTDATA);
+			jobDataOperation.run();
+			
+		}
+		else
+		{
+			if (job.getLastExportTime() == 0 ||
+					System.currentTimeMillis() - job.getLastExportTime() >= config.getExportInterval())
+			{
+				logger.warn("export job: " + job.getJobName() + " trunk to disk.");
+				
+				JobDataOperation jobDataOperation = new JobDataOperation(job,AnalysisConstants.JOBMANAGER_EVENT_EXPORTDATA);
+				jobDataOperation.run();
 			}
 		}
 	}
@@ -401,6 +512,9 @@ public class JobManager implements IJobManager {
 				{
 					jobTask.setStatus(JobTaskStatus.UNDO);
 					jobTask.getRecycleCounter().incrementAndGet();
+					
+					if (logger.isWarnEnabled())
+						logger.warn("Task : " + jobTask.getTaskId() + " can't complete in time, it be recycle.");
 				}
 			}	
 		}

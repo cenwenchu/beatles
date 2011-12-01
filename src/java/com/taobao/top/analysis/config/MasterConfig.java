@@ -72,6 +72,7 @@ public class MasterConfig extends AbstractConfig{
 	private final static String EXPORT_INTERVAL = "exportInterval";
 	
 	// mod by fangweng 2011 performance
+	//数据量较小的情况下请勿使用！！！
 	//导出后清除对应的map内的数据，下次合并过程中再尝试从磁盘载入，通过配置开关判断是否实施
 	private final static String SAVE_TMP_RESULT_TO_FILE = "saveTmpResultToFile";
 	

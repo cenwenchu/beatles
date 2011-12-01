@@ -32,11 +32,10 @@ public class MemSlaveConnector implements ISlaveConnector {
 	
 	SlaveConfig config;
 	MemTunnel tunnel;
-	
+
 	@Override
 	public void init() throws AnalysisException {
-		// TODO Auto-generated method stub
-
+		
 	}
 
 	
@@ -107,6 +106,16 @@ public class MemSlaveConnector implements ISlaveConnector {
 		}
 		
 		return null;
+	}
+
+
+	public MemTunnel getTunnel() {
+		return tunnel;
+	}
+
+
+	public void setTunnel(MemTunnel tunnel) {
+		this.tunnel = tunnel;
 	}
 
 }

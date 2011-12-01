@@ -18,7 +18,7 @@ import com.taobao.top.analysis.node.job.JobTaskResult;
  * 2011-11-25
  *
  */
-public class MasterOutputAdapter implements IOutputAdaptor{
+public class MasterOutputAdaptor implements IOutputAdaptor{
 
 	ISlaveConnector slaveConnector;
 	AtomicLong sequenceGen = new AtomicLong(0);

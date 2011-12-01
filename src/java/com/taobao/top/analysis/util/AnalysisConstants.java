@@ -57,6 +57,13 @@ public class AnalysisConstants {
 	public final static String JOBMANAGER_EVENT_LOADDATA = "loadData";
 	public final static String JOBMANAGER_EVENT_LOADDATA_TO_TMP = "loadDataToTmp";
 	public final static String JOBMANAGER_EVENT_EXPORTDATA = "exportData";
+	public final static String JOBMANAGER_EVENT_SETNULL_EXPORTDATA = "setNullexportData";
+	public final static String JOBMANAGER_EVENT_DEL_DATAFILE = "delDataFile";
+	
+	
+	public final static String REPORT_PERIOD_HOUR = "hour";
+	public final static String REPORT_PERIOD_DAY = "day";
+	public final static String REPORT_PERIOD_MONTH = "month";
 	
 
 }

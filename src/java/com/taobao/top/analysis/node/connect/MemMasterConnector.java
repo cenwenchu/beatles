@@ -30,19 +30,22 @@ public class MemMasterConnector implements IMasterConnector,Runnable {
 	MasterNode masterNode;
 	MasterConfig config;
 	MemTunnel tunnel;
+	boolean running;
+	Thread innerThread;
 	
 	
 	@Override
 	public void init() throws AnalysisException {
-		// TODO Auto-generated method stub
-
+		running = true;
+		innerThread = new Thread(this);
+		innerThread.start();
 	}
 
 	
 	@Override
 	public void releaseResource() {
-		// TODO Auto-generated method stub
-
+		running = false;
+		innerThread.interrupt();
 	}
 
 	
@@ -72,11 +75,11 @@ public class MemMasterConnector implements IMasterConnector,Runnable {
 	@Override
 	public void run() {
 		
-		while(true)
+		while(running)
 		{
 			try
 			{
-				MasterNodeEvent nodeEvent = tunnel.getMasterSide().poll(10, TimeUnit.SECONDS);
+				MasterNodeEvent nodeEvent = tunnel.getMasterSide().poll(1, TimeUnit.SECONDS);
 				
 				if (nodeEvent != null)
 				{

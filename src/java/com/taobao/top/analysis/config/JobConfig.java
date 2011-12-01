@@ -5,6 +5,8 @@ package com.taobao.top.analysis.config;
 
 import org.apache.commons.lang.StringUtils;
 
+import com.taobao.top.analysis.util.AnalysisConstants;
+
 /**
  * 任务的配置类
  * @author fangweng
@@ -68,6 +70,11 @@ public class JobConfig extends AbstractConfig {
 	 */
 	private final static String JOB_RESET_TIME = "jobResetTime";
 	
+	/**
+	 * 报表有效时间段，用于增量报表，支持day,hour,month，默认是day，也就是一天重置一次增量报表
+	 */
+	private final static String REPORT_PERIOD_DEFINE = "reportPeriodDefine";
+	
 	public int getJobResetTime()
 	{
 		if(this.properties.containsKey(JOB_RESET_TIME))
@@ -108,7 +115,19 @@ public class JobConfig extends AbstractConfig {
 		this.properties.put(REPORT_CONFIGS,reportConfigs);
 	}
 
-
+	
+	public String getReportPeriodDefine()
+	{
+		if (this.properties.containsKey(REPORT_PERIOD_DEFINE))
+			return (String)this.properties.get(REPORT_PERIOD_DEFINE);
+		else
+			return AnalysisConstants.REPORT_PERIOD_DAY;
+	}
+	
+	public void setReportPeriodDefine(String reportPeriodDefine)
+	{
+		this.properties.put(REPORT_PERIOD_DEFINE,reportPeriodDefine);
+	}
 
 	public String getInput() {
 		return (String)this.properties.get(INPUT);

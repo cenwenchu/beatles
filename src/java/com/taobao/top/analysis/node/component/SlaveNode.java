@@ -71,6 +71,7 @@ public class SlaveNode extends AbstractNode<SlaveNodeEvent,SlaveConfig>{
 		
 		slaveConnector.init();
 		statisticsEngine.init();
+		jobResultMerger.init();
 	}
 
 	@Override
@@ -78,6 +79,7 @@ public class SlaveNode extends AbstractNode<SlaveNodeEvent,SlaveConfig>{
 		sequenceGen.set(0);
 		slaveConnector.releaseResource();
 		statisticsEngine.releaseResource();
+		jobResultMerger.releaseResource();
 	}
 
 	@Override
