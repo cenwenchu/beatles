@@ -61,6 +61,14 @@ public class MixJobBuilder implements IJobBuilder {
 		jobBuilders.remove(protocol);
 	}
 	
+	public Map<String,Job> build() throws AnalysisException 
+	{
+		if(config == null)
+			throw new AnalysisException("master config is null!");
+			
+		return build(config.getJobsSource());
+	}
+	
 	@Override
 	public Map<String,Job> build(String config) throws 
 			AnalysisException {
@@ -95,7 +103,7 @@ public class MixJobBuilder implements IJobBuilder {
 
 	@Override
 	public Map<String,Job> rebuild() throws AnalysisException {
-		if (jobSource != null)
+		if (this.isNeedRebuild() && jobSource != null)
 		{
 			this.setNeedRebuild(false);
 			return build(this.jobSource);

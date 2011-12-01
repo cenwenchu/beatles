@@ -42,6 +42,43 @@ public class ReportUtil {
 	private static final Log logger = LogFactory.getLog(ReportUtil.class);
 	private static Map<Object, Object> localCache = new ConcurrentHashMap<Object, Object>();
 	
+	public static InputStream getInputStreamFromFile(String file) throws IOException
+	{
+		InputStream in = null;
+		
+		String localdir = new StringBuilder()
+				.append(System.getProperty("user.dir"))
+					.append(File.separatorChar).toString();
+		ClassLoader loader = Thread.currentThread().getContextClassLoader();
+		
+		if (file.startsWith("file:")) {
+			try {
+				in = new java.io.FileInputStream(new File(
+						file.substring(file.indexOf("file:")
+								+ "file:".length())));
+			} catch (Exception e) {
+				logger.error(e);
+			}
+
+			if (in == null)
+				in = new java.io.FileInputStream(new File(localdir
+						+ file.substring(file.indexOf("file:")
+								+ "file:".length())));
+		} else {
+			URL url = loader.getResource(file);
+
+			if (url == null) {
+				String error = "configFile: " + file + " not exist !";
+				logger.error(error);
+				throw new java.lang.RuntimeException(error);
+			}
+
+			in = url.openStream();
+		}
+		
+		return in;
+	}
+	
 	/**
 	 * 根据定义获取对应日志行产生的key
 	 * 
@@ -166,43 +203,6 @@ public class ReportUtil {
 		}
 
 		return result;
-	}
-	
-	public static InputStream getInputFromFile(String file) throws IOException
-	{
-		InputStream in = null;
-		
-		File f = new File(file);
-		
-		if (!f.exists() || (f.exists() && f.isDirectory()))
-		{
-			if (!f.exists())
-			{
-				f = new File(new StringBuilder()
-					.append(System.getProperty("user.dir"))
-						.append(File.separatorChar).append(file).toString());
-				
-				if (!f.exists())
-				{
-					URL resource = ClassLoader.getSystemResource(file);
-					
-					if (resource == null)
-						throw new java.io.FileNotFoundException(new StringBuilder("file : ")
-							.append(file).append("not found").toString());
-					else
-						in = resource.openStream();
-				}
-			}
-			else
-				throw new java.io.FileNotFoundException(new StringBuilder("file : ")
-					.append(file).append("not found").toString());
-		}
-		
-		
-		if (f.exists())
-			in = new FileInputStream(f);
-		
-		return in;
 	}
 	
 	

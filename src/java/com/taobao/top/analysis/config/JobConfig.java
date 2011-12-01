@@ -19,7 +19,7 @@ public class JobConfig extends AbstractConfig {
 	private static final long serialVersionUID = -9070035407756373931L;
 
 	/**
-	 * 报表配置文件，模型配置
+	 * 报表配置文件，模型配置，用于建立job的统计规则
 	 */
 	private final static String REPORT_CONFIGS = "reportConfigs";
 	
@@ -28,7 +28,7 @@ public class JobConfig extends AbstractConfig {
 	 */
 	private final static String INPUT ="input";
 	/**
-	 * 分析结果输出目录
+	 * 分析结果输出目录，xxx:xxxx用冒号作为协议与具体位置的分割
 	 */
 	private final static String OUTPUT ="output";
 	

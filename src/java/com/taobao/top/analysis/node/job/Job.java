@@ -135,7 +135,6 @@ public class Job {
 		merging = false;
 		exporting = false;
 		exported = false;
-		diskResult.clear();
 		diskResult = null;
 	}
 	

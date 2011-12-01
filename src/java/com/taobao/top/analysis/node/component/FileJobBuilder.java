@@ -55,6 +55,9 @@ public class FileJobBuilder implements IJobBuilder{
 	private final Log logger = LogFactory.getLog(FileJobBuilder.class);
 	private MasterConfig config;
 	private boolean needRebuild = false;
+	/**
+	 * 可用于rebuild，缓存上次的编译文件路径
+	 */
 	private String jobSource;
 	
 	@Override
@@ -78,7 +81,20 @@ public class FileJobBuilder implements IJobBuilder{
 		this.config = config;
 	}
 	
+	public Map<String,Job> build() throws AnalysisException
+	{
+		if(config == null)
+			throw new AnalysisException("master config is null!");
+			
+		return build(config.getJobsSource());
+	}
 	
+	/**
+	 * 从某一个位置获取任务集
+	 * @param 可以自己扩展是从本地文件载入还是http等其他方式载入
+	 * @return
+	 * @throws AnalysisException
+	 */
 	public Map<String,Job> build(String config) throws AnalysisException 
 	{
 		jobSource = config;
@@ -89,7 +105,7 @@ public class FileJobBuilder implements IJobBuilder{
 		
 		try
 		{
-			in = ReportUtil.getInputFromFile(config);
+			in = ReportUtil.getInputStreamFromFile(config);
 			
 			Properties prop = new Properties();
 			prop.load(in);
@@ -767,7 +783,7 @@ public class FileJobBuilder implements IJobBuilder{
 
 	@Override
 	public Map<String,Job> rebuild() throws AnalysisException {
-		if (jobSource != null)
+		if (this.needRebuild && jobSource != null)
 		{
 			this.needRebuild = false;
 			return build(this.jobSource);

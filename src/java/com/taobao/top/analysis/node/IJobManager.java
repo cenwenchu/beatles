@@ -13,6 +13,7 @@ import com.taobao.top.analysis.node.event.SendResultsRequestEvent;
 import com.taobao.top.analysis.node.job.Job;
 
 /**
+ * 任务管理类，是Master的核心类，负责对于整个任务管理流程
  * @author fangweng
  * @Email fangweng@taobao.com
  * 2011-11-28
@@ -62,6 +63,10 @@ public interface IJobManager extends IComponent<MasterConfig>{
 	 */
 	public void clearJobData(String jobName);
 	
+	/**
+	 * 设置masterNode来向上传递消息，由master向另一些部件发起消息或者处理
+	 * @param masterNode
+	 */
 	public void setMasterNode(MasterNode masterNode);
 	
 	public IJobBuilder getJobBuilder();

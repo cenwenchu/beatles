@@ -18,7 +18,7 @@ import com.taobao.top.analysis.node.event.INodeEvent;
 
 
 /**
- * 抽象节点处理主骨骼结构
+ * 抽象节点处理主骨骼结构，当前节点循环执行某一些逻辑，后台也支持监听事件发生
  * @author fangweng
  * @Email fangweng@taobao.com
  * 2011-11-28

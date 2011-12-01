@@ -3,9 +3,17 @@
  */
 package com.taobao.top.analysis.config;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Properties;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
+import com.taobao.top.analysis.util.ReportUtil;
 
 /**
  * 配置抽象类
@@ -15,16 +23,64 @@ import java.util.Map;
  */
 public abstract class AbstractConfig implements IConfig{
 	
+	private final Log logger = LogFactory.getLog(AbstractConfig.class);
+	
 	/**
 	 * 
 	 */
 	private static final long serialVersionUID = -1038082086935557144L;
 	
+	/**
+	 * 用于存储动态属性的map
+	 */
 	Map<String,String> properties = new HashMap<String,String>();
 	
+	@Override
 	public void addAllToConfig(Map<String,String> props)
 	{
 		this.properties.putAll(props);
+	}
+	
+	/**
+	 * 从外部配置文件载入
+	 * @param file
+	 */
+	@Override
+	public void load(String file)
+	{
+		InputStream in = null;
+		
+		try
+		{
+			in = ReportUtil.getInputStreamFromFile(file);
+			
+			Properties prop = new Properties();
+			prop.load(in);
+			
+			Iterator<Object> keys = prop.keySet().iterator();
+			
+			while(keys.hasNext())
+			{
+				String key = (String)keys.next();
+				
+				properties.put(key, prop.getProperty(key));
+			}
+			
+		}
+		catch(Exception ex)
+		{
+			logger.error(ex);
+		}
+		finally
+		{
+			if (in != null)
+				try {
+					in.close();
+				} catch (IOException e) {
+					logger.error(e);
+				}
+		}
+		
 	}
 	
 	public String toString()

@@ -16,14 +16,23 @@ public class MasterConfig extends AbstractConfig{
 		processorCount = Runtime.getRuntime().availableProcessors();
 	}
 
+	/**
+	 * 当前cpu数量
+	 */
 	private static int processorCount = 1;
 	/**
 	 * 
 	 */
 	private static final long serialVersionUID = 4127398444132837605L;
 	
+	/**
+	 * master的名称
+	 */
 	private final static String MASTER_NAME = "masterName";
 	
+	/**
+	 * mater开启的端口
+	 */
 	private final static String MASTER_PORT = "masterPort";
 	
 	/**
@@ -32,7 +41,7 @@ public class MasterConfig extends AbstractConfig{
 	private final static String MAX_JOBEVENT_WORKER = "maxJobEventWorker";
 	
 	/**
-	 * 用于合并任务结果的线程最大设置，默认是当前处理器数-1
+	 * 用于合并任务结果的线程最大设置，默认是当前处理器数 + 3
 	 */
 	private final static String MAX_MERGE_JOB_WORKER = "maxMergeJobWorker";
 	
@@ -123,7 +132,7 @@ public class MasterConfig extends AbstractConfig{
 			return Integer.parseInt((String)this.properties.get(MAX_MERGE_JOB_WORKER));
 		else
 		{
-			return  processorCount + 1;
+			return  processorCount + 3;
 		}
 	}
 

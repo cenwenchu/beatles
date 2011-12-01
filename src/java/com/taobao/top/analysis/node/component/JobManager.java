@@ -80,7 +80,7 @@ public class JobManager implements IJobManager {
 		jobExporter.setConfig(config);
 		jobResultMerger.setConfig(config);
 		
-		jobs = jobBuilder.build(config.getJobsSource());		
+		jobs = jobBuilder.build();		
 		
 		if (jobs == null || (jobs != null && jobs.size() == 0))
 			throw new AnalysisException("jobs should not be empty!");

@@ -119,7 +119,7 @@ public class MergeJobOperation implements Runnable {
 			//磁盘换内存模式
 			if (config.getSaveTmpResultToFile())
 			{
-				if (job.getNeedLoadResultFile().get())
+				if (job.getNeedLoadResultFile().compareAndSet(true, false))
 				{
 					new JobDataOperation(job,AnalysisConstants.JOBMANAGER_EVENT_LOADDATA_TO_TMP).run();
 				}

@@ -17,8 +17,14 @@ public class SlaveConfig extends AbstractConfig {
 	 */
 	private static final long serialVersionUID = -2947907535268615055L;
 	
+	/**
+	 * mater的地址
+	 */
 	private final static String MASTER_ADDRESS = "masterAddress";
 	
+	/**
+	 * master端口
+	 */
 	private final static String MASTER_PORT = "masterPort";
 	
 	/**
