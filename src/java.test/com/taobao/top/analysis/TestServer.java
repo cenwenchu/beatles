@@ -5,7 +5,6 @@ package com.taobao.top.analysis;
 
 import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStream;
 import java.net.URL;
 
 import javax.servlet.ServletException;

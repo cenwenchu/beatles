@@ -80,6 +80,10 @@ public class JobManager implements IJobManager {
 		jobExporter.setConfig(config);
 		jobResultMerger.setConfig(config);
 		
+		jobBuilder.init();
+		jobExporter.init();
+		jobResultMerger.init();
+		
 		jobs = jobBuilder.build();		
 		
 		if (jobs == null || (jobs != null && jobs.size() == 0))
@@ -103,10 +107,6 @@ public class JobManager implements IJobManager {
 				new NamedThreadFactory("jobManagerEventProcess_worker"));
 			
 		addJobsToPool();
-		
-		jobBuilder.init();
-		jobExporter.init();
-		jobResultMerger.init();
 	}
 
 	
@@ -179,7 +179,7 @@ public class JobManager implements IJobManager {
 					jobTask.setStartTime(System.currentTimeMillis());
 					jobTasks.add(jobTask);
 					
-					if (jobTasks.size() == jobCount)
+					if (jobTasks.size() >= jobCount)
 						break;
 				}				
 			}
@@ -205,8 +205,9 @@ public class JobManager implements IJobManager {
 				return;
 			}
 			
+			
 			//先放入队列，防止小概率多线程并发问题
-			jobTaskResultsQueuePool.get(jobs.get(jobTaskResult.getTaskIds().get(0)).getJobName()).offer(jobTaskResult);
+			jobTaskResultsQueuePool.get(jobTaskPool.get(jobTaskResult.getTaskIds().get(0)).getJobName()).offer(jobTaskResult);
 			
 			for(int i = 0 ; i < jobTaskResult.getTaskIds().size(); i++)
 			{
@@ -465,6 +466,28 @@ public class JobManager implements IJobManager {
 	@Override
 	public void setMasterNode(MasterNode masterNode) {
 		this.masterNode = masterNode;
+	}
+
+
+	public Map<String, BlockingQueue<JobTaskResult>> getJobTaskResultsQueuePool() {
+		return jobTaskResultsQueuePool;
+	}
+
+
+	public void setJobTaskResultsQueuePool(
+			Map<String, BlockingQueue<JobTaskResult>> jobTaskResultsQueuePool) {
+		this.jobTaskResultsQueuePool = jobTaskResultsQueuePool;
+	}
+
+
+	public Map<String, BlockingQueue<JobMergedResult>> getBranchResultQueuePool() {
+		return branchResultQueuePool;
+	}
+
+
+	public void setBranchResultQueuePool(
+			Map<String, BlockingQueue<JobMergedResult>> branchResultQueuePool) {
+		this.branchResultQueuePool = branchResultQueuePool;
 	}
 	
 }
