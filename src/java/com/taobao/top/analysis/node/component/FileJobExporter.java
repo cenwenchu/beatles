@@ -112,17 +112,17 @@ public class FileJobExporter implements IJobExporter {
 		long start = System.currentTimeMillis();
 		
 		List<String> reports = new CopyOnWriteArrayList<String>();
-				
-		//清理lazy数据
-		ReportUtil.cleanLazyData(entryResultPool, statisticsRule.getEntryPool());
-		//做一下lazy处理，用于输出
-		ReportUtil.lazyMerge(entryResultPool, statisticsRule.getEntryPool());
 		
 		if (entryResultPool == null || statisticsRule.getReportPool() == null
 				|| (entryResultPool != null && entryResultPool.size() == 0)
 				|| (statisticsRule.getReportPool() != null
 					&& statisticsRule.getReportPool().size() == 0))
 			return reports;
+		
+		//清理lazy数据
+		ReportUtil.cleanLazyData(entryResultPool, statisticsRule.getEntryPool());
+		//做一下lazy处理，用于输出
+		ReportUtil.lazyMerge(entryResultPool, statisticsRule.getEntryPool());
 
 		Calendar calendar = Calendar.getInstance();
 		String currentTime = new StringBuilder()

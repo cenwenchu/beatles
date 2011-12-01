@@ -54,7 +54,7 @@ public class DefaultAnalysisEngineTest {
 		defaultAnalysisEngine.addOutputAdaptor(fileOutAdaptor);
 			
 		FileJobBuilder jobBuilder = new FileJobBuilder();
-		Map<String,Job> jobs = jobBuilder.build("jobs-config.properties");
+		Map<String,Job> jobs = jobBuilder.build("jobs-config-engine.properties");
 		
 		for(Job job : jobs.values())
 		{
