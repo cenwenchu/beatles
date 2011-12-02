@@ -407,6 +407,9 @@ public class JobManager implements IJobManager {
 			//任务是否需要被重置
 			if (job.needReset())
 			{
+				if (logger.isInfoEnabled())
+					logger.info("job " + job.getJobName() + " be reset now.");
+					
 				job.reset();
 				
 				List<JobTask> tasks = job.getJobTasks();
@@ -513,7 +516,7 @@ public class JobManager implements IJobManager {
 			JobTask jobTask = jobTaskPool.get(taskId);
 			
 			if (taskStatus == JobTaskStatus.DOING && 
-					System.currentTimeMillis() - jobTask.getStartTime() >= jobTask.getTaskRecycleTime())
+					System.currentTimeMillis() - jobTask.getStartTime() >= jobTask.getTaskRecycleTime() * 1000)
 			{
 				if (statusPool.replace(taskId, JobTaskStatus.DOING, JobTaskStatus.UNDO))
 				{

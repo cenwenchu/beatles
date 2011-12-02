@@ -85,7 +85,7 @@ public class MasterSlaveIntegrationTest {
 		slaveNode.startNode();
 		
 		
-		Thread.sleep(250 * 1000);
+		Thread.sleep(30 * 1000);
 		
 		masterNode.stopNode();
 		slaveNode.stopNode();

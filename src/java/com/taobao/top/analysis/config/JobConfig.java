@@ -78,9 +78,9 @@ public class JobConfig extends AbstractConfig {
 	public int getJobResetTime()
 	{
 		if(this.properties.containsKey(JOB_RESET_TIME))
-			return Integer.parseInt((String)this.properties.get(JOB_RESET_TIME)) * 1000;
+			return Integer.parseInt((String)this.properties.get(JOB_RESET_TIME));
 		else
-			return 10 * 60 * 1000;
+			return 10 * 60;
 	}
 	
 	public void setJobResetTime(String jobResetTime)
@@ -91,9 +91,9 @@ public class JobConfig extends AbstractConfig {
 	public int getTaskRecycleTime()
 	{
 		if(this.properties.containsKey(TASK_RECYCLE_TIME))
-			return Integer.parseInt((String)this.properties.get(TASK_RECYCLE_TIME)) * 1000;
+			return Integer.parseInt((String)this.properties.get(TASK_RECYCLE_TIME));
 		else
-			return 60 * 1000;
+			return 60;
 	}
 	
 	public void setTaskRecycleTime(String taskRecycleTime)

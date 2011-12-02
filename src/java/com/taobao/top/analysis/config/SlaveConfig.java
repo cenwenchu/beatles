@@ -59,9 +59,9 @@ public class SlaveConfig extends AbstractConfig {
 
 	public int getMaxTaskProcessTime() {
 		if(this.properties.containsKey(MAX_TASK_PROCESS_TIME))
-			return Integer.parseInt((String)this.properties.get(MAX_TASK_PROCESS_TIME)) * 1000;
+			return Integer.parseInt((String)this.properties.get(MAX_TASK_PROCESS_TIME));
 		else
-			return 5 * 60 * 1000;
+			return 5 * 60;
 	}
 
 	public void setMaxTaskProcessTime(String maxTaskProcessTime) {
@@ -70,9 +70,9 @@ public class SlaveConfig extends AbstractConfig {
 	
 	public int getMaxBundleProcessTime() {
 		if(this.properties.containsKey(MAX_BUNDLE_PROCESS_TIME))
-			return Integer.parseInt((String)this.properties.get(MAX_BUNDLE_PROCESS_TIME)) * 1000;
+			return Integer.parseInt((String)this.properties.get(MAX_BUNDLE_PROCESS_TIME));
 		else
-			return 10 * 60 * 1000;
+			return 10 * 60;
 	}
 
 	public void setMaxBundleProcessTime(String maxBundleProcessTime) {
@@ -116,7 +116,7 @@ public class SlaveConfig extends AbstractConfig {
 		if(this.properties.containsKey(GET_JOB_INTERVAL))
 			return Integer.parseInt((String)this.properties.get(GET_JOB_INTERVAL)) * 1000;
 		else
-			return 3000;
+			return 3;
 	}
 
 	public void setGetJobInterval(String getJobInterval) {
