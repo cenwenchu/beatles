@@ -30,9 +30,15 @@ public class JobTask implements Serializable{
 	private Rule statisticsRule;
 	private String input;
 	private String output;
+	/**
+	 * 此次分析的过程中对于一条纪录的分隔符定义
+	 */
 	private String splitRegex;
 	private String inputEncoding;
 	private String outputEncoding;
+	/**
+	 * 任务回收时间，分发给某个slave以后多久可以被回收再次分配
+	 */
 	private int taskRecycleTime;
 	/**
 	 * 任务执行状态

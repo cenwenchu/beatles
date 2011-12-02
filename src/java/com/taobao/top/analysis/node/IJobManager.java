@@ -14,6 +14,8 @@ import com.taobao.top.analysis.node.job.Job;
 
 /**
  * 任务管理类，是Master的核心类，负责对于整个任务管理流程
+ * 注意由于默认的master是单线程执行任务管理，因此要保证jobManager的各个方法都能够快速返回避免影响流程
+ * 同时由于单线程管理，对于任务管理和分配的并发控制就可以比较简单处理
  * @author fangweng
  * @Email fangweng@taobao.com
  * 2011-11-28

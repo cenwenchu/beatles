@@ -11,6 +11,7 @@ import com.taobao.top.analysis.node.event.MasterNodeEvent;
 import com.taobao.top.analysis.node.event.SlaveNodeEvent;
 
 /**
+ * 服务端和客户端交互通道
  * @author fangweng
  * @Email fangweng@taobao.com
  * 2011-11-29

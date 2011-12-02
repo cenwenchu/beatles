@@ -9,7 +9,9 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.net.InetAddress;
 import java.net.URL;
+import java.net.UnknownHostException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -42,6 +44,31 @@ public class ReportUtil {
 	private static final Log logger = LogFactory.getLog(ReportUtil.class);
 	private static Map<Object, Object> localCache = new ConcurrentHashMap<Object, Object>();
 	
+	private static String ip;
+	
+	private static String separator;
+	
+	static 
+	{
+		try 
+		{
+			ip = InetAddress.getLocalHost().getHostAddress();
+			separator = System.getProperty("line.separator");
+		} 
+		catch (UnknownHostException e) {
+		}
+	}
+	
+	
+	
+	public static String getIp() {
+		return ip;
+	}
+
+	public static String getSeparator() {
+		return separator;
+	}
+
 	public static InputStream getInputStreamFromFile(String file) throws IOException
 	{
 		InputStream in = null;

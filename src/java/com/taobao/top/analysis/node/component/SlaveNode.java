@@ -30,6 +30,8 @@ import com.taobao.top.analysis.statistics.IStatisticsEngine;
 import com.taobao.top.analysis.util.NamedThreadFactory;
 
 /**
+ * 分布式集群 Slave Node （可以是虚拟机内部的）
+ * 使用方式参考MasterSlaveIntegrationTest 类
  * @author fangweng
  * @Email fangweng@taobao.com
  * 2011-11-28
@@ -39,9 +41,21 @@ public class SlaveNode extends AbstractNode<SlaveNodeEvent,SlaveConfig>{
 
 	private static final Log logger = LogFactory.getLog(SlaveNode.class);
 	
+	/**
+	 * 与master通信的组件
+	 */
 	ISlaveConnector slaveConnector;
+	/**
+	 * 分析引擎
+	 */
 	IStatisticsEngine statisticsEngine;
+	/**
+	 * 结果合并组件，用于一次获取多个任务，合并任务结果返回给master的情况，分担master合并压力
+	 */
 	IJobResultMerger jobResultMerger;
+	/**
+	 * 会话序列生成器
+	 */
 	AtomicLong sequenceGen;
 	
 	/**
@@ -129,10 +143,12 @@ public class SlaveNode extends AbstractNode<SlaveNodeEvent,SlaveConfig>{
 		
 		if (jobTasks != null && jobTasks.length > 0)
 		{
+			//只有一个任务的情况
 			if (jobTasks.length == 1)
 			{
 				try 
 				{
+					//计算并输出
 					statisticsEngine.doExport(jobTasks[0],statisticsEngine.doAnalysis(jobTasks[0]));
 				} 
 				catch (Exception e) {
@@ -203,6 +219,13 @@ public class SlaveNode extends AbstractNode<SlaveNodeEvent,SlaveConfig>{
 		
 	}
 	
+	/**
+	 * 同一个Job的多个Task并行执行，并最后合并的模式处理
+	 * @author fangweng
+	 * email: fangweng@taobao.com
+	 * 下午2:00:58
+	 *
+	 */
 	class BundleTasksExecutable implements java.lang.Runnable
 	{
 		List<JobTask> jobTasks;
@@ -218,10 +241,12 @@ public class SlaveNode extends AbstractNode<SlaveNodeEvent,SlaveConfig>{
 		public void run() {
 			try
 			{
+				//只有一个任务
 				if (jobTasks.size() == 1)
 				{
 					try 
 					{
+						//计算并输出
 						statisticsEngine.doExport(jobTasks.get(0),statisticsEngine.doAnalysis(jobTasks.get(0)));
 					} 
 					catch (Exception e) {
@@ -234,6 +259,7 @@ public class SlaveNode extends AbstractNode<SlaveNodeEvent,SlaveConfig>{
 					
 					final List<JobTaskResult> taskResults = new ArrayList<JobTaskResult>();
 					
+					//同一个Job的多个Task并行执行
 					for(JobTask jobtask : jobTasks)
 					{
 						final JobTask j = jobtask;
@@ -270,8 +296,9 @@ public class SlaveNode extends AbstractNode<SlaveNodeEvent,SlaveConfig>{
 						//do nothing
 					}
 					
+					//合并分析结果
 					JobTaskResult jobTaskResult = jobResultMerger.merge(jobTasks.get(0), taskResults,true);
-						
+					//输出到服务端
 					statisticsEngine.doExport(jobTasks.get(0), jobTaskResult);
 				}
 			}

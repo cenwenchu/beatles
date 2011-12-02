@@ -8,8 +8,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.UnsupportedEncodingException;
-import java.net.InetAddress;
-import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -48,18 +46,16 @@ import com.taobao.top.analysis.util.Threshold;
 public class StatisticsEngine implements IStatisticsEngine{
 	private static final Log logger = LogFactory.getLog(StatisticsEngine.class);
 	
-	private static String ip;
 	private Threshold threshold;
 	SlaveConfig config;
 	
-	static {
-		try {
-			ip = InetAddress.getLocalHost().getHostAddress();
-		} catch (UnknownHostException e) {
-		}
-	}
-	
+	/**
+	 * 输入的适配器，用于支持任务执行时数据来源的扩展
+	 */
 	List<IInputAdaptor> inputAdaptors;
+	/**
+	 * 输出的适配器，用于支持任务执行完毕以后数据输出的扩展
+	 */
 	List<IOutputAdaptor> outputAdaptors;
 	
 	public StatisticsEngine()
@@ -152,6 +148,7 @@ public class StatisticsEngine implements IStatisticsEngine{
 
 	}
 	
+	// 分析数据
 	JobTaskResult analysis(InputStream in,JobTask jobtask) throws UnsupportedEncodingException
 	{
 		
@@ -181,6 +178,7 @@ public class StatisticsEngine implements IStatisticsEngine{
 		
 		try 
 		{
+			//逐行处理
 			while ((record = reader.readLine()) != null) 
 			{
 				boolean failure=false;
@@ -296,7 +294,7 @@ public class StatisticsEngine implements IStatisticsEngine{
 			taskExecuteInfo.setErrorLine(exceptionLine);
 			taskExecuteInfo.setJobDataSize(size*2);
 			taskExecuteInfo.setTotalLine(normalLine+exceptionLine+emptyLine);
-			taskExecuteInfo.setWorkerIp(ip);
+			taskExecuteInfo.setWorkerIp(ReportUtil.getIp());
 			
 			if (logger.isWarnEnabled())
 				logger.warn(new StringBuilder("jobtask ").append(jobtask.getTaskId())
@@ -309,7 +307,7 @@ public class StatisticsEngine implements IStatisticsEngine{
 		
 	}
 	
-	
+	//处理单行数据
 	public void processSingleLine(ReportEntry entry, String[] contents,
 			Map<String, Object> valueTempPool,JobTask jobtask,JobTaskResult jobTaskResult){
 		

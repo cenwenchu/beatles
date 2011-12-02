@@ -11,8 +11,6 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
-import java.net.InetAddress;
-import java.net.UnknownHostException;
 import java.util.Calendar;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -31,8 +29,10 @@ import com.taobao.top.analysis.exception.AnalysisException;
 import com.taobao.top.analysis.node.job.Job;
 import com.taobao.top.analysis.util.AnalysisConstants;
 import com.taobao.top.analysis.util.AnalyzerFilenameFilter;
+import com.taobao.top.analysis.util.ReportUtil;
 
 /**
+ * 对于某一个Job的数据做操作，支持Job的中间结果导入，导出，删除
  * @author fangweng
  * @Email fangweng@taobao.com
  * 2011-11-29
@@ -43,17 +43,7 @@ public class JobDataOperation implements Runnable {
 	private final Log logger = LogFactory.getLog(JobDataOperation.class);
 	Job job;
 	String operation;
-	private static String ip;
 	
-	private static String separator;
-	
-	static {
-		try {
-			ip = InetAddress.getLocalHost().getHostAddress();
-			separator = System.getProperty("line.separator");
-		} catch (UnknownHostException e) {
-		}
-	}
 	
 	public JobDataOperation(Job job,String operation)
 	{
@@ -404,7 +394,7 @@ public class JobDataOperation implements Runnable {
 					.append("-")
 					.append(job.getJobName())
 					.append("-")
-					.append(ip)
+					.append(ReportUtil.getIp())
 					.append(_fileSuffix).toString();
 				
 				//做一个备份
@@ -516,7 +506,7 @@ public class JobDataOperation implements Runnable {
 					bwriter.write(AnalysisConstants.EXPORT_RECORD_SPLIT);
 				}
 				
-				bwriter.write(separator);
+				bwriter.write(ReportUtil.getSeparator());
 				
 			}
 			bwriter.flush();

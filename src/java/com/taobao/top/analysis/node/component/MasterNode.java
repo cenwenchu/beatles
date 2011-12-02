@@ -23,7 +23,8 @@ import com.taobao.top.analysis.node.event.SendResultsResponseEvent;
 import com.taobao.top.analysis.node.job.JobTask;
 
 /**
- * Master
+ * 分布式集群 Master Node （可以是虚拟机内部的）
+ * 使用方式参考MasterSlaveIntegrationTest 类
  * @author fangweng
  * @Email fangweng@taobao.com
  * 2011-11-28
@@ -33,7 +34,13 @@ public class MasterNode extends AbstractNode<MasterNodeEvent,MasterConfig> {
 
 	private static final Log logger = LogFactory.getLog(MasterNode.class);
 	
+	/**
+	 * 任务管理组件
+	 */
 	private IJobManager jobManager;
+	/**
+	 * 用于与Slave通信的组件
+	 */
 	private IMasterConnector masterConnector;
 	
 	public IJobManager getJobManager() {
@@ -79,6 +86,11 @@ public class MasterNode extends AbstractNode<MasterNodeEvent,MasterConfig> {
 		jobManager.checkJobStatus();
 	}
 	
+	/**
+	 * 响应请求任务的逻辑
+	 * @param sequence
+	 * @param jobTasks
+	 */
 	public void echoGetJobTasks(String sequence,List<JobTask> jobTasks)
 	{
 		GetTaskResponseEvent event = new GetTaskResponseEvent(sequence);
@@ -104,7 +116,7 @@ public class MasterNode extends AbstractNode<MasterNodeEvent,MasterConfig> {
 	}
 	
 	/**
-	 * 响应发送任务结果的请求
+	 * 响应Slave提交任务结果的请求
 	 * @param 返回结果
 	 */
 	public void echoSendJobTaskResults(String sequence,String response)

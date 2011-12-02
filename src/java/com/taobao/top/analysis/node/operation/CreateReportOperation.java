@@ -19,6 +19,7 @@ import com.taobao.top.analysis.util.AnalysisConstants;
 import com.taobao.top.analysis.util.ReportUtil;
 
 /**
+ * 创建报表的可执行类，用于异步化执行创建报表操作
  * @author fangweng
  * @Email fangweng@taobao.com
  * 2011-11-29

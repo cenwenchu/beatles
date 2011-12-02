@@ -4,6 +4,7 @@
 package com.taobao.top.analysis.node.event;
 
 /**
+ * 服务端事件消息码
  * @author fangweng
  * @Email fangweng@taobao.com
  * 2011-11-29

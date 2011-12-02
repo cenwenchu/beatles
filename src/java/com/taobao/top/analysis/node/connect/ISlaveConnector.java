@@ -10,6 +10,7 @@ import com.taobao.top.analysis.node.event.SendResultsRequestEvent;
 import com.taobao.top.analysis.node.job.JobTask;
 
 /**
+ * Slave端的通信组件，主要用于服务端与客户端通信，可自定义扩展为内存交互，socket交互，db交互等
  * @author fangweng
  * @Email fangweng@taobao.com
  * 2011-11-29

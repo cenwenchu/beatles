@@ -29,6 +29,7 @@ import com.taobao.top.analysis.util.ReportUtil;
 
 
 /**
+ * 任务合并接口的实现
  * @author fangweng
  * @Email fangweng@taobao.com
  * 2011-11-30

@@ -6,6 +6,7 @@ package com.taobao.top.analysis.node.job;
 import java.util.Map;
 
 /**
+ * 用于master合并时获取不到主干的线程临时合并的结果定义
  * @author fangweng
  * @Email fangweng@taobao.com
  * 2011-11-28

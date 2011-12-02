@@ -6,6 +6,7 @@ package com.taobao.top.analysis.node.event;
 import com.taobao.top.analysis.node.job.JobTaskResult;
 
 /**
+ * Slave返回处理后结果的请求事件
  * @author fangweng
  * @Email fangweng@taobao.com
  * 2011-11-29

@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
+ * 任务执行后得到的结果
  * @author fangweng
  * @Email fangweng@taobao.com
  * 2011-11-29
@@ -21,6 +22,9 @@ public class JobTaskResult implements Serializable {
 	 */
 	private static final long serialVersionUID = -150184766178723011L;
 	
+	/**
+	 * 支持slave将多个结果合并为一个，包含多个taskid，不过task必须隶属于一个job
+	 */
 	private List<String> taskIds;
 	
 	private long creatTime;
@@ -31,6 +35,9 @@ public class JobTaskResult implements Serializable {
 	 */
 	private Map<String, Map<String, Object>> results;
 
+	/**
+	 * 一个或者多个执行任务的信息，支持slave将多个结果合并为一个，不过task必须隶属于一个job
+	 */
 	private List<JobTaskExecuteInfo> taskExecuteInfos;
 	
 	public JobTaskResult()

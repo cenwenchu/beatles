@@ -1,6 +1,7 @@
 package com.taobao.top.analysis.node.event;
 
 /**
+ * 响应Slave提交处理结果请求的事件
  * @author fangweng
  * @Email fangweng@taobao.com
  * 2011-11-29

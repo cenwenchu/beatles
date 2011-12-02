@@ -53,8 +53,10 @@ public class JobManager implements IJobManager {
 	private IJobResultMerger jobResultMerger;
 	private MasterConfig config;
 	private MasterNode masterNode;
+	/**
+	 * 所负责的管理的任务集合
+	 */
 	private Map<String,Job> jobs;
-	
 	
 	/**
 	 * slave 返回得结果数据
@@ -153,7 +155,7 @@ public class JobManager implements IJobManager {
 		
 		String jobName = requestEvent.getJobName();
 		int jobCount = requestEvent.getRequestJobCount();
-		List<JobTask> jobTasks = new ArrayList<JobTask>();
+		final List<JobTask> jobTasks = new ArrayList<JobTask>();
 		
 		if(logger.isInfoEnabled())
 			if (jobName != null && jobs.containsKey(jobName))
@@ -204,7 +206,19 @@ public class JobManager implements IJobManager {
 			}
 		}
 
-		masterNode.echoGetJobTasks(requestEvent.getSequence(),jobTasks);
+		final String sequence = requestEvent.getSequence();
+		
+		//由于该操作比较慢，开线程执行，保证速度
+		eventProcessThreadPool.equals(
+				new Runnable()
+						{
+							public void run()
+							{
+								masterNode.echoGetJobTasks(sequence,jobTasks);
+							}
+						});
+			
+		
 	}
 
 
@@ -254,7 +268,16 @@ public class JobManager implements IJobManager {
 			
 		}
 		
-		masterNode.echoSendJobTaskResults(jobResponseEvent.getSequence(),"success");
+		final String sequence = jobResponseEvent.getSequence();
+		
+		eventProcessThreadPool.equals(
+				new Runnable()
+						{
+							public void run()
+							{
+								masterNode.echoSendJobTaskResults(sequence,"success");
+							}
+						});
 	}
 
 
@@ -332,6 +355,7 @@ public class JobManager implements IJobManager {
 		
 	}
 	
+	//重新增加任务到任务池中
 	protected void addJobsToPool()
 	{
 		for(Job job : jobs.values())
@@ -347,6 +371,7 @@ public class JobManager implements IJobManager {
 		
 	}
 	
+	//做合并和导出，重置任务的检查操作
 	protected void mergeAndExportJobs()
 	{
 		for(Job job : jobs.values())
@@ -430,7 +455,7 @@ public class JobManager implements IJobManager {
 	{
 		boolean needToSetJobResultNull = false;
 		
-		//判断是否到了报表的有效时间段
+		//判断是否到了报表的有效时间段，支持小时，日，月三种方式
 		if (job.getJobConfig().getReportPeriodDefine().equals(AnalysisConstants.REPORT_PERIOD_DAY))
 		{
 			Calendar calendar = Calendar.getInstance();
@@ -478,6 +503,9 @@ public class JobManager implements IJobManager {
 				JobDataOperation jobDataOperation = new JobDataOperation(job,AnalysisConstants.JOBMANAGER_EVENT_DEL_DATAFILE);
 				jobDataOperation.run();
 			}
+			
+			if (logger.isInfoEnabled())
+				logger.info("job " + job.getJobName() + " report data be reset.it's a new start. ");
 		}
 		
 		//清除主干数据，到时候自然会载入

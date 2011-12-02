@@ -15,8 +15,12 @@ import com.taobao.top.analysis.node.job.JobMergedResult;
 import com.taobao.top.analysis.util.AnalysisConstants;
 import com.taobao.top.analysis.util.ReportUtil;
 
+
 /**
+ * 合并任务操作，支持主干和分支两种合并模式
  * @author fangweng
+ * @Email  fangweng@taobao.com
+ * 2011-11-29
  *
  */
 public class MergeJobOperation implements Runnable {

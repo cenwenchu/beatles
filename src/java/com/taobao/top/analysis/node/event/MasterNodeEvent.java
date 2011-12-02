@@ -6,6 +6,7 @@ package com.taobao.top.analysis.node.event;
 
 
 /**
+ * 服务端的事件定义
  * @author fangweng
  * @Email fangweng@taobao.com
  * 2011-11-29
