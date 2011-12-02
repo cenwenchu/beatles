@@ -116,7 +116,7 @@ public class SlaveConfig extends AbstractConfig {
 		if(this.properties.containsKey(GET_JOB_INTERVAL))
 			return Integer.parseInt((String)this.properties.get(GET_JOB_INTERVAL)) * 1000;
 		else
-			return 3;
+			return 3000;
 	}
 
 	public void setGetJobInterval(String getJobInterval) {
