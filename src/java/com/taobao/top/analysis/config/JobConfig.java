@@ -61,12 +61,12 @@ public class JobConfig extends AbstractConfig {
 	private final static String  OUTPUT_PARAMS = "outputParams";
 	
 	/**
-	 * 单个任务重置时间，单位（秒），多久时间没有被执行完毕任务可以被回收再分配
+	 * 单个任务重置时间，单位（秒），多久时间没有被执行完毕任务可以被回收再分配,默认1分钟
 	 */
 	private final static String TASK_RECYCLE_TIME = "taskRecycleTime";
 
 	/**
-	 * 任务组重置时间，单位（秒）
+	 * 任务组重置时间，单位（秒），默认10分钟
 	 */
 	private final static String JOB_RESET_TIME = "jobResetTime";
 	
@@ -78,9 +78,9 @@ public class JobConfig extends AbstractConfig {
 	public int getJobResetTime()
 	{
 		if(this.properties.containsKey(JOB_RESET_TIME))
-			return Integer.parseInt((String)this.properties.get(JOB_RESET_TIME));
+			return Integer.parseInt((String)this.properties.get(JOB_RESET_TIME)) * 1000;
 		else
-			return 0;
+			return 10 * 60 * 1000;
 	}
 	
 	public void setJobResetTime(String jobResetTime)
@@ -91,9 +91,9 @@ public class JobConfig extends AbstractConfig {
 	public int getTaskRecycleTime()
 	{
 		if(this.properties.containsKey(TASK_RECYCLE_TIME))
-			return Integer.parseInt((String)this.properties.get(TASK_RECYCLE_TIME));
+			return Integer.parseInt((String)this.properties.get(TASK_RECYCLE_TIME)) * 1000;
 		else
-			return 0;
+			return 60 * 1000;
 	}
 	
 	public void setTaskRecycleTime(String taskRecycleTime)

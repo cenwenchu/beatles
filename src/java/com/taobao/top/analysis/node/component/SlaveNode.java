@@ -9,6 +9,10 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.commons.logging.Log;
@@ -23,6 +27,7 @@ import com.taobao.top.analysis.node.event.SlaveNodeEvent;
 import com.taobao.top.analysis.node.job.JobTask;
 import com.taobao.top.analysis.node.job.JobTaskResult;
 import com.taobao.top.analysis.statistics.IStatisticsEngine;
+import com.taobao.top.analysis.util.NamedThreadFactory;
 
 /**
  * @author fangweng
@@ -38,6 +43,11 @@ public class SlaveNode extends AbstractNode<SlaveNodeEvent,SlaveConfig>{
 	IStatisticsEngine statisticsEngine;
 	IJobResultMerger jobResultMerger;
 	AtomicLong sequenceGen;
+	
+	/**
+	 * 分析工作线程池
+	 */
+	private ThreadPoolExecutor analysisWorkerThreadPool;
 
 	public IStatisticsEngine getStatisticsEngine() {
 		return statisticsEngine;
@@ -69,6 +79,12 @@ public class SlaveNode extends AbstractNode<SlaveNodeEvent,SlaveConfig>{
 		slaveConnector.setConfig(config);
 		statisticsEngine.setConfig(config);
 		
+		analysisWorkerThreadPool = new ThreadPoolExecutor(
+				this.config.getAnalysisWorkerNum(),
+				this.config.getAnalysisWorkerNum(), 0,
+				TimeUnit.SECONDS, new LinkedBlockingQueue<Runnable>(),
+				new NamedThreadFactory("analysisProcess_worker"));
+		
 		slaveConnector.init();
 		statisticsEngine.init();
 		jobResultMerger.init();
@@ -79,10 +95,19 @@ public class SlaveNode extends AbstractNode<SlaveNodeEvent,SlaveConfig>{
 
 	@Override
 	public void releaseResource() {
+		
 		sequenceGen.set(0);
-		slaveConnector.releaseResource();
-		statisticsEngine.releaseResource();
-		jobResultMerger.releaseResource();
+		
+		try
+		{
+			analysisWorkerThreadPool.shutdown();
+		}
+		finally
+		{
+			slaveConnector.releaseResource();
+			statisticsEngine.releaseResource();
+			jobResultMerger.releaseResource();
+		}
 		
 		if (logger.isInfoEnabled())
 			logger.info("Slave releaseResource complete.");
@@ -134,38 +159,25 @@ public class SlaveNode extends AbstractNode<SlaveNodeEvent,SlaveConfig>{
 					jobtasks.add(task);
 				}
 				
+				//起多个线程执行
+				CountDownLatch countDownLatch = new CountDownLatch(taskBundle.size());
+							
 				for(List<JobTask> tasks : taskBundle.values())
 				{
-					if (tasks.size() == 1)
-					{
-						try 
-						{
-							statisticsEngine.doExport(tasks.get(0),statisticsEngine.doAnalysis(tasks.get(0)));
-						} 
-						catch (Exception e) {
-							logger.error(e);
-						}
-					}
+					analysisWorkerThreadPool.execute(new BundleTasksExecutable(tasks,countDownLatch));
+				}
+				
+				try 
+				{
+					if (!countDownLatch.await(config.getMaxBundleProcessTime(), TimeUnit.SECONDS))
+						logger.error("Bundle task execute timeout !");
 					else
-					{
-						List<JobTaskResult> taskResults = new ArrayList<JobTaskResult>();
-						
-						for(JobTask jobtask : tasks)
-						{
-							try 
-							{
-								taskResults.add(statisticsEngine.doAnalysis(jobtask));
-							} 
-							catch (Exception e) 
-							{
-								logger.error(e);
-							} 
-						}
-						
-						JobTaskResult jobTaskResult = jobResultMerger.merge(tasks.get(0), taskResults,true);
-						
-						statisticsEngine.doExport(tasks.get(0), jobTaskResult);
-					}
+						if (logger.isInfoEnabled() && jobTasks != null && jobTasks.length > 0)
+							logger.info("Bundle task execute complete! task count :" + jobTasks.length);
+				} 
+				catch (InterruptedException e) 
+				{
+					//do nothing
 				}
 				
 			}
@@ -188,6 +200,87 @@ public class SlaveNode extends AbstractNode<SlaveNodeEvent,SlaveConfig>{
 	@Override
 	public void processEvent(SlaveNodeEvent event) {
 		// TODO Auto-generated method stub
+		
+	}
+	
+	class BundleTasksExecutable implements java.lang.Runnable
+	{
+		List<JobTask> jobTasks;
+		CountDownLatch countDownLatch;
+		
+		public BundleTasksExecutable(List<JobTask> jobTasks,CountDownLatch countDownLatch)
+		{
+			this.jobTasks = jobTasks;
+			this.countDownLatch = countDownLatch;
+		}
+		
+		@Override
+		public void run() {
+			try
+			{
+				if (jobTasks.size() == 1)
+				{
+					try 
+					{
+						statisticsEngine.doExport(jobTasks.get(0),statisticsEngine.doAnalysis(jobTasks.get(0)));
+					} 
+					catch (Exception e) {
+						logger.error(e);
+					}
+				}
+				else
+				{
+					final CountDownLatch taskCountDownLatch = new CountDownLatch(jobTasks.size());
+					
+					final List<JobTaskResult> taskResults = new ArrayList<JobTaskResult>();
+					
+					for(JobTask jobtask : jobTasks)
+					{
+						final JobTask j = jobtask;
+						
+						analysisWorkerThreadPool.execute(
+								new Runnable()
+								{
+									public void run()
+									{
+										try 
+										{
+											taskResults.add(statisticsEngine.doAnalysis(j));
+										} 
+										catch (Exception e) 
+										{
+											logger.error(e);
+										} 
+										finally
+										{
+											taskCountDownLatch.countDown();
+										}
+									}
+								}
+								);
+					}				
+					
+					
+					try 
+					{
+						if (!taskCountDownLatch.await(config.getMaxTaskProcessTime(),TimeUnit.SECONDS))
+							logger.error("task execute timeout !");
+					} 
+					catch (InterruptedException e) {
+						//do nothing
+					}
+					
+					JobTaskResult jobTaskResult = jobResultMerger.merge(jobTasks.get(0), taskResults,true);
+						
+					statisticsEngine.doExport(jobTasks.get(0), jobTaskResult);
+				}
+			}
+			finally
+			{
+				countDownLatch.countDown();
+			}
+			
+		}
 		
 	}
 

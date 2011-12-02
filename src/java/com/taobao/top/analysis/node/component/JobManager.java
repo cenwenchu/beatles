@@ -73,6 +73,9 @@ public class JobManager implements IJobManager {
 	 */
 	private Map<String,BlockingQueue<JobMergedResult>> branchResultQueuePool;
 	
+	/**
+	 * 事件处理线程
+	 */
 	private ThreadPoolExecutor eventProcessThreadPool;
 	
 

@@ -88,7 +88,14 @@ public abstract class AbstractNode<E extends INodeEvent,C extends IConfig> imple
 			
 			while(running)
 			{
-				this.process();
+				try
+				{
+					process();
+				}
+				catch(Exception ex)
+				{
+					logger.error(ex);
+				}
 			}
 		}
 		catch(AnalysisException ex)
@@ -121,6 +128,7 @@ public abstract class AbstractNode<E extends INodeEvent,C extends IConfig> imple
 				{
 					E event = queue.poll(1000, TimeUnit.MILLISECONDS);
 					
+					//事件处理是单线程
 					if (event != null)
 					{
 						processEvent(event);
