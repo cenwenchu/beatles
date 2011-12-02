@@ -202,10 +202,12 @@ public class JobDataOperation implements Runnable {
 		
 		// 当天的备份数据
 		Calendar calendar = Calendar.getInstance();
+		
 		String prefix = new StringBuilder()
 				.append(calendar.get(Calendar.YEAR)).append("-")
 				.append(String.valueOf(calendar.get(Calendar.MONTH) + 1))
-				.append("-").append(calendar.get(Calendar.DAY_OF_MONTH))
+				.append("-").append(calendar.get(Calendar.DAY_OF_MONTH)).append("-")
+				.append(job.getJobName())
 				.toString();
 		
 		for (File f : totalFiles) 
@@ -293,10 +295,11 @@ public class JobDataOperation implements Runnable {
 		// 当天的备份数据
 		Calendar calendar = Calendar.getInstance();
 		String prefix = new StringBuilder()
-				.append(calendar.get(Calendar.YEAR)).append("-")
-				.append(String.valueOf(calendar.get(Calendar.MONTH) + 1))
-				.append("-").append(calendar.get(Calendar.DAY_OF_MONTH))
-				.toString();
+			.append(calendar.get(Calendar.YEAR)).append("-")
+			.append(String.valueOf(calendar.get(Calendar.MONTH) + 1))
+			.append("-").append(calendar.get(Calendar.DAY_OF_MONTH)).append("-")
+			.append(job.getJobName())
+			.toString();
 		
 		for (File f : totalFiles) 
 		{
@@ -394,6 +397,8 @@ public class JobDataOperation implements Runnable {
 					.append(String.valueOf(calendar.get(Calendar.MONTH) + 1))
 					.append("-")
 					.append(calendar.get(Calendar.DAY_OF_MONTH))
+					.append("-")
+					.append(job.getJobName())
 					.append("-")
 					.append(ip)
 					.append(_fileSuffix).toString();
