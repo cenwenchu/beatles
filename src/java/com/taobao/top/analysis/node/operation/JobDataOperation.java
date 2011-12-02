@@ -68,7 +68,7 @@ public class JobDataOperation implements Runnable {
 		if (operation.equals(AnalysisConstants.JOBMANAGER_EVENT_SETNULL_EXPORTDATA))
 		{
 			if (logger.isInfoEnabled())
-				logger.info(job.getJobName() +  " start set trunk null and exportData now...");
+				logger.info(job.getJobName() +  " start clear trunk data and exportData now...");
 				
 			exportData(true);
 			
@@ -231,6 +231,8 @@ public class JobDataOperation implements Runnable {
 				return;
 			
 			job.setDiskResult(resultPool);
+			
+			logger.info("success load data to jobTmpTrunk.");
 		}
 		finally
 		{
@@ -260,6 +262,8 @@ public class JobDataOperation implements Runnable {
 					jobResult = null;
 					
 					job.setJobResult(resultPool);
+					
+					logger.info("success load data to jobTrunk.");
 				}
 				finally
 				{

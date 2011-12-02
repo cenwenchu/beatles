@@ -128,8 +128,15 @@ public class MergeJobOperation implements Runnable {
 				
 				if (gotLock)
 				{
-					diskTmpResult = job.getDiskResult();
-					job.setDiskResult(null);	
+					try
+					{
+						diskTmpResult = job.getDiskResult();
+						job.setDiskResult(null);
+					}
+					finally
+					{
+						job.getLoadLock().unlock();
+					}
 				}
 				else
 				{
