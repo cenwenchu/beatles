@@ -8,10 +8,7 @@ import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-
-import com.taobao.top.analysis.config.MasterConfig;
 import com.taobao.top.analysis.exception.AnalysisException;
-import com.taobao.top.analysis.node.component.MasterNode;
 import com.taobao.top.analysis.node.event.GetTaskResponseEvent;
 import com.taobao.top.analysis.node.event.MasterEventCode;
 import com.taobao.top.analysis.node.event.MasterNodeEvent;
@@ -24,11 +21,9 @@ import com.taobao.top.analysis.node.event.SendResultsResponseEvent;
  * 2011-11-29
  *
  */
-public class MemMasterConnector implements IMasterConnector,Runnable {
+public class MemMasterConnector extends AbstractMasterConnector implements Runnable {
 	private final Log logger = LogFactory.getLog(MemMasterConnector.class);
 	
-	MasterNode masterNode;
-	MasterConfig config;
 	MemTunnel tunnel;
 	boolean running;
 	Thread innerThread;
@@ -47,20 +42,6 @@ public class MemMasterConnector implements IMasterConnector,Runnable {
 		running = false;
 		innerThread.interrupt();
 	}
-
-	
-	@Override
-	public MasterConfig getConfig() {
-		// TODO Auto-generated method stub
-		return config;
-	}
-
-	
-	@Override
-	public void setConfig(MasterConfig config) {
-		this.config = config;
-	}
-	
 
 	public MemTunnel getTunnel() {
 		return tunnel;
@@ -100,12 +81,6 @@ public class MemMasterConnector implements IMasterConnector,Runnable {
 				logger.error(ex);
 			}
 		}
-	}
-
-
-	@Override
-	public void setMasterNode(MasterNode masterNode) {
-		this.masterNode = masterNode;
 	}
 
 

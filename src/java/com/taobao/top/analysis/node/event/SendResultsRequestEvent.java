@@ -23,6 +23,7 @@ public class SendResultsRequestEvent extends MasterNodeEvent{
 	
 	public SendResultsRequestEvent(String sequence)
 	{
+		this.eventCreateTime = System.currentTimeMillis();
 		this.sequence = sequence;
 		this.eventCode = MasterEventCode.SEND_RESULT;
 	}

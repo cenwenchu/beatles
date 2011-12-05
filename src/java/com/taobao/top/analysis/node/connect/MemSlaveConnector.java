@@ -8,8 +8,6 @@ import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-
-import com.taobao.top.analysis.config.SlaveConfig;
 import com.taobao.top.analysis.exception.AnalysisException;
 import com.taobao.top.analysis.node.event.GetTaskRequestEvent;
 import com.taobao.top.analysis.node.event.GetTaskResponseEvent;
@@ -26,11 +24,10 @@ import com.taobao.top.analysis.node.job.JobTask;
  * 2011-11-29
  *
  */
-public class MemSlaveConnector implements ISlaveConnector {
+public class MemSlaveConnector extends AbstractSlaveConnector {
 
 	private final Log logger = LogFactory.getLog(MemSlaveConnector.class);
 	
-	SlaveConfig config;
 	MemTunnel tunnel;
 
 	@Override
@@ -44,19 +41,6 @@ public class MemSlaveConnector implements ISlaveConnector {
 		// TODO Auto-generated method stub
 
 	}
-
-	
-	@Override
-	public SlaveConfig getConfig() {
-		return config;
-	}
-
-	
-	@Override
-	public void setConfig(SlaveConfig config) {
-		this.config = config;
-	}
-
 	
 	@Override
 	//做成阻塞模式

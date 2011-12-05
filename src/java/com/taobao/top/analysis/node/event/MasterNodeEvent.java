@@ -3,6 +3,10 @@
  */
 package com.taobao.top.analysis.node.event;
 
+import java.util.concurrent.CountDownLatch;
+
+import com.taobao.top.analysis.util.TimeOutEvent;
+
 
 
 /**
@@ -12,7 +16,7 @@ package com.taobao.top.analysis.node.event;
  * 2011-11-29
  *
  */
-public class MasterNodeEvent implements INodeEvent{
+public class MasterNodeEvent implements INodeEvent,TimeOutEvent{
 
 	/**
 	 * 
@@ -22,6 +26,21 @@ public class MasterNodeEvent implements INodeEvent{
 	MasterEventCode eventCode;
 	
 	String sequence;
+	
+	private CountDownLatch resultReadyFlag = new CountDownLatch(1);
+	
+	private Object response;
+	
+	protected long eventCreateTime;
+	
+
+	public Object getResponse() {
+		return response;
+	}
+
+	public void setResponse(Object response) {
+		this.response = response;
+	}
 
 	public String getSequence() {
 		return sequence;
@@ -37,6 +56,25 @@ public class MasterNodeEvent implements INodeEvent{
 
 	public void setEventCode(MasterEventCode eventCode) {
 		this.eventCode = eventCode;
-	}	
+	}
+
+	public CountDownLatch getResultReadyFlag() {
+		return resultReadyFlag;
+	}
+
+	public void setResultReadyFlag(CountDownLatch resultReadyFlag) {
+		this.resultReadyFlag = resultReadyFlag;
+	}
+
+	@Override
+	public long getEventCreateTime() {
+		return eventCreateTime;
+	}
+
+	@Override
+	public void setEventCreateTime(long eventCreateTime) {
+		this.eventCreateTime = eventCreateTime;
+	}
+	
 
 }

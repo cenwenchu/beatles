@@ -20,6 +20,7 @@ public class GetTaskRequestEvent extends MasterNodeEvent{
 	
 	public GetTaskRequestEvent(String sequence)
 	{
+		this.eventCreateTime = System.currentTimeMillis();
 		this.eventCode = MasterEventCode.GET_TASK;
 		this.sequence = sequence;
 	}
