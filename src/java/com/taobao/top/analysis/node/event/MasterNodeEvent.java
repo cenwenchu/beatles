@@ -27,11 +27,13 @@ public class MasterNodeEvent implements INodeEvent,TimeOutEvent{
 	
 	String sequence;
 	
-	private CountDownLatch resultReadyFlag = new CountDownLatch(1);
+	private transient CountDownLatch resultReadyFlag = new CountDownLatch(1);
 	
-	private Object response;
+	private transient Object response;
 	
-	protected long eventCreateTime;
+	protected transient long eventCreateTime = System.currentTimeMillis();
+	
+	protected transient long maxEventHoldTime = 0;
 	
 
 	public Object getResponse() {
@@ -75,6 +77,26 @@ public class MasterNodeEvent implements INodeEvent,TimeOutEvent{
 	public void setEventCreateTime(long eventCreateTime) {
 		this.eventCreateTime = eventCreateTime;
 	}
-	
+
+	public long getMaxEventHoldTime() {
+		return maxEventHoldTime;
+	}
+
+	public void setMaxEventHoldTime(long maxEventHoldTime) {
+		this.maxEventHoldTime = maxEventHoldTime;
+	}
+
+	@Override
+	public int compareTo(TimeOutEvent event) {
+		if (maxEventHoldTime == 0)
+			return 1;
+		
+		if (event.getMaxEventHoldTime() == 0)
+			return -1;
+		
+		
+		return (int)(eventCreateTime +  maxEventHoldTime * 1000 
+				- event.getEventCreateTime() - event.getMaxEventHoldTime() * 1000);
+	}
 
 }

@@ -94,13 +94,13 @@ public abstract class AbstractNode<E extends INodeEvent,C extends IConfig> imple
 				}
 				catch(Exception ex)
 				{
-					logger.error(ex);
+					logger.error(ex,ex);
 				}
 			}
 		}
 		catch(AnalysisException ex)
 		{
-			logger.error(ex);
+			logger.error(ex,ex);
 		}
 		finally
 		{
@@ -141,7 +141,7 @@ public abstract class AbstractNode<E extends INodeEvent,C extends IConfig> imple
 				}
 				catch(Exception ex)
 				{
-					logger.error(ex);
+					logger.error(ex,ex);
 				}
 			}
 			

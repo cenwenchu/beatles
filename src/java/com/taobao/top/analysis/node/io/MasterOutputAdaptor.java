@@ -45,6 +45,7 @@ public class MasterOutputAdaptor implements IOutputAdaptor{
 			.append(System.currentTimeMillis()).append("-").append(sequenceGen.incrementAndGet()).toString());
 		
 		event.setJobTaskResult(jobTaskResult);
+		event.setMaxEventHoldTime(slaveConnector.getConfig().getMaxClientEventWaitTime());
 		
 		slaveConnector.sendJobTaskResults(event);
 		

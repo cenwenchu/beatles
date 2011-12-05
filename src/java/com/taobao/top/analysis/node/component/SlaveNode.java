@@ -135,6 +135,7 @@ public class SlaveNode extends AbstractNode<SlaveNodeEvent,SlaveConfig>{
 		GetTaskRequestEvent event = new GetTaskRequestEvent(new StringBuilder()
 			.append(System.currentTimeMillis()).append("-").append(sequenceGen.incrementAndGet()).toString());
 		event.setRequestJobCount(config.getMaxTransJobCount());
+		event.setMaxEventHoldTime(config.getMaxClientEventWaitTime());
 		
 		if (config.getJobName() != null)
 			event.setJobName(config.getJobName());
@@ -152,7 +153,7 @@ public class SlaveNode extends AbstractNode<SlaveNodeEvent,SlaveConfig>{
 					statisticsEngine.doExport(jobTasks[0],statisticsEngine.doAnalysis(jobTasks[0]));
 				} 
 				catch (Exception e) {
-					logger.error(e);
+					logger.error(e,e);
 				}
 			}
 			else
@@ -250,7 +251,7 @@ public class SlaveNode extends AbstractNode<SlaveNodeEvent,SlaveConfig>{
 						statisticsEngine.doExport(jobTasks.get(0),statisticsEngine.doAnalysis(jobTasks.get(0)));
 					} 
 					catch (Exception e) {
-						logger.error(e);
+						logger.error(e,e);
 					}
 				}
 				else
@@ -275,7 +276,7 @@ public class SlaveNode extends AbstractNode<SlaveNodeEvent,SlaveConfig>{
 										} 
 										catch (Exception e) 
 										{
-											logger.error(e);
+											logger.error(e,e);
 										} 
 										finally
 										{

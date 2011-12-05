@@ -93,7 +93,7 @@ public class InnerKey implements java.io.Serializable{
 		}
 		catch(Exception ex)
 		{
-			logger.error(ex);
+			logger.error(ex,ex);
 		}
 		finally
 		{
@@ -103,7 +103,7 @@ public class InnerKey implements java.io.Serializable{
 					br.close();
 				} 
 				catch (IOException e) {
-					logger.error(e);
+					logger.error(e,e);
 				}
 			}
 		}

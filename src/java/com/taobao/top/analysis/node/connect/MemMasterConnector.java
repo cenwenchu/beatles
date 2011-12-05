@@ -78,7 +78,7 @@ public class MemMasterConnector extends AbstractMasterConnector implements Runna
 			}
 			catch(Exception ex)
 			{
-				logger.error(ex);
+				logger.error(ex,ex);
 			}
 		}
 	}

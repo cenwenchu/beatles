@@ -128,7 +128,7 @@ public class Job {
 			return true;
 		
 		if (mergedTaskCount.get() < taskCount && consume > jobConfig.getJobResetTime() * 1000)
-			if (logger.isWarnEnabled() && threshold.sholdBlock())
+			if (logger.isWarnEnabled() && !threshold.sholdBlock())
 				logger.warn("job : " + jobName + " can't complete in time!");
 		
 		return false;

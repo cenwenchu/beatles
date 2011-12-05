@@ -142,7 +142,7 @@ public class StatisticsEngine implements IStatisticsEngine{
 				try {
 					in.close();
 				} catch (IOException e) {
-					logger.error(e);
+					logger.error(e,e);
 				}
 		}
 
@@ -274,7 +274,7 @@ public class StatisticsEngine implements IStatisticsEngine{
 		}
 		catch (Throwable ex) {
 			taskExecuteInfo.setSuccess(false);
-			logger.error(ex);
+			logger.error(ex,ex);
 		} 
 		finally 
 		{
@@ -285,7 +285,7 @@ public class StatisticsEngine implements IStatisticsEngine{
 					reader = null;
 				} 
 				catch (Throwable ex) {
-					logger.error(ex);
+					logger.error(ex,ex);
 				}
 			}
 

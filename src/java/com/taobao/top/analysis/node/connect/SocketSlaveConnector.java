@@ -65,7 +65,7 @@ public class SocketSlaveConnector extends AbstractSlaveConnector {
 	     	 {
 	    		 public ChannelPipeline getPipeline() 
 	    		 {
-	                return Channels.pipeline(downstreamHandler,upstreamHandler,new SlaveConnectorHandler(responseQueue));
+	                return Channels.pipeline(downstreamHandler,upstreamHandler,new SlaveConnectorHandler(responseQueue,slaveEventTimeQueue));
 	    		 }
 	     	 });
 	     
@@ -107,7 +107,7 @@ public class SocketSlaveConnector extends AbstractSlaveConnector {
 		}
 		catch(Exception ex)
 		{
-			logger.error(ex);
+			logger.error(ex,ex);
 		}
         
         logger.info("SocketSlaveConnector releaseResource now.");
@@ -130,11 +130,11 @@ public class SocketSlaveConnector extends AbstractSlaveConnector {
 			responseQueue.put(requestEvent.getSequence(), requestEvent);
 			slaveEventTimeQueue.add(requestEvent);
 			
-			requestEvent.getResultReadyFlag().await(10, TimeUnit.SECONDS);
+			requestEvent.getResultReadyFlag().await(config.getMaxClientEventWaitTime(), TimeUnit.SECONDS);
 			
 			GetTaskResponseEvent responseEvent = (GetTaskResponseEvent)requestEvent.getResponse();
 			
-			if (responseEvent.getJobTasks() != null && responseEvent.getJobTasks().size() > 0)
+			if (responseEvent != null && responseEvent.getJobTasks() != null && responseEvent.getJobTasks().size() > 0)
 			{
 				tasks = new JobTask[responseEvent.getJobTasks().size()];
 				responseEvent.getJobTasks().toArray(tasks);
@@ -143,7 +143,7 @@ public class SocketSlaveConnector extends AbstractSlaveConnector {
 		}
 		catch(Exception ex)
 		{
-			logger.error(ex);
+			logger.error(ex,ex);
 		}
 		
 		return tasks;
@@ -164,7 +164,7 @@ public class SocketSlaveConnector extends AbstractSlaveConnector {
 			responseQueue.put(jobResponseEvent.getSequence(), jobResponseEvent);
 			slaveEventTimeQueue.add(jobResponseEvent);
 			
-			jobResponseEvent.getResultReadyFlag().await(10, TimeUnit.SECONDS);
+			jobResponseEvent.getResultReadyFlag().await(config.getMaxClientEventWaitTime(), TimeUnit.SECONDS);
 			
 			SendResultsResponseEvent responseEvent = (SendResultsResponseEvent)jobResponseEvent.getResponse();
 			

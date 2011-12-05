@@ -98,7 +98,7 @@ public abstract class TimeOutQueue<E extends TimeOutEvent>{
 					
 					while((node = taskEventPool.peek()) != null)
 					{
-						restTime = node.getEventCreateTime() - System.currentTimeMillis();
+						restTime = node.getEventCreateTime() + node.getMaxEventHoldTime() * 1000 - System.currentTimeMillis();
 						
 						if (node.getEventCreateTime() != 0 && restTime <= 0)
 						{
@@ -135,7 +135,7 @@ public abstract class TimeOutQueue<E extends TimeOutEvent>{
 						}
 						catch(Exception ex)
 						{
-							logger.error(ex);
+							logger.error(ex,ex);
 						}
 						finally
 						{
@@ -187,7 +187,7 @@ public abstract class TimeOutQueue<E extends TimeOutEvent>{
 			}
 			catch(Exception ex)
 			{
-				logger.error(ex);
+				logger.error(ex,ex);
 			}
 			finally
 			{

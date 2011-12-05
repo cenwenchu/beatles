@@ -56,6 +56,22 @@ public class SlaveConfig extends AbstractConfig {
 	 * 多个任务允许执行的最大时间,单位秒，默认10分钟 
 	 */
 	private final static String MAX_BUNDLE_PROCESS_TIME = "maxBundleProcessTime";
+	
+	/**
+	 * 最大的客户端请求事件等待时间，就是客户端发起请求等待服务端返回事件响应的时间，单位秒，默认10秒
+	 */
+	private final static String MAX_CLIENT_EVENT_WAIT_TIME = "maxClientEventWaitTime";
+	
+	public int getMaxClientEventWaitTime() {
+		if(this.properties.containsKey(MAX_CLIENT_EVENT_WAIT_TIME))
+			return Integer.parseInt((String)this.properties.get(MAX_CLIENT_EVENT_WAIT_TIME));
+		else
+			return 10;
+	}
+
+	public void setMaxClientEventWaitTime(String maxClientEventWaitTime) {
+		this.properties.put(MAX_CLIENT_EVENT_WAIT_TIME,maxClientEventWaitTime);
+	}
 
 	public int getMaxTaskProcessTime() {
 		if(this.properties.containsKey(MAX_TASK_PROCESS_TIME))

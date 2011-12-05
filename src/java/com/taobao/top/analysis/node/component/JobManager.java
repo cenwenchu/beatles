@@ -209,7 +209,7 @@ public class JobManager implements IJobManager {
 		final String sequence = requestEvent.getSequence();
 		
 		//由于该操作比较慢，开线程执行，保证速度
-		eventProcessThreadPool.equals(
+		eventProcessThreadPool.execute(
 				new Runnable()
 						{
 							public void run()
@@ -270,7 +270,7 @@ public class JobManager implements IJobManager {
 		
 		final String sequence = jobResponseEvent.getSequence();
 		
-		eventProcessThreadPool.equals(
+		eventProcessThreadPool.execute(
 				new Runnable()
 						{
 							public void run()

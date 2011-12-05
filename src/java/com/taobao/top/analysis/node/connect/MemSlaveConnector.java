@@ -64,7 +64,7 @@ public class MemSlaveConnector extends AbstractSlaveConnector {
 			}	
 			
 		} catch (InterruptedException e) {
-			logger.error(e);
+			logger.error(e,e);
 		}
 		
 		return null;
@@ -86,7 +86,7 @@ public class MemSlaveConnector extends AbstractSlaveConnector {
 			}	
 			
 		} catch (InterruptedException e) {
-			logger.error(e);
+			logger.error(e,e);
 		}
 		
 		return null;

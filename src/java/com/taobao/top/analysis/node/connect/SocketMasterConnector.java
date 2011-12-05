@@ -86,7 +86,7 @@ public class SocketMasterConnector extends AbstractMasterConnector{
 		}
 		catch(Exception ex)
 		{
-			logger.error(ex);
+			logger.error(ex,ex);
 		}
         
         logger.info("SocketMasterConnector releaseResource now.");

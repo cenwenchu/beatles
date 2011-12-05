@@ -147,7 +147,7 @@ public class FileJobBuilder implements IJobBuilder{
 		}
 		catch(IOException ex)
 		{
-			logger.error(ex);
+			logger.error(ex,ex);
 		}
 		finally
 		{
@@ -157,7 +157,7 @@ public class FileJobBuilder implements IJobBuilder{
 				{
 					in.close();
 				} catch (IOException e) {
-					logger.error(e);
+					logger.error(e,e);
 				}
 			}
 		}
@@ -228,7 +228,7 @@ public class FileJobBuilder implements IJobBuilder{
 							configFile.substring(configFile.indexOf("file:")
 									+ "file:".length())));
 				} catch (Exception e) {
-					logger.error(e);
+					logger.error(e,e);
 				}
 
 				if (in == null)
@@ -478,14 +478,14 @@ public class FileJobBuilder implements IJobBuilder{
 		} 
 		catch(XMLStreamException ex)
 		{
-			logger.error(ex);
+			logger.error(ex,ex);
 		}
 		finally {
 			if (r != null)
 				try {
 					r.close();
 				} catch (XMLStreamException e) {
-					logger.error(e);
+					logger.error(e,e);
 				}
 
 			if (in != null)

@@ -96,7 +96,7 @@ public class JobDataOperation implements Runnable {
 			} 
 			catch (AnalysisException e) 
 			{
-				logger.error(e);
+				logger.error(e,e);
 			}
 			
 			return;
@@ -113,7 +113,7 @@ public class JobDataOperation implements Runnable {
 			} 
 			catch (AnalysisException e) 
 			{
-				logger.error(e);
+				logger.error(e,e);
 			}
 			
 			return;

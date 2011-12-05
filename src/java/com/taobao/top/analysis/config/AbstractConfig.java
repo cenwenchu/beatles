@@ -69,7 +69,7 @@ public abstract class AbstractConfig implements IConfig{
 		}
 		catch(Exception ex)
 		{
-			logger.error(ex);
+			logger.error(ex,ex);
 		}
 		finally
 		{
@@ -77,7 +77,7 @@ public abstract class AbstractConfig implements IConfig{
 				try {
 					in.close();
 				} catch (IOException e) {
-					logger.error(e);
+					logger.error(e,e);
 				}
 		}
 		

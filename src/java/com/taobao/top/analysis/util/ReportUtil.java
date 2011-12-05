@@ -84,7 +84,7 @@ public class ReportUtil {
 						file.substring(file.indexOf("file:")
 								+ "file:".length())));
 			} catch (Exception e) {
-				logger.error(e);
+				logger.error(e,e);
 			}
 
 			if (in == null)

@@ -13,6 +13,8 @@ import org.jboss.netty.channel.ChannelStateEvent;
 import org.jboss.netty.channel.ExceptionEvent;
 import org.jboss.netty.channel.MessageEvent;
 import org.jboss.netty.channel.SimpleChannelUpstreamHandler;
+
+import com.taobao.top.analysis.node.connect.SocketSlaveConnector.SlaveEventTimeOutQueue;
 import com.taobao.top.analysis.node.event.MasterNodeEvent;
 import com.taobao.top.analysis.node.event.SlaveNodeEvent;
 
@@ -28,10 +30,12 @@ public class SlaveConnectorHandler extends SimpleChannelUpstreamHandler {
 	private static final Log logger = LogFactory.getLog(SlaveConnectorHandler.class);
 	
 	Map<String,MasterNodeEvent> responseQueue;
+	SlaveEventTimeOutQueue slaveEventTimeQueue;
 	
-	public SlaveConnectorHandler(Map<String,MasterNodeEvent> responseQueue)
+	public SlaveConnectorHandler(Map<String,MasterNodeEvent> responseQueue,SlaveEventTimeOutQueue slaveEventTimeQueue)
 	{
 		this.responseQueue = responseQueue;
+		this.slaveEventTimeQueue = slaveEventTimeQueue;
 	}
 	
 	@Override
@@ -56,6 +60,10 @@ public class SlaveConnectorHandler extends SimpleChannelUpstreamHandler {
 			{
 				responseQueue.get(slaveEvent.getSequence()).setResponse(slaveEvent);
 				responseQueue.get(slaveEvent.getSequence()).getResultReadyFlag().countDown();
+				responseQueue.remove(slaveEvent.getSequence());
+				
+				if(!slaveEventTimeQueue.remove(slaveEvent))
+					logger.error("event not in timeout queue, please check code,maybe it be wrong!");
 			}
 			else
 				logger.error("receive invalidate response,sequence :" + slaveEvent.getSequence());
