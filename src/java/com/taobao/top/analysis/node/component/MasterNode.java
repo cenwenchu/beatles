@@ -9,8 +9,6 @@ import java.util.List;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.jboss.netty.channel.Channel;
-
 import com.taobao.top.analysis.config.MasterConfig;
 import com.taobao.top.analysis.exception.AnalysisException;
 import com.taobao.top.analysis.node.IJobManager;
@@ -92,7 +90,7 @@ public class MasterNode extends AbstractNode<MasterNodeEvent,MasterConfig> {
 	 * @param sequence
 	 * @param jobTasks
 	 */
-	public void echoGetJobTasks(String sequence,List<JobTask> jobTasks,Channel channel)
+	public void echoGetJobTasks(String sequence,List<JobTask> jobTasks,Object channel)
 	{
 		GetTaskResponseEvent event = new GetTaskResponseEvent(sequence);
 		event.setJobTasks(jobTasks);
@@ -121,7 +119,7 @@ public class MasterNode extends AbstractNode<MasterNodeEvent,MasterConfig> {
 	 * 响应Slave提交任务结果的请求
 	 * @param 返回结果
 	 */
-	public void echoSendJobTaskResults(String sequence,String response,Channel channel)
+	public void echoSendJobTaskResults(String sequence,String response,Object channel)
 	{
 		SendResultsResponseEvent event = new SendResultsResponseEvent(sequence);
 		event.setResponse(response);

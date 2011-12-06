@@ -95,7 +95,7 @@ public class SocketMasterConnector extends AbstractMasterConnector{
 	
 	@Override
 	public void echoGetJobTasks(GetTaskResponseEvent event) {
-		ChannelFuture channelFuture = event.getChannel().write(event);
+		ChannelFuture channelFuture = ((Channel)event.getChannel()).write(event);
 		
 		try {
 			channelFuture.await(10, TimeUnit.SECONDS);
@@ -116,7 +116,7 @@ public class SocketMasterConnector extends AbstractMasterConnector{
 
 	@Override
 	public void echoSendJobTaskResults(SendResultsResponseEvent event) {
-		ChannelFuture channelFuture = event.getChannel().write(event);
+		ChannelFuture channelFuture = ((Channel)event.getChannel()).write(event);
 		
 		try {
 			channelFuture.await(10, TimeUnit.SECONDS);

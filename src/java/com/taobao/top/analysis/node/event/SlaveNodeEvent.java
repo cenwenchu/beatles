@@ -3,7 +3,6 @@
  */
 package com.taobao.top.analysis.node.event;
 
-import org.jboss.netty.channel.Channel;
 
 
 /**
@@ -24,7 +23,7 @@ public class SlaveNodeEvent implements INodeEvent {
 	
 	String sequence;
 	
-	protected transient Channel channel;
+	protected transient Object channel;
 
 	public String getSequence() {
 		return sequence;
@@ -42,11 +41,11 @@ public class SlaveNodeEvent implements INodeEvent {
 		this.eventCode = eventCode;
 	}
 
-	public Channel getChannel() {
+	public Object getChannel() {
 		return channel;
 	}
 
-	public void setChannel(Channel channel) {
+	public void setChannel(Object channel) {
 		this.channel = channel;
 	}	
 

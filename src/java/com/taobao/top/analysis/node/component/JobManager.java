@@ -18,8 +18,6 @@ import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.jboss.netty.channel.Channel;
-
 import com.taobao.top.analysis.config.MasterConfig;
 import com.taobao.top.analysis.exception.AnalysisException;
 import com.taobao.top.analysis.node.IJobBuilder;
@@ -208,7 +206,7 @@ public class JobManager implements IJobManager {
 		}
 
 		final String sequence = requestEvent.getSequence();
-		final Channel channel = requestEvent.getChannel();
+		final Object channel = requestEvent.getChannel();
 		
 		//由于该操作比较慢，开线程执行，保证速度
 		eventProcessThreadPool.execute(
@@ -271,7 +269,7 @@ public class JobManager implements IJobManager {
 		}
 		
 		final String sequence = jobResponseEvent.getSequence();
-		final Channel channel = jobResponseEvent.getChannel();
+		final Object channel = jobResponseEvent.getChannel();
 		
 		eventProcessThreadPool.execute(
 				new Runnable()

@@ -4,9 +4,6 @@
 package com.taobao.top.analysis.node.event;
 
 import java.util.concurrent.CountDownLatch;
-
-import org.jboss.netty.channel.Channel;
-
 import com.taobao.top.analysis.util.TimeOutEvent;
 
 
@@ -37,7 +34,7 @@ public class MasterNodeEvent implements INodeEvent,TimeOutEvent{
 	
 	protected transient long maxEventHoldTime = 0;
 	
-	protected transient Channel channel;
+	protected transient Object channel;
 	
 
 	public Object getResponse() {
@@ -103,11 +100,11 @@ public class MasterNodeEvent implements INodeEvent,TimeOutEvent{
 				- event.getEventCreateTime() - event.getMaxEventHoldTime() * 1000);
 	}
 
-	public Channel getChannel() {
+	public Object getChannel() {
 		return channel;
 	}
 
-	public void setChannel(Channel channel) {
+	public void setChannel(Object channel) {
 		this.channel = channel;
 	}
 
