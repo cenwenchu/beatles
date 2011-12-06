@@ -49,6 +49,7 @@ public class JobManagerTest {
 		
 		MasterConfig config = new MasterConfig();
 		config.load("master-config.properties");
+		config.setUseAsynModeToSendResponse("false");
 		masterNode.setConfig(config);
 		masterNode.init();
 	}
@@ -67,8 +68,6 @@ public class JobManagerTest {
 		
 		jobManager.getUnDoJobTasks(event);
 		
-		Thread.sleep(20);
-		
 		GetTaskResponseEvent eventresp = (GetTaskResponseEvent)tunnel.getSlaveSide().poll();
 		
 		Assert.assertEquals(event.getSequence(), eventresp.getSequence());
@@ -79,8 +78,6 @@ public class JobManagerTest {
 		event.setJobName("job2");
 		
 		jobManager.getUnDoJobTasks(event);
-		
-		Thread.sleep(20);
 		
 		eventresp = (GetTaskResponseEvent)tunnel.getSlaveSide().poll();
 		
@@ -110,7 +107,6 @@ public class JobManagerTest {
 		
 		jobManager.addTaskResultToQueue(jobResponseEvent);
 		
-		Thread.sleep(20);
 		
 		JobTaskResult jobTaskResult2 = jobManager.getJobTaskResultsQueuePool().get(task.getJobName()).poll();
 		
@@ -127,7 +123,6 @@ public class JobManagerTest {
 		
 		jobManager.getUnDoJobTasks(event);
 		
-		Thread.sleep(20);
 		
 		GetTaskResponseEvent eventresp = (GetTaskResponseEvent)tunnel.getSlaveSide().poll();
 		
@@ -145,8 +140,6 @@ public class JobManagerTest {
 		
 		jobManager.getUnDoJobTasks(event);
 		
-		Thread.sleep(20);
-		
 		GetTaskResponseEvent eventresp = (GetTaskResponseEvent)tunnel.getSlaveSide().poll();
 		
 		Assert.assertEquals(event.getSequence(), eventresp.getSequence());
@@ -157,8 +150,6 @@ public class JobManagerTest {
 		event.setRequestJobCount(3);
 		
 		jobManager.getUnDoJobTasks(event);
-		
-		Thread.sleep(20);
 		
 		eventresp = (GetTaskResponseEvent)tunnel.getSlaveSide().poll();
 		
@@ -175,8 +166,6 @@ public class JobManagerTest {
 		event.setRequestJobCount(3);
 		
 		jobManager.getUnDoJobTasks(event);
-		
-		Thread.sleep(20);
 		
 		eventresp = (GetTaskResponseEvent)tunnel.getSlaveSide().poll();
 		

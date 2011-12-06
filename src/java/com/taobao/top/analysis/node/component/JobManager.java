@@ -205,19 +205,24 @@ public class JobManager implements IJobManager {
 			}
 		}
 
-		final String sequence = requestEvent.getSequence();
-		final Object channel = requestEvent.getChannel();
-		
-		//由于该操作比较慢，开线程执行，保证速度
-		eventProcessThreadPool.execute(
-				new Runnable()
-						{
-							public void run()
-							{
-								masterNode.echoGetJobTasks(sequence,jobTasks,channel);
-							}
-						});
+		//是否需要用异步方式发送，减少对jobManager事件处理延时
+		if (config.isUseAsynModeToSendResponse())
+		{
+			final String sequence = requestEvent.getSequence();
+			final Object channel = requestEvent.getChannel();
 			
+			//由于该操作比较慢，开线程执行，保证速度
+			eventProcessThreadPool.execute(
+					new Runnable()
+							{
+								public void run()
+								{
+									masterNode.echoGetJobTasks(sequence,jobTasks,channel);
+								}
+							});
+		}
+		else
+			masterNode.echoGetJobTasks(requestEvent.getSequence(),jobTasks,requestEvent.getChannel());
 		
 	}
 
@@ -268,17 +273,23 @@ public class JobManager implements IJobManager {
 			
 		}
 		
-		final String sequence = jobResponseEvent.getSequence();
-		final Object channel = jobResponseEvent.getChannel();
-		
-		eventProcessThreadPool.execute(
-				new Runnable()
-						{
-							public void run()
+		//是否需要用异步方式发送，减少对jobManager事件处理延时
+		if (config.isUseAsynModeToSendResponse())
+		{
+			final String sequence = jobResponseEvent.getSequence();
+			final Object channel = jobResponseEvent.getChannel();
+			
+			eventProcessThreadPool.execute(
+					new Runnable()
 							{
-								masterNode.echoSendJobTaskResults(sequence,"success",channel);
-							}
-						});
+								public void run()
+								{
+									masterNode.echoSendJobTaskResults(sequence,"success",channel);
+								}
+							});
+		}
+		else
+			masterNode.echoSendJobTaskResults(jobResponseEvent.getSequence(),"success",jobResponseEvent.getChannel());
 	}
 
 

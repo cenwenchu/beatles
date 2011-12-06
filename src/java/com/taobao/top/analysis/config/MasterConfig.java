@@ -79,8 +79,23 @@ public class MasterConfig extends AbstractConfig{
 	//mod by fangweng 2011 performance
 	//配合磁盘换内存的方式，判断什么时候可以异步载入文件
 	private final static String ASYN_LOAD_DISK_FILE_PRECENT = "asynLoadDiskFilePrecent";
+	
+	//是否在JobMaster中采用异步模式去发送服务端的回执消息，比如在SocketConnector模式下就应该开启，memConnector模式下就不用
+	//默认打开，根据自己实现和选择的Connector判断发送是否消耗来开关
+	private final static String USE_ASYN_MODE_TO_SEND_RESPONSE = "useAsynModeToSendResponse";
 
 	
+	public boolean isUseAsynModeToSendResponse() {
+		if(this.properties.containsKey(USE_ASYN_MODE_TO_SEND_RESPONSE))
+			return Boolean.valueOf((String)this.properties.get(USE_ASYN_MODE_TO_SEND_RESPONSE));
+		else
+			return true;
+	}
+
+	public void setUseAsynModeToSendResponse(String useAsynModeToSendResponse) {
+		this.properties.put(USE_ASYN_MODE_TO_SEND_RESPONSE,useAsynModeToSendResponse);
+	}
+
 	public String getMasterName() {
 		if(this.properties.containsKey(MASTER_NAME))
 			return (String)this.properties.get(MASTER_NAME);
