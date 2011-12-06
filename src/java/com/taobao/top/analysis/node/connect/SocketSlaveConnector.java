@@ -34,150 +34,169 @@ import com.taobao.top.analysis.util.TimeOutQueue;
 
 /**
  * Socket版本的客户端通信组件
+ * 
  * @author fangweng
- * @email: fangweng@taobao.com
- * 2011-12-2 下午5:26:51
- *
+ * @email: fangweng@taobao.com 2011-12-2 下午5:26:51
+ * 
  */
 public class SocketSlaveConnector extends AbstractSlaveConnector {
 
-	private static final Log logger = LogFactory.getLog(SocketSlaveConnector.class);
-	
+	private static final Log logger = LogFactory
+			.getLog(SocketSlaveConnector.class);
+
 	ClientBootstrap bootstrap;
 	ChannelFactory factory;
 	ChannelFuture future;
 	Channel channel;
-	ChannelDownstreamHandler  downstreamHandler;
+	ChannelDownstreamHandler downstreamHandler;
 	ChannelUpstreamHandler upstreamHandler;
-	Map<String,MasterNodeEvent> responseQueue = new ConcurrentHashMap<String,MasterNodeEvent>();
+	Map<String, MasterNodeEvent> responseQueue = new ConcurrentHashMap<String, MasterNodeEvent>();
 	SlaveEventTimeOutQueue slaveEventTimeQueue;
-	
+
 	@Override
 	public void init() throws AnalysisException {
-		 factory = new NioClientSocketChannelFactory  (
-	                    Executors.newCachedThreadPool(),
-	                    Executors.newCachedThreadPool());
-		 
-	     bootstrap = new ClientBootstrap(factory);
-	     
-	     bootstrap.setPipelineFactory(
-	    	 new ChannelPipelineFactory() 
-	     	 {
-	    		 public ChannelPipeline getPipeline() 
-	    		 {
-	                return Channels.pipeline(downstreamHandler,upstreamHandler,new SlaveConnectorHandler(responseQueue,slaveEventTimeQueue));
-	    		 }
-	     	 });
-	     
-	     bootstrap.setOption("tcpNoDelay"  , true);
-	     bootstrap.setOption("keepAlive", true);
-	        
-	     connectServer();
-	     
-	     slaveEventTimeQueue = new SlaveEventTimeOutQueue();
+		slaveEventTimeQueue = new SlaveEventTimeOutQueue();
+
+		factory = new NioClientSocketChannelFactory(
+				Executors.newCachedThreadPool(),
+				Executors.newCachedThreadPool());
+
+		bootstrap = new ClientBootstrap(factory);
+
+		bootstrap.setPipelineFactory(new ChannelPipelineFactory() {
+			public ChannelPipeline getPipeline() {
+				return Channels.pipeline(downstreamHandler, upstreamHandler,
+						new SlaveConnectorHandler(responseQueue,
+								slaveEventTimeQueue));
+			}
+		});
+
+		bootstrap.setOption("tcpNoDelay", true);
+		bootstrap.setOption("keepAlive", true);
+
+		connectServer();
+
 	}
-	
-	public void connectServer()
-	{
-		if (channel != null)
-		{
+
+	public void connectServer() {
+		if (channel != null) {
 			releaseResource();
 		}
-		
-		future = bootstrap.connect(new InetSocketAddress(config.getMasterAddress(), config.getMasterPort()));
-	     
-	     future.awaitUninterruptibly();
-	     if (!future.isSuccess()) {
-           logger.error(future.getCause());
-	     }
-	     
-	     channel = future.getChannel(); 
+
+		future = bootstrap.connect(new InetSocketAddress(config
+				.getMasterAddress(), config.getMasterPort()));
+
+		future.awaitUninterruptibly();
+		if (!future.isSuccess()) {
+			logger.error("connect fail.", future.getCause());
+		}
+
+		channel = future.getChannel();
 	}
 
 	@Override
 	public void releaseResource() {
-		try
-		{
+		try {
 			if (slaveEventTimeQueue != null)
 				slaveEventTimeQueue.release();
-			
+
 			channel.getCloseFuture().awaitUninterruptibly();
 			factory.releaseExternalResources();
 			responseQueue.clear();
+		} catch (Exception ex) {
+			logger.error(ex, ex);
 		}
-		catch(Exception ex)
-		{
-			logger.error(ex,ex);
-		}
-        
-        logger.info("SocketSlaveConnector releaseResource now.");
+
+		logger.info("SocketSlaveConnector releaseResource now.");
 	}
-	
+
 	@Override
 	public JobTask[] getJobTasks(GetTaskRequestEvent requestEvent) {
-		
+
 		JobTask[] tasks = null;
-		
-		try
-		{
-			ChannelFuture channelFuture = channel.write(requestEvent);
-		
-			channelFuture.await(10, TimeUnit.SECONDS);
-			
-			channelFuture.addListener(ChannelFutureListener.CLOSE_ON_FAILURE);
-			
-			//简单的用这种模式模拟阻塞请求
+
+		try {
+			final GetTaskRequestEvent event = requestEvent;
+			// 简单的用这种模式模拟阻塞请求
 			responseQueue.put(requestEvent.getSequence(), requestEvent);
 			slaveEventTimeQueue.add(requestEvent);
 			
-			requestEvent.getResultReadyFlag().await(config.getMaxClientEventWaitTime(), TimeUnit.SECONDS);
-			
-			GetTaskResponseEvent responseEvent = (GetTaskResponseEvent)requestEvent.getResponse();
-			
-			if (responseEvent != null && responseEvent.getJobTasks() != null && responseEvent.getJobTasks().size() > 0)
-			{
+			ChannelFuture channelFuture = channel.write(requestEvent);
+
+			channelFuture.await(10, TimeUnit.SECONDS);
+
+			channelFuture.addListener(new ChannelFutureListener() {
+				public void operationComplete(ChannelFuture future) {
+					if (!future.isSuccess()) {
+						responseQueue.remove(event.getSequence());
+						slaveEventTimeQueue.remove(event);
+						
+						logger.error("Slavesocket write error.",
+								future.getCause());
+						future.getChannel().close();
+					}
+				}
+			});
+
+			requestEvent.getResultReadyFlag().await(
+					config.getMaxClientEventWaitTime(), TimeUnit.SECONDS);
+
+			GetTaskResponseEvent responseEvent = (GetTaskResponseEvent) requestEvent
+					.getResponse();
+
+			if (responseEvent != null && responseEvent.getJobTasks() != null
+					&& responseEvent.getJobTasks().size() > 0) {
 				tasks = new JobTask[responseEvent.getJobTasks().size()];
 				responseEvent.getJobTasks().toArray(tasks);
 			}
-			
+
+		} catch (Exception ex) {
+			logger.error(ex, ex);
 		}
-		catch(Exception ex)
-		{
-			logger.error(ex,ex);
-		}
-		
+
 		return tasks;
 	}
 
-	
 	@Override
 	public String sendJobTaskResults(SendResultsRequestEvent jobResponseEvent) {
-		
-		try
+
+		try 
 		{
-			ChannelFuture channelFuture = channel.write(jobResponseEvent);
-			channelFuture.await(10, TimeUnit.SECONDS);
+			final SendResultsRequestEvent event = jobResponseEvent;
 			
-			channelFuture.addListener(ChannelFutureListener.CLOSE_ON_FAILURE);
-			
-			//简单的用这种模式模拟阻塞请求
+			// 简单的用这种模式模拟阻塞请求
 			responseQueue.put(jobResponseEvent.getSequence(), jobResponseEvent);
 			slaveEventTimeQueue.add(jobResponseEvent);
 			
-			jobResponseEvent.getResultReadyFlag().await(config.getMaxClientEventWaitTime(), TimeUnit.SECONDS);
-			
-			SendResultsResponseEvent responseEvent = (SendResultsResponseEvent)jobResponseEvent.getResponse();
-			
-			if (responseEvent != null)
-			{
+			ChannelFuture channelFuture = channel.write(jobResponseEvent);
+			channelFuture.await(10, TimeUnit.SECONDS);
+
+			channelFuture.addListener(new ChannelFutureListener() {
+				public void operationComplete(ChannelFuture future) {
+					if (!future.isSuccess()) {
+						responseQueue.remove(event.getSequence());
+						slaveEventTimeQueue.remove(event);
+						
+						logger.error("Slavesocket write error.",
+								future.getCause());
+						future.getChannel().close();
+					}
+				}
+			});
+
+			jobResponseEvent.getResultReadyFlag().await(
+					config.getMaxClientEventWaitTime(), TimeUnit.SECONDS);
+
+			SendResultsResponseEvent responseEvent = (SendResultsResponseEvent) jobResponseEvent
+					.getResponse();
+
+			if (responseEvent != null) {
 				return responseEvent.getResponse();
 			}
-		}
-		catch(Exception ex)
-		{
+		} catch (Exception ex) {
 			logger.equals(ex);
 		}
-		
+
 		return null;
 	}
 
@@ -196,13 +215,16 @@ public class SocketSlaveConnector extends AbstractSlaveConnector {
 	public void setUpstreamHandler(ChannelUpstreamHandler upstreamHandler) {
 		this.upstreamHandler = upstreamHandler;
 	}
-	
-	class SlaveEventTimeOutQueue extends TimeOutQueue<MasterNodeEvent>
-	{
+
+	class SlaveEventTimeOutQueue extends TimeOutQueue<MasterNodeEvent> {
 		@Override
 		public void timeOutAction(MasterNodeEvent event) {
 			if (responseQueue.containsKey(event.getSequence()))
+			{
 				responseQueue.remove(event.getSequence());
+				
+				logger.warn("SlaveEventTimeOutQueue remove event : " + event.getSequence());
+			}
 		}
 	}
 

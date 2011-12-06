@@ -6,6 +6,7 @@ package com.taobao.top.analysis.node.connect;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.jboss.netty.channel.Channel;
 import org.jboss.netty.channel.ChannelEvent;
 import org.jboss.netty.channel.ChannelHandlerContext;
 import org.jboss.netty.channel.ChannelStateEvent;
@@ -28,11 +29,19 @@ public class MasterConnectorHandler extends SimpleChannelUpstreamHandler {
 	private static final Log logger = LogFactory.getLog(MasterConnectorHandler.class);
 	
 	MasterNode masterNode;
+	volatile Channel channel;
 	
 	public MasterConnectorHandler(MasterNode masterNode)
 	{
+		super();
 		this.masterNode = masterNode;
 	}
+	
+	@Override
+    public void channelOpen(ChannelHandlerContext ctx, ChannelStateEvent e)
+            throws Exception {
+        channel = e.getChannel();
+    }
 	
 	@Override
 	public void messageReceived(ChannelHandlerContext ctx, MessageEvent e)
@@ -46,6 +55,7 @@ public class MasterConnectorHandler extends SimpleChannelUpstreamHandler {
 			if (nodeEvent.getEventCode().equals(MasterEventCode.GET_TASK) || 
 					nodeEvent.getEventCode().equals(MasterEventCode.SEND_RESULT))
 			{
+				nodeEvent.setChannel(channel);
 				masterNode.addEvent(nodeEvent);
 				
 				if (logger.isInfoEnabled())

@@ -3,6 +3,8 @@
  */
 package com.taobao.top.analysis.node.event;
 
+import org.jboss.netty.channel.Channel;
+
 
 /**
  * Slave的事件定义
@@ -21,6 +23,8 @@ public class SlaveNodeEvent implements INodeEvent {
 	SlaveEventCode eventCode;
 	
 	String sequence;
+	
+	protected transient Channel channel;
 
 	public String getSequence() {
 		return sequence;
@@ -36,7 +40,14 @@ public class SlaveNodeEvent implements INodeEvent {
 
 	public void setEventCode(SlaveEventCode eventCode) {
 		this.eventCode = eventCode;
-	}	
+	}
 
+	public Channel getChannel() {
+		return channel;
+	}
+
+	public void setChannel(Channel channel) {
+		this.channel = channel;
+	}	
 
 }

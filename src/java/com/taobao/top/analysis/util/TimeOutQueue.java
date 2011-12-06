@@ -133,6 +133,10 @@ public abstract class TimeOutQueue<E extends TimeOutEvent>{
 							if (flag)
 								checkCondition.await(restTime, TimeUnit.MILLISECONDS);
 						}
+						catch(InterruptedException ie)
+						{
+							//do nothing
+						}
 						catch(Exception ex)
 						{
 							logger.error(ex,ex);

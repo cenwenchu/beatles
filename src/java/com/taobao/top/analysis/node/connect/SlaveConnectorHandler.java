@@ -7,6 +7,7 @@ import java.util.Map;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.jboss.netty.channel.Channel;
 import org.jboss.netty.channel.ChannelEvent;
 import org.jboss.netty.channel.ChannelHandlerContext;
 import org.jboss.netty.channel.ChannelStateEvent;
@@ -31,12 +32,20 @@ public class SlaveConnectorHandler extends SimpleChannelUpstreamHandler {
 	
 	Map<String,MasterNodeEvent> responseQueue;
 	SlaveEventTimeOutQueue slaveEventTimeQueue;
+	volatile Channel channel;
 	
 	public SlaveConnectorHandler(Map<String,MasterNodeEvent> responseQueue,SlaveEventTimeOutQueue slaveEventTimeQueue)
 	{
+		super();
 		this.responseQueue = responseQueue;
 		this.slaveEventTimeQueue = slaveEventTimeQueue;
 	}
+	
+	@Override
+    public void channelOpen(ChannelHandlerContext ctx, ChannelStateEvent e)
+            throws Exception {
+        channel = e.getChannel();
+    }
 	
 	@Override
 	public void handleUpstream(ChannelHandlerContext ctx, ChannelEvent event)
@@ -60,10 +69,11 @@ public class SlaveConnectorHandler extends SimpleChannelUpstreamHandler {
 			{
 				responseQueue.get(slaveEvent.getSequence()).setResponse(slaveEvent);
 				responseQueue.get(slaveEvent.getSequence()).getResultReadyFlag().countDown();
-				responseQueue.remove(slaveEvent.getSequence());
 				
-				if(!slaveEventTimeQueue.remove(slaveEvent))
+				if(!slaveEventTimeQueue.remove(responseQueue.get(slaveEvent.getSequence())))
 					logger.error("event not in timeout queue, please check code,maybe it be wrong!");
+				
+				responseQueue.remove(slaveEvent.getSequence());
 			}
 			else
 				logger.error("receive invalidate response,sequence :" + slaveEvent.getSequence());

@@ -59,13 +59,15 @@ public class JobManagerTest {
 	}
 
 	@Test
-	public void testGetUnDoJobTasks() throws AnalysisException {
+	public void testGetUnDoJobTasks() throws AnalysisException, InterruptedException {
 		
 		
 		GetTaskRequestEvent event = new GetTaskRequestEvent("1234567");
 		event.setRequestJobCount(2);
 		
 		jobManager.getUnDoJobTasks(event);
+		
+		Thread.sleep(20);
 		
 		GetTaskResponseEvent eventresp = (GetTaskResponseEvent)tunnel.getSlaveSide().poll();
 		
@@ -78,6 +80,8 @@ public class JobManagerTest {
 		
 		jobManager.getUnDoJobTasks(event);
 		
+		Thread.sleep(20);
+		
 		eventresp = (GetTaskResponseEvent)tunnel.getSlaveSide().poll();
 		
 		Assert.assertEquals(event.getSequence(), eventresp.getSequence());
@@ -86,7 +90,7 @@ public class JobManagerTest {
 	}
 
 	@Test
-	public void testAddTaskResultToQueue() throws AnalysisException, UnsupportedEncodingException, IOException {
+	public void testAddTaskResultToQueue() throws AnalysisException, UnsupportedEncodingException, IOException, InterruptedException {
 		StatisticsEngine defaultAnalysisEngine = new StatisticsEngine();
 		defaultAnalysisEngine.init();
 		
@@ -106,6 +110,7 @@ public class JobManagerTest {
 		
 		jobManager.addTaskResultToQueue(jobResponseEvent);
 		
+		Thread.sleep(20);
 		
 		JobTaskResult jobTaskResult2 = jobManager.getJobTaskResultsQueuePool().get(task.getJobName()).poll();
 		
@@ -121,6 +126,8 @@ public class JobManagerTest {
 		event.setRequestJobCount(3);
 		
 		jobManager.getUnDoJobTasks(event);
+		
+		Thread.sleep(20);
 		
 		GetTaskResponseEvent eventresp = (GetTaskResponseEvent)tunnel.getSlaveSide().poll();
 		
@@ -138,6 +145,8 @@ public class JobManagerTest {
 		
 		jobManager.getUnDoJobTasks(event);
 		
+		Thread.sleep(20);
+		
 		GetTaskResponseEvent eventresp = (GetTaskResponseEvent)tunnel.getSlaveSide().poll();
 		
 		Assert.assertEquals(event.getSequence(), eventresp.getSequence());
@@ -148,6 +157,8 @@ public class JobManagerTest {
 		event.setRequestJobCount(3);
 		
 		jobManager.getUnDoJobTasks(event);
+		
+		Thread.sleep(20);
 		
 		eventresp = (GetTaskResponseEvent)tunnel.getSlaveSide().poll();
 		
@@ -164,6 +175,8 @@ public class JobManagerTest {
 		event.setRequestJobCount(3);
 		
 		jobManager.getUnDoJobTasks(event);
+		
+		Thread.sleep(20);
 		
 		eventresp = (GetTaskResponseEvent)tunnel.getSlaveSide().poll();
 		

@@ -6,6 +6,7 @@ package com.taobao.top.analysis.node.connect;
 
 import java.net.InetSocketAddress;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -36,7 +37,7 @@ public class SocketMasterConnector extends AbstractMasterConnector{
 	private static final Log logger = LogFactory.getLog(SocketMasterConnector.class);
 	
 	ServerBootstrap bootstrap;
-	Channel channel;
+	Channel serverChannel;
 	ChannelDownstreamHandler  downstreamHandler;
 	ChannelUpstreamHandler upstreamHandler;
 
@@ -61,19 +62,19 @@ public class SocketMasterConnector extends AbstractMasterConnector{
 	    bootstrap.setOption("child.keepAlive", true);
 	    bootstrap.setOption("child.receiveBufferSize", 9753);
         bootstrap.setOption("child.sendBufferSize", 8642);
-	    channel = bootstrap.bind(new InetSocketAddress(config.getMasterPort()));
+        serverChannel = bootstrap.bind(new InetSocketAddress(config.getMasterPort()));
 	    
 	    logger.info("SocketMasterConnector init now.");
 	}
 	
 	public void openServer()
 	{
-		if (channel != null)
+		if (serverChannel != null)
 		{
 			releaseResource();
 		}
 		
-		channel = bootstrap.bind(new InetSocketAddress(config.getMasterPort()));
+		serverChannel = bootstrap.bind(new InetSocketAddress(config.getMasterPort()));
 	}
 
 	@Override
@@ -81,7 +82,7 @@ public class SocketMasterConnector extends AbstractMasterConnector{
 		
 		try
 		{
-			channel.close().awaitUninterruptibly();
+			serverChannel.close().awaitUninterruptibly();
 			bootstrap.getFactory().releaseExternalResources();
 		}
 		catch(Exception ex)
@@ -94,14 +95,43 @@ public class SocketMasterConnector extends AbstractMasterConnector{
 	
 	@Override
 	public void echoGetJobTasks(GetTaskResponseEvent event) {
-		ChannelFuture channelFuture = channel.write(event);
-		channelFuture.addListener(ChannelFutureListener.CLOSE_ON_FAILURE);
+		ChannelFuture channelFuture = event.getChannel().write(event);
+		
+		try {
+			channelFuture.await(10, TimeUnit.SECONDS);
+		} catch (InterruptedException e) {
+		}
+		
+		channelFuture.addListener(new ChannelFutureListener() {
+	        public void operationComplete(ChannelFuture future) {
+	            if (!future.isSuccess()) 
+	            {
+	            	logger.error("Mastersocket write error.",future.getCause());
+	                future.getChannel().close();
+	            }
+	        }
+	    });
+		
 	}
 
 	@Override
 	public void echoSendJobTaskResults(SendResultsResponseEvent event) {
-		ChannelFuture channelFuture = channel.write(event);
-		channelFuture.addListener(ChannelFutureListener.CLOSE_ON_FAILURE);
+		ChannelFuture channelFuture = event.getChannel().write(event);
+		
+		try {
+			channelFuture.await(10, TimeUnit.SECONDS);
+		} catch (InterruptedException e) {
+		}
+		
+		channelFuture.addListener(new ChannelFutureListener() {
+	        public void operationComplete(ChannelFuture future) {
+	            if (!future.isSuccess()) 
+	            {
+	            	logger.error("Mastersocket write error.",future.getCause());
+	                future.getChannel().close();
+	            }
+	        }
+	    });
 	}
 
 	public ChannelDownstreamHandler getDownstreamHandler() {
