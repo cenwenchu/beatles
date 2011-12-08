@@ -59,7 +59,6 @@
 		<ReportEntry id="apiFlow" name="服务上行数据量" key="apiName" value="sum($readBytes$*#8#)" />
 	</entrys>
 	
-	
 	<!-- 
 		报表定义：
 		id为报表主键，除了数字也可以用英文字符串
@@ -130,7 +129,7 @@
 			</entryList>
 		</report>
 		
-		<report id="periodReport" file="periodReport">
+		<report id="totalHourReport" file="totalHourReport">
 			<entryList>
 			    <entry name="整点时间段" key="timestamp" value="plain($timestamp$)" 
 			    	mapClass="com.taobao.top.analysis.node.map.TimeMap"
@@ -145,6 +144,27 @@
 						mapClass="com.taobao.top.analysis.node.map.TimeMap" valuefilter="&gt;=0&amp;isnumber&amp;round:3"/>
 				<entry name="时间段内访问平台平均耗时(ms)" key="timestamp" value="average($platformConsumeTime$)"  
 						mapClass="com.taobao.top.analysis.node.map.TimeMap" valuefilter="&gt;=0&amp;isnumber&amp;round:3"/>
+			</entryList>
+		</report>
+			
+		<!-- 以上的所有报表都是全量报表，也就是按照指定时间增量统计合并，也就是job会被执行很多轮，每一轮的结果会合并到主干，例如一天的访问量，
+			但牵涉到如果统计后结果基数还是非常大的情况的时候，例如用户ip维度的统计，一种方式就是直接让slave每次都输出task，另一种就是job一轮所有
+			task执行完毕以后，合并的结果输出后就清空，不再和下一轮合并，下面的配置就是这样的情况,注意report定义中有一个period的属性
+			需要注意的是当前程序里面固化写死了时间段字段必须放在第一位，例如key="timestamp,remoteIp,apiName"，timestamp这个分片参数必须放在第一位，后续可以改为可定义
+		 -->
+			
+		<report id="ipAPIReportPeriod" file="ipAPIReportPeriod" period="true">
+			<entryList>
+				<entry name="远端ip" key="timestamp,remoteIp,apiName" value="plain($remoteIp$)"
+					mapClass="com.taobao.top.analysis.node.map.TimeMap" mapParams="minute:5" />
+				<entry name="api名称" key="timestamp,remoteIp,apiName" value="plain($apiName$)"
+					mapClass="com.taobao.top.analysis.node.map.TimeMap" mapParams="minute:5" />
+				<entry name="访问总量" key="timestamp,remoteIp,apiName" value="count()"
+					mapClass="com.taobao.top.analysis.node.map.TimeMap" mapParams="minute:5" />
+				<entry name="时间段" key="timestamp,remoteIp,apiName" value="plain($timestamp$)"
+					mapClass="com.taobao.top.analysis.node.map.TimeMap" mapParams="minute:5"
+					reduceClass="com.taobao.top.analysis.node.reduce.TimeReduce"
+					reduceParams="minute:5" />
 			</entryList>
 		</report>
 		
