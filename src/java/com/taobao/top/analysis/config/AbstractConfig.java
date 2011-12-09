@@ -35,6 +35,16 @@ public abstract class AbstractConfig implements IConfig{
 	 */
 	Map<String,String> properties = new HashMap<String,String>();
 	
+	/**
+	 * 从配置中根据名称获得属性内容
+	 * @param propName
+	 */
+	@Override
+	public String get(String propName)
+	{
+		return this.properties.get(propName);
+	}
+	
 	@Override
 	public void addAllToConfig(Map<String,String> props)
 	{

@@ -20,4 +20,10 @@ public interface IConfig extends java.io.Serializable{
 	 * @param properties
 	 */
 	public void load(String properties);
+	
+	/**
+	 * 从配置中根据名称获得属性内容
+	 * @param propName
+	 */
+	public String get(String propName);
 }
