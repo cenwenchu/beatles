@@ -173,13 +173,15 @@ public class JobManager implements IJobManager {
 			{
 				if (jobTask.getStatus().equals(JobTaskStatus.UNDO))
 				{
-					statusPool.put(jobTask.getTaskId(), JobTaskStatus.DOING);
-					jobTask.setStatus(JobTaskStatus.DOING);
-					jobTask.setStartTime(System.currentTimeMillis());
-					jobTasks.add(jobTask);
-					
-					if (jobTasks.size() == jobCount)
-						break;
+					if (statusPool.replace(jobTask.getTaskId(),JobTaskStatus.UNDO,JobTaskStatus.DOING))
+					{
+						jobTask.setStatus(JobTaskStatus.DOING);
+						jobTask.setStartTime(System.currentTimeMillis());
+						jobTasks.add(jobTask);
+						
+						if (jobTasks.size() == jobCount)
+							break;
+					}
 				}
 			}
 		}
@@ -194,13 +196,15 @@ public class JobManager implements IJobManager {
 				
 				if (statusPool.get(taskId).equals(JobTaskStatus.UNDO))
 				{
-					statusPool.put(taskId, JobTaskStatus.DOING);
-					jobTask.setStatus(JobTaskStatus.DOING);
-					jobTask.setStartTime(System.currentTimeMillis());
-					jobTasks.add(jobTask);
-					
-					if (jobTasks.size() >= jobCount)
-						break;
+					if (statusPool.replace(taskId,JobTaskStatus.UNDO,JobTaskStatus.DOING))
+					{
+						jobTask.setStatus(JobTaskStatus.DOING);
+						jobTask.setStartTime(System.currentTimeMillis());
+						jobTasks.add(jobTask);
+						
+						if (jobTasks.size() >= jobCount)
+							break;
+					}
 				}				
 			}
 		}
