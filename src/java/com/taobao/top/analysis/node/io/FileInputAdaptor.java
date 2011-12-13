@@ -30,16 +30,20 @@ public class FileInputAdaptor implements IInputAdaptor {
 	@Override
 	public InputStream getInputFormJob(JobTask jobtask) throws IOException {
 		
-		File file = new File(jobtask.getInput().substring("file:".length()));
+		String input = jobtask.getInput();
+		
+		if (input.indexOf("file:") >= 0)
+			input = input.substring("file:".length());
+		
+		File file = new File(input);
 		URL fileResource = null;
 
 		if (!file.exists()) {
-			fileResource = ClassLoader.getSystemResource(jobtask.getInput()
-					.substring("file:".length()));
+			fileResource = ClassLoader.getSystemResource(input);
 			if (fileResource == null)
 				throw new java.io.FileNotFoundException(
 						"Job resource not exist,file : "
-								+ jobtask.getInput().substring("file:".length()));
+								+ input);
 			else
 				logger.warn("load resource form classpath :"
 						+ fileResource.getFile());
@@ -49,7 +53,7 @@ public class FileInputAdaptor implements IInputAdaptor {
 			if (file.isDirectory())
 				throw new java.io.FileNotFoundException(
 						"Job resource is directory,file : "
-								+ jobtask.getInput().substring("file:".length()));
+								+ input);
 		}
 
 		if (fileResource == null)
@@ -61,7 +65,11 @@ public class FileInputAdaptor implements IInputAdaptor {
 	
 	@Override
 	public boolean ignore(String input) {
-		return input.indexOf("file:") < 0;
+		
+		if (input.indexOf(":") < 0)
+			return false;
+		else
+			return input.indexOf("file:") < 0;
 	}
 
 }

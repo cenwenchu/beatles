@@ -9,19 +9,42 @@ package com.taobao.top.analysis.util;
 public class AnalysisConstants {
 
 	public final static String IGNORE_PROCESS = "ignore";// 用于系统内部过滤不符合条件的key
-	public final static String GLOBAL_KEY = "GLOBAL_KEY";// 定义在报表中的全局key，作为对所有记录作全局统计用，也就是没有key做统计
+	public final static String GLOBAL_KEY_STR = "GLOBAL_KEY";// 定义在报表中的全局key，作为对所有记录作全局统计用，也就是没有key做统计
 	public final static String RECORD_LENGTH = "RECORD_LENGTH";// 定义在报表过滤条件中，用于过滤切割后记录数是否符合条件
+	public final static Integer GLOBAL_KEY = -2;
+	
 
 	// condition的条件设置
-	public final static String CONDITION_EQUAL = "=";
-	public final static String CONDITION_NOT_EQUAL = "!=";
-	public final static String CONDITION_GREATER = ">";
-	public final static String CONDITION_LESSER = "<";
-	public final static String CONDITION_EQUALORGREATER = ">=";
-	public final static String CONDITION_EQUALORLESSER = "<=";
-	public final static String CONDITION_ISNUMBER = "isnumber";// 是否是数字
-	public final static String CONDITION_ROUND = "round:";// 是否需要保留几位小数
-
+	public final static byte CONDITION_EQUAL = 0x1;
+	public final static byte CONDITION_NOT_EQUAL = 0x2;
+	public final static byte CONDITION_GREATER = 0x3;
+	public final static byte CONDITION_LESSER = 0x4;
+	public final static byte CONDITION_EQUALORGREATER = 0x5;
+	public final static byte CONDITION_EQUALORLESSER = 0x6;
+	public final static byte CONDITION_ISNUMBER = 0x7;
+	
+	
+	public final static byte OPERATE_PLUS = 0x11;
+	public final static byte OPERATE_MINUS = 0x12;
+	public final static byte OPERATE_DIVIDE = 0x13;
+	public final static byte OPERATE_RIDE = 0x14;
+	
+	public final static String CONDITION_EQUAL_STR = "=";
+	public final static String CONDITION_NOT_EQUAL_STR = "!=";
+	public final static String CONDITION_GREATER_STR = ">";
+	public final static String CONDITION_LESSER_STR = "<";
+	public final static String CONDITION_EQUALORGREATER_STR = ">=";
+	public final static String CONDITION_EQUALORLESSER_STR = "<=";
+	public final static String CONDITION_ISNUMBER_STR = "isnumber";// 是否是数字
+	public final static String CONDITION_ROUND_STR = "round:";// 是否需要保留几位小数
+	
+	
+	public final static char OPERATE_PLUS_CHAR = '+';
+	public final static char OPERATE_MINUS_CHAR = '-';
+	public final static char OPERATE_DIVIDE_CHAR = '/';
+	public final static char OPERATE_RIDE_CHAR = '*';
+	
+			
 	//报表中的特殊字符
 	public final static String PREF_SUM = "_:s";
 	public final static String PREF_COUNT = "_:c";

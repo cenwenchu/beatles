@@ -15,7 +15,7 @@ public class Alias implements java.io.Serializable {
 	 */
 	private static final long serialVersionUID = -5309011703476207347L;
 	private String name;
-	private String key;
+	private int key;
 
 	public String getName() {
 		return name;
@@ -25,11 +25,11 @@ public class Alias implements java.io.Serializable {
 		this.name = name;
 	}
 
-	public String getKey() {
+	public int getKey() {
 		return key;
 	}
 
-	public void setKey(String key) {
+	public void setKey(int key) {
 		this.key = key;
 	}
 

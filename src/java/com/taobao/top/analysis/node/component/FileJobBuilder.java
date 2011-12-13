@@ -272,8 +272,8 @@ public class FileJobBuilder implements IJobBuilder{
 						Alias alias = new Alias();
 						alias.setName(start.getAttributeByName(
 								new QName("", "name")).getValue());
-						alias.setKey(start.getAttributeByName(
-								new QName("", "key")).getValue());
+						alias.setKey(Integer.valueOf(start.getAttributeByName(
+								new QName("", "key")).getValue()));
 
 						rule.getAliasPool().put(alias.getName(), alias);
 
@@ -283,14 +283,14 @@ public class FileJobBuilder implements IJobBuilder{
 					if (tag.equalsIgnoreCase("inner-key")){
 						InnerKey innerKey = new InnerKey();
 						
-						innerKey.setKey(start.getAttributeByName(
-								new QName("", "key")).getValue());
+						innerKey.setKey(Integer.parseInt(start.getAttributeByName(
+								new QName("", "key")).getValue()));
 						
 						boolean isExist = false;
 						
 						for(InnerKey ik : rule.getInnerKeyPool())
 						{
-							if (ik.getKey().equals(innerKey.getKey()))
+							if (ik.getKey() == innerKey.getKey())
 							{
 								logger.error("duplicate innerkey define, key :" + innerKey.getKey());
 								
@@ -401,8 +401,8 @@ public class FileJobBuilder implements IJobBuilder{
 							if (_tmpEntry.getValueExpression() != null
 									&& _tmpEntry.getValueExpression().indexOf(
 											"entry(") >= 0)
-								for (String k : _tmpEntry.getBindingStack()) {
-									rule.getReferEntrys().put(k, null);
+								for (Object k : _tmpEntry.getBindingStack()) {
+									rule.getReferEntrys().put((String)k, null);
 								}
 						}
 
@@ -565,12 +565,13 @@ public class FileJobBuilder implements IJobBuilder{
 	 * @param 全局的valueFilter定义
 	 * @param 全局的mapClass定义
 	 * @param 父entry定义池
+	 * @throws AnalysisException 
 	 */
 	public void setReportEntry(boolean isPublic, StartElement start,
 			ReportEntry entry, Report report,
 			Map<String, ReportEntry> entryPool, Map<String, Alias> aliasPool,
 			StringBuilder globalConditions, StringBuilder globalValuefilter,
-			List<String> globalMapClass, List<String> parents) {
+			List<String> globalMapClass, List<String> parents) throws AnalysisException {
 
 		if (start.getAttributeByName(new QName("", "refId")) != null) {
 			ReportEntry node = entryPool.get(start.getAttributeByName(
@@ -676,11 +677,13 @@ public class FileJobBuilder implements IJobBuilder{
 		}
 
 		if (start.getAttributeByName(new QName("", "key")) != null) {
-			entry.setKeys(start.getAttributeByName(new QName("", "key"))
-					.getValue().split(","));
+			
+			String[] ks = start.getAttributeByName(new QName("", "key")).getValue().split(",");
+			
+			int[] keys = ReportUtil.transformVars(ks, aliasPool);
 
 			// 用alias替换部分key
-			ReportUtil.transformVars(entry.getKeys(), aliasPool);
+			entry.setKeys(keys);
 		}
 
 		if (start.getAttributeByName(new QName("", "value")) != null) {

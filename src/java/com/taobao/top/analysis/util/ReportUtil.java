@@ -26,8 +26,8 @@ import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
+import com.taobao.top.analysis.exception.AnalysisException;
 import com.taobao.top.analysis.statistics.data.Alias;
-import com.taobao.top.analysis.statistics.data.EntryValueOperator;
 import com.taobao.top.analysis.statistics.data.InnerKey;
 import com.taobao.top.analysis.statistics.data.Report;
 import com.taobao.top.analysis.statistics.data.ReportEntry;
@@ -106,6 +106,72 @@ public class ReportUtil {
 		return in;
 	}
 	
+	public static byte generateOperationFlag(String operation) throws AnalysisException
+	{
+		
+		if (operation.startsWith(AnalysisConstants.CONDITION_EQUALORGREATER_STR))
+		{
+			return AnalysisConstants.CONDITION_EQUALORGREATER;
+		}
+		
+		if (operation.startsWith(AnalysisConstants.CONDITION_EQUALORLESSER_STR))
+		{
+			return AnalysisConstants.CONDITION_EQUALORLESSER;
+		}
+		
+		if (operation.startsWith(AnalysisConstants.CONDITION_NOT_EQUAL_STR))
+		{
+			return AnalysisConstants.CONDITION_NOT_EQUAL;
+		}
+		
+		if (operation.startsWith(AnalysisConstants.CONDITION_EQUAL_STR))
+		{
+			return AnalysisConstants.CONDITION_EQUAL;
+		}	
+		
+		if (operation.startsWith(AnalysisConstants.CONDITION_GREATER_STR))
+		{
+			return AnalysisConstants.CONDITION_GREATER;
+		}
+		
+		if (operation.startsWith(AnalysisConstants.CONDITION_LESSER_STR))
+		{
+			return AnalysisConstants.CONDITION_LESSER;
+		}
+				
+		if (operation.startsWith(AnalysisConstants.CONDITION_ISNUMBER_STR))
+		{
+			return AnalysisConstants.CONDITION_ISNUMBER;
+		}
+		
+		throw new AnalysisException("Entry Operation not support!");
+		
+	}
+	
+	public static byte generateOperationFlag(char operation) throws AnalysisException
+	{
+		
+		if (operation == AnalysisConstants.OPERATE_DIVIDE_CHAR)
+		{
+			return AnalysisConstants.OPERATE_DIVIDE;
+		}
+		if (operation == AnalysisConstants.OPERATE_MINUS_CHAR)
+		{
+			return AnalysisConstants.OPERATE_MINUS;
+		}
+		if (operation == AnalysisConstants.OPERATE_PLUS_CHAR)
+		{
+			return AnalysisConstants.OPERATE_PLUS;
+		}
+		if (operation == AnalysisConstants.OPERATE_RIDE_CHAR)
+		{
+			return AnalysisConstants.OPERATE_RIDE;
+		}
+		
+		throw new AnalysisException("Entry Operation not support!");
+		
+	}
+	
 	/**
 	 * 根据定义获取对应日志行产生的key
 	 * 
@@ -124,8 +190,8 @@ public class ReportUtil {
 				for (int i = 0; i < entry.getConditionKStack().size(); i++) {
 
 					Object conditionKey = entry.getConditionKStack().get(i);
-					String operator = entry.getConditionOpStack().get(i);
-					String conditionValue = entry.getConditionVStack().get(i);
+					byte operator = entry.getConditionOpStack().get(i);
+					Object conditionValue = entry.getConditionVStack().get(i);
 					int k = -1;
 
 					// 长度condition特殊处理，没有指定的key列
@@ -147,22 +213,23 @@ public class ReportUtil {
 			if (!entry.isAndCondition() && !checkResult)
 				return AnalysisConstants.IGNORE_PROCESS;
 
-			for (String c : entry.getKeys()) {
+			for (int c : entry.getKeys()) {
 				// 全局统计，没有key
-				if (c.equals(AnalysisConstants.GLOBAL_KEY))
-					return AnalysisConstants.GLOBAL_KEY;
+				if (c == AnalysisConstants.GLOBAL_KEY)
+					return AnalysisConstants.GLOBAL_KEY_STR;
 
-				key.append(innerKeyReplace(c,contents[Integer.valueOf(c) - 1],innerKeyPool)).append(AnalysisConstants.SPLIT_KEY);
+				key.append(innerKeyReplace(c,contents[c - 1],innerKeyPool)).append(AnalysisConstants.SPLIT_KEY);
 			}
 
 		} catch (Exception ex) {
+			logger.error("generateKey error",ex);
 			return AnalysisConstants.IGNORE_PROCESS;
 		}
 
 		return key.toString();
 	}
 	
-	private static String innerKeyReplace(String key,String value,List<InnerKey> innerKeyPool)
+	private static String innerKeyReplace(int key,String value,List<InnerKey> innerKeyPool)
 	{
 		String result = value;
 		
@@ -171,7 +238,7 @@ public class ReportUtil {
 		
 		for(InnerKey ik : innerKeyPool)
 		{
-			if (ik.getKey().equals(key))
+			if (ik.getKey() == key)
 			{
 				if (ik.getInnerKeys().get(value) != null)
 					result = ik.getInnerKeys().get(value);
@@ -192,39 +259,39 @@ public class ReportUtil {
 	 * @param contents
 	 * @return
 	 */
-	private static boolean checkKeyCondition(String operator, int conditionKey,
-			String conditionValue, String[] contents) {
+	private static boolean checkKeyCondition(byte operator, int conditionKey,
+			Object conditionValue, String[] contents) {
 		boolean result = false;
 
-		if (operator.equals(AnalysisConstants.CONDITION_EQUAL)) {
+		if (operator == AnalysisConstants.CONDITION_EQUAL) {
 			if (conditionKey > 0)
 				result = contents[conditionKey - 1].equals(conditionValue);
 			else
-				result = contents.length == Integer.valueOf(conditionValue);
-		} else if (operator.equals(AnalysisConstants.CONDITION_NOT_EQUAL)) {
+				result = contents.length == (Integer)conditionValue;
+		} else if (operator == AnalysisConstants.CONDITION_NOT_EQUAL) {
 			if (conditionKey > 0)
 				result = !contents[conditionKey - 1].equals(conditionValue);
 			else
-				result = contents.length != Integer.valueOf(conditionValue);
+				result = contents.length != (Integer)conditionValue;
 		} else {
 			double cmpValue = 0;
 
 			if (conditionKey > 0)
 				cmpValue = Double.valueOf(contents[conditionKey - 1])
-						- Double.valueOf(conditionValue);
+						- (Double)conditionValue;
 			else
-				cmpValue = contents.length - Integer.valueOf(conditionValue);
+				cmpValue = contents.length - (Integer)conditionValue;
 
-			if (operator.equals(AnalysisConstants.CONDITION_EQUALORGREATER))
+			if (operator == AnalysisConstants.CONDITION_EQUALORGREATER)
 				return cmpValue >= 0;
 
-			if (operator.equals(AnalysisConstants.CONDITION_EQUALORLESSER))
+			if (operator == AnalysisConstants.CONDITION_EQUALORLESSER)
 				return cmpValue <= 0;
 
-			if (operator.equals(AnalysisConstants.CONDITION_GREATER))
+			if (operator == AnalysisConstants.CONDITION_GREATER)
 				return cmpValue > 0;
 
-			if (operator.equals(AnalysisConstants.CONDITION_LESSER))
+			if (operator == AnalysisConstants.CONDITION_LESSER)
 				return cmpValue < 0;
 
 		}
@@ -246,14 +313,27 @@ public class ReportUtil {
 	 * @param keys
 	 * @param aliasPool
 	 */
-	public static void transformVars(String[] keys, Map<String, Alias> aliasPool) {
-		if (aliasPool != null && aliasPool.size() > 0 && keys != null
+	public static int[] transformVars(String[] keys, Map<String, Alias> aliasPool) {
+		if (keys != null
 				&& keys.length > 0) {
-			for (int i = 0; i < keys.length; i++) {
-				if (aliasPool.get(keys[i]) != null)
-					keys[i] = aliasPool.get(keys[i]).getKey();
+			
+			int[] tKeys = new int[keys.length];
+			
+			for (int i = 0; i < keys.length; i++) 
+			{
+				if (aliasPool != null && aliasPool.size() > 0 && aliasPool.get(keys[i]) != null)
+					tKeys[i] = aliasPool.get(keys[i]).getKey();
+				else
+					if (keys[i].equals(AnalysisConstants.GLOBAL_KEY_STR))
+						tKeys[i] = -2;
+					else
+						tKeys[i] = Integer.parseInt(keys[i]);
 			}
+			
+			return tKeys;
 		}
+		else
+			return new int[0]; 
 	}
 
 	/**
@@ -263,8 +343,8 @@ public class ReportUtil {
 	 * @param aliasPool
 	 * @return
 	 */
-	public static String transformVar(String key, Map<String, Alias> aliasPool) {
-		String result = key;
+	public static Object transformVar(String key, Map<String, Alias> aliasPool) {
+		Object result = key;
 
 		if (aliasPool != null && aliasPool.size() > 0
 				&& aliasPool.get(key) != null) {
@@ -400,10 +480,10 @@ public class ReportUtil {
 
 		try {
 			for (String filter : formatStack) {
-				if (filter.startsWith(AnalysisConstants.CONDITION_ROUND)) {
+				if (filter.startsWith(AnalysisConstants.CONDITION_ROUND_STR)) {
 
 					int round = Integer.valueOf(filter
-							.substring(AnalysisConstants.CONDITION_ROUND
+							.substring(AnalysisConstants.CONDITION_ROUND_STR
 									.length()));
 					double r = Math.pow(10, round);
 
@@ -431,8 +511,8 @@ public class ReportUtil {
 	 * @param value
 	 * @return
 	 */
-	public static boolean checkValue(List<String> valuefilterOpStack,
-			List<String> valuefilterStack, Object value) {
+	public static boolean checkValue(List<Byte> valuefilterOpStack,
+			List<Object> valuefilterStack, Object value) {
 		boolean result = true;
 
 		if (valuefilterStack == null
@@ -441,28 +521,23 @@ public class ReportUtil {
 
 		try {
 			for (int i = 0; i < valuefilterStack.size(); i++) {
-				String filterValue = valuefilterStack.get(i);
-				String filterOpt = valuefilterOpStack.get(i);
+				Object filterValue = valuefilterStack.get(i);
+				Byte filterOpt = valuefilterOpStack.get(i);
 
-				if (filterOpt.equals(AnalysisConstants.CONDITION_ISNUMBER)) {
-					Double.valueOf(value.toString());
-					continue;
+				if (filterOpt == AnalysisConstants.CONDITION_ISNUMBER) {
+					Double.parseDouble(value.toString());
 				}
 
-				if (filterOpt.equals(AnalysisConstants.CONDITION_EQUAL)) {
-					Double v = Double.valueOf(value.toString());
-					Double compareValue = Double.valueOf(filterValue);
-
-					if (v == compareValue) {
+				if (filterOpt == AnalysisConstants.CONDITION_EQUAL) {
+					if (value.equals(filterValue)) {
 						continue;
 					} else
 						return false;
 				}
 
-				if (filterOpt
-						.equals(AnalysisConstants.CONDITION_EQUALORGREATER)) {
+				if (filterOpt == AnalysisConstants.CONDITION_EQUALORGREATER) {
 					Double v = Double.valueOf(value.toString());
-					Double compareValue = Double.valueOf(filterValue);
+					Double compareValue = (Double)filterValue;
 
 					if (v >= compareValue) {
 						continue;
@@ -470,9 +545,9 @@ public class ReportUtil {
 						return false;
 				}
 
-				if (filterOpt.equals(AnalysisConstants.CONDITION_EQUALORLESSER)) {
+				if (filterOpt == AnalysisConstants.CONDITION_EQUALORLESSER) {
 					Double v = Double.valueOf(value.toString());
-					Double compareValue = Double.valueOf(filterValue);
+					Double compareValue = (Double)filterValue;
 
 					if (v <= compareValue) {
 						continue;
@@ -480,9 +555,9 @@ public class ReportUtil {
 						return false;
 				}
 
-				if (filterOpt.equals(AnalysisConstants.CONDITION_GREATER)) {
+				if (filterOpt == AnalysisConstants.CONDITION_GREATER) {
 					Double v = Double.valueOf(value.toString());
-					Double compareValue = Double.valueOf(filterValue);
+					Double compareValue = (Double)filterValue;
 
 					if (v > compareValue) {
 						continue;
@@ -490,9 +565,9 @@ public class ReportUtil {
 						return false;
 				}
 
-				if (filterOpt.equals(AnalysisConstants.CONDITION_LESSER)) {
+				if (filterOpt == AnalysisConstants.CONDITION_LESSER) {
 					Double v = Double.valueOf(value.toString());
-					Double compareValue = Double.valueOf(filterValue);
+					Double compareValue = (Double)filterValue;
 
 					if (v < compareValue) {
 						continue;
@@ -500,11 +575,8 @@ public class ReportUtil {
 						return false;
 				}
 
-				if (filterOpt.equals(AnalysisConstants.CONDITION_NOT_EQUAL)) {
-					Double v = Double.valueOf(value.toString());
-					Double compareValue = Double.valueOf(filterValue);
-
-					if (!v.equals(compareValue)) {
+				if (filterOpt == AnalysisConstants.CONDITION_NOT_EQUAL) {
+					if (!value.equals(filterValue)) {
 						continue;
 					} else
 						return false;
@@ -594,10 +666,10 @@ public class ReportUtil {
 
 				if (entry.getBindingStack() != null
 						&& entry.getBindingStack().size() > 0) {
-					List<String> bindingStack = entry.getBindingStack();
-					int size = bindingStack.size();
+					List<Object> _bindingStack = entry.getBindingStack();
+					int size = _bindingStack.size();
 
-					String leftEntryId = bindingStack.get(0);
+					String leftEntryId = (String)_bindingStack.get(0);
 
 					Map<String, Object> leftMap = result.get(leftEntryId);
 
@@ -613,7 +685,7 @@ public class ReportUtil {
 							Object rightvalue;
 
 							for (int i = 0; i < size - 1; i++) {
-								String rightkey = bindingStack.get(i + 1);
+								String rightkey = (String)_bindingStack.get(i + 1);
 
 								if (rightkey.startsWith("sum:")) {
 									rightkey = rightkey.substring(rightkey
@@ -648,29 +720,24 @@ public class ReportUtil {
 								} else {
 									// 简单实现只支持两位计算，同时是+或者-
 									if (rightkey
-											.indexOf(EntryValueOperator.PLUS
-													.toString()) > 0
+											.indexOf(AnalysisConstants.OPERATE_PLUS_CHAR) > 0
 											|| rightkey
-													.indexOf(EntryValueOperator.MINUS
-															.toString()) > 0) {
+													.indexOf(AnalysisConstants.OPERATE_MINUS_CHAR) > 0) {
 
 										String l;
 										String r;
 
 										if (rightkey
-												.indexOf(EntryValueOperator.PLUS
-														.toString()) > 0) {
+												.indexOf(AnalysisConstants.OPERATE_PLUS_CHAR) > 0) {
 											l = rightkey
 													.substring(
 															0,
-															rightkey.indexOf(EntryValueOperator.PLUS
-																	.toString()))
+															rightkey.indexOf(AnalysisConstants.OPERATE_PLUS_CHAR))
 													.trim();
 
 											r = rightkey
 													.substring(
-															rightkey.indexOf(EntryValueOperator.PLUS
-																	.toString()) + 1)
+															rightkey.indexOf(AnalysisConstants.OPERATE_PLUS_CHAR) + 1)
 													.trim();
 
 											if (result.get(l) == null
@@ -694,14 +761,12 @@ public class ReportUtil {
 											l = rightkey
 													.substring(
 															0,
-															rightkey.indexOf(EntryValueOperator.MINUS
-																	.toString()))
+															rightkey.indexOf(AnalysisConstants.OPERATE_MINUS_CHAR))
 													.trim();
 
 											r = rightkey
 													.substring(
-															rightkey.indexOf(EntryValueOperator.MINUS
-																	.toString()) + 1)
+															rightkey.indexOf(AnalysisConstants.OPERATE_MINUS_CHAR) + 1)
 													.trim();
 
 											if (result.get(l) == null
@@ -732,9 +797,7 @@ public class ReportUtil {
 									if(nodevalue!=null){
 										if (entry
 												.getOperatorStack()
-												.get(i)
-												.equals(EntryValueOperator.PLUS
-														.toString())) {
+												.get(i) == AnalysisConstants.OPERATE_PLUS) {
 											if (nodevalue instanceof Double
 													|| rightvalue instanceof Double)
 												nodevalue = Double
@@ -751,9 +814,7 @@ public class ReportUtil {
 
 										if (entry
 												.getOperatorStack()
-												.get(i)
-												.equals(EntryValueOperator.MINUS
-														.toString())) {
+												.get(i)  == AnalysisConstants.OPERATE_MINUS) {
 											if (nodevalue instanceof Double
 													|| rightvalue instanceof Double)
 												nodevalue = Double
@@ -770,9 +831,7 @@ public class ReportUtil {
 
 										if (entry
 												.getOperatorStack()
-												.get(i)
-												.equals(EntryValueOperator.RIDE
-														.toString())) {
+												.get(i) == AnalysisConstants.OPERATE_RIDE) {
 											if (nodevalue instanceof Double
 													|| rightvalue instanceof Double)
 												nodevalue = Double
@@ -789,9 +848,7 @@ public class ReportUtil {
 
 										if (entry
 												.getOperatorStack()
-												.get(i)
-												.equals(EntryValueOperator.DIVIDE
-														.toString())) {
+												.get(i)  == AnalysisConstants.OPERATE_DIVIDE) {
 											nodevalue = Double.valueOf(nodevalue
 													.toString())
 													/ Double.valueOf(rightvalue

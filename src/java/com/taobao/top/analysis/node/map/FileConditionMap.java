@@ -36,8 +36,8 @@ public class FileConditionMap implements IReportMap {
 			while (conKeys.hasNext()) {
 				String k = conKeys.next();
 
-				String position = aliasPool.get(k).getKey();
-				String conValue = contents[Integer.valueOf(position) - 1];
+				int position = aliasPool.get(k).getKey();
+				String conValue = contents[position - 1];
 
 				if (!condition.get(k).contains(conValue))
 					return AnalysisConstants.IGNORE_PROCESS;

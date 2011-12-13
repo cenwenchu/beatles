@@ -27,7 +27,6 @@ import com.taobao.top.analysis.node.job.JobTaskResult;
 import com.taobao.top.analysis.node.map.IReportMap;
 import com.taobao.top.analysis.node.reduce.IReportReduce;
 import com.taobao.top.analysis.statistics.data.Alias;
-import com.taobao.top.analysis.statistics.data.EntryValueOperator;
 import com.taobao.top.analysis.statistics.data.InnerKey;
 import com.taobao.top.analysis.statistics.data.ReportEntry;
 import com.taobao.top.analysis.statistics.data.ReportEntryValueType;
@@ -132,6 +131,11 @@ public class StatisticsEngine implements IStatisticsEngine{
 				
 				if (in != null)
 					break;
+			}
+			
+			if (in == null)
+			{
+				throw new IOException("Input not found! input : " + jobTask.getInput());
 			}
 			
 			return analysis(in,jobTask);
@@ -535,17 +539,16 @@ public class StatisticsEngine implements IStatisticsEngine{
 
 		if (entry.getBindingStack() != null
 				&& entry.getBindingStack().size() > 0) {
-			List<String> bindingStack = entry.getBindingStack();
+			List<Object> bindingStack = entry.getBindingStack();
 
 			if (bindingStack.size() > 1) {
-				if (bindingStack.get(0).startsWith("#"))
-					left = Double.valueOf(bindingStack.get(0).substring(1));
+				if (bindingStack.get(0) instanceof String && ((String)bindingStack.get(0)).startsWith("#"))
+					left = Double.valueOf(((String)bindingStack.get(0)).substring(1));
 				else {
-					if (Integer.valueOf(bindingStack.get(0)) - 1 >= contents.length)
+					if ((Integer)bindingStack.get(0) - 1 >= contents.length)
 						return result;
 
-					left = Double.valueOf(contents[Integer.valueOf(bindingStack
-							.get(0)) - 1]);
+					left = Double.valueOf(contents[(Integer)bindingStack.get(0) - 1]);
 				}
 
 				double right = 0;
@@ -553,44 +556,51 @@ public class StatisticsEngine implements IStatisticsEngine{
 				int size = bindingStack.size();
 
 				for (int i = 0; i < size - 1; i++) {
-					if (bindingStack.get(i + 1).startsWith("#"))
-						right = Double.valueOf(bindingStack.get(i + 1)
+					if (bindingStack.get(i + 1) instanceof String && ((String)bindingStack.get(i + 1)).startsWith("#"))
+						right = Double.valueOf(((String)bindingStack.get(i + 1))
 								.substring(1));
 					else {
-						if (Integer.valueOf(bindingStack.get(i + 1)) - 1 >= contents.length)
+						if ((Integer)bindingStack.get(i + 1) - 1 >= contents.length)
 							return result;
 
-						right = Double.valueOf(contents[Integer
-								.valueOf(bindingStack.get(i + 1)) - 1]);
+						right = Double.valueOf(contents[(Integer)bindingStack.get(i + 1) - 1]);
 					}
 
-					if (entry.getOperatorStack().get(i)
-							.equals(EntryValueOperator.PLUS.toString()))
+					if (entry.getOperatorStack().get(i) == AnalysisConstants.OPERATE_PLUS)
+					{
 						left += right;
+						continue;
+					}
 
-					if (entry.getOperatorStack().get(i)
-							.equals(EntryValueOperator.MINUS.toString()))
+					if (entry.getOperatorStack().get(i) == AnalysisConstants.OPERATE_MINUS)
+					{
 						left -= right;
+						continue;
+					}
 
-					if (entry.getOperatorStack().get(i)
-							.equals(EntryValueOperator.RIDE.toString()))
+					if (entry.getOperatorStack().get(i) == AnalysisConstants.OPERATE_RIDE)
+					{
 						left = left * right;
+						continue;
+					}
 
-					if (entry.getOperatorStack().get(i)
-							.equals(EntryValueOperator.DIVIDE.toString()))
+					if (entry.getOperatorStack().get(i) == AnalysisConstants.OPERATE_DIVIDE)
+					{
 						left = left / right;
+						continue;
+					}
 
 				}
 
 				result = left;
 			} else {
-				if (bindingStack.get(0).startsWith("#"))
-					result = Double.valueOf(bindingStack.get(0).substring(1));
+				if (bindingStack.get(0) instanceof String && ((String)bindingStack.get(0)).startsWith("#"))
+					result = Double.valueOf(((String)bindingStack.get(0)).substring(1));
 				else {
-					if (Integer.valueOf(bindingStack.get(0)) - 1 >= contents.length)
+					if ((Integer)bindingStack.get(0) - 1 >= contents.length)
 						return result;
 
-					result = contents[Integer.valueOf(bindingStack.get(0)) - 1];
+					result = contents[(Integer)bindingStack.get(0) - 1];
 				}
 
 			}

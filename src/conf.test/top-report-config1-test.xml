@@ -1,0 +1,174 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<top_reports>
+	<!-- 全局条件自动会应用到所有的entity中，
+		具体condition的定义和使用方式参看后面entity中condition的定义 -->
+	<!-- 下面范例表示说给后面所有的处理增加一个条件就是每一条分析日志长度都大于等于6,小于11,否则不做任何统计分析 -->
+  	<global-condition value="$RECORD_LENGTH$&gt;=6&amp;$RECORD_LENGTH$&lt;11"/>
+    
+    <!-- 全局条件自动会应用到所有的entity中，
+		具体valuefilter的定义和使用方式参看后面entity中valuefilter的定义
+    <global-valuefilter value=""/>
+    <global-mapClass value=""/>
+    -->
+    
+    <!--inner-key key="6" file="file:/Users/apple/Documents/workspace/top-analysis/src/conf.test/apiInnerKey.ik"/-->
+    
+
+	<!-- 别名，用于定义分析文件中的列，
+		防止因为列的移位导致整个报表都需要修改，多个别名可以对应一个列,key代表列数值 -->
+    <aliases>
+    	<alias name="appkey" key="1"/>
+    	<alias name="remoteIp" key="2"/>
+    	<alias name="apiName" key="3"/>
+    	<alias name="format" key="4"/>
+    	<alias name="readBytes" key="5"/>
+    	<alias name="signMethod" key="6"/>
+    	<alias name="responseTime" key="7"/>
+    	<alias name="platformConsumeTime" key="8"/>
+    	<alias name="errorCode" key="9"/>
+    	<alias name="timestamp" key="10"/>
+    </aliases>
+    
+    <!-- 统计列的定义:
+    	id是唯一索引，
+    	name表示在报表中显示的名称，
+    	key可以是alias也可以直接定义列号（不推荐）主要表示对那一列或者几列作为主键进行统计例如key=apiname表示对apiName作分类统计，
+    		相同的apiname的纪录作为一组作后面value的运算，key有保留字GLOBAL_KEY代表对所有记录作总计统计
+    	value表示计算方式当前支持：min,max,average,count,sum,plain。分别代表统计最小值，最大值，平均值，计数,总和。plain表示直接显示，一般用于主键列的显示
+    		同时min,max,average,sum,plain支持表达式，用$$围起来的代表列，entry()表示对统计后的entry作再次计算得到新的entry的结果。
+    	condition表示key的过滤条件，支持对列的过滤条件，支持大于，小于，不等于,大于等于,小于等于的表达式（大于小于需要转义），
+    		同时可以多个条件串联用&amp;串联。注意，表达式中不支持有空格。
+    	valuefilter表示value的过滤条件，支持计算出来的结果过滤，有大于，小于，不等于,大于等于,小于等于，是否是数字（isnumber）,大于小于需要转义，
+    		同时可以多个条件串联用&amp;串联。注意，表达式中不支持有空格。
+    	支持自定义map和reduce函数：范例如下：
+    		mapClass="com.taobao.top.analysis.map.TimeMap" mapParams="xxx=xxx"
+			reduceClass="com.taobao.top.analysis.reduce.TimeReduce" reduceParams="xxx=xxx"
+    	 -->
+	<entrys>
+		<ReportEntry id="apiTotalCount" name="服务请求总次数" key="apiName" value="count()"/>
+		<ReportEntry id="apiSuccessCount" name="访问成功次数" key="apiName" value="count()" condition="$errorCode$=0" />
+		<ReportEntry id="apiFailCount" name="访问失败次数" key="apiName" value="plain(entry(apiTotalCount)-entry(apiSuccessCount))" />
+		<ReportEntry id="apiAverageTimeConsume" name="平均处理时间" key="apiName" value="average($responseTime$)" valuefilter="&gt;=0&amp;&lt;10000&amp;isnumber&amp;round:3"/>
+		<ReportEntry id="apiMinTimeConsume" name="处理最小时间" key="apiName" value="min($responseTime$)" valuefilter="&gt;=0&amp;isnumber"/>
+		<ReportEntry id="apiMaxTimeConsume" name="处理最大时间" key="apiName" value="max($responseTime$)"  valuefilter="&gt;=0&amp;&lt;10000&amp;isnumber"/>	
+		<ReportEntry id="apiAverageServiceConsume" name="业务成功处理平均时间" key="apiName" condition="$errorCode$=0" 
+			 value="average($responseTime$ - $platformConsumeTime$)" valuefilter="&gt;=0&amp;isnumber&amp;round:3"/>	
+		<ReportEntry id="api400ErrorCount" name="400错误次数" key="apiName" value="count()" condition="$errorCode$&gt;=400&amp;$errorCode$&lt;500" />
+		<ReportEntry id="api500ErrorCount" name="500错误次数" key="apiName" value="count()" condition="$errorCode$=500" />
+		<!-- 读取数据量乘以8来计算bit -->
+		<ReportEntry id="apiFlow" name="服务上行数据量" key="apiName" value="sum($readBytes$*#8#)" />
+	</entrys>
+	
+	<!-- 
+		报表定义：
+		id为报表主键，除了数字也可以用英文字符串
+		file为报表保存的名称，不建议使用中文
+		entryList描述了报表包含的所有的entry，可以引用上面定义的全局性的entry，也可以内部定义私有的entry。
+		
+	 -->
+	<reports>
+		<report id="apiReport" file="apiReport">
+			<entryList>
+			    <entry name="服务名称" key="apiName" value="plain($apiName$)" /> 
+				<entry id="apiTotalCount"/>
+				<entry id="apiFlow"/>
+				<entry name="占总量比例" key="apiName" value="plain(entry(apiTotalCount)/entry(sum:apiTotalCount))" valuefilter="&gt;=0&amp;isnumber&amp;round:3"/> 
+				<entry id="apiSuccessCount"/>
+				<entry name="服务请求成功率" key="apiName" value="plain(entry(apiSuccessCount)/entry(apiTotalCount))" valuefilter="&gt;=0&amp;isnumber&amp;round:3"/> 
+				<entry id="apiFailCount" />
+				<entry id="apiAverageTimeConsume"/>
+				<entry id="apiMinTimeConsume"/>
+				<entry id="apiMaxTimeConsume"/>
+				<entry id="apiAverageServiceConsume"/>
+				<entry name="400与500占总访问百分比" key="apiName" value="plain(entry(api400ErrorCount)+entry(api500ErrorCount)/entry(apiTotalCount))" valuefilter="&gt;=0&amp;isnumber&amp;round:3"/>	
+			</entryList>
+		</report>
+	
+		<report id="totalReport" file="totalReport">
+			<entryList>
+				<entry id="totalCount" name="请求总次数" key="GLOBAL_KEY" value="count()" />
+				<entry id="successCount" name="成功总数" key="GLOBAL_KEY" value="count()" condition="$errorCode$=0"/>
+				<entry name="访问总流量(M)" key="GLOBAL_KEY" value="sum($readBytes$*#8#)"  valuefilter="&gt;=0&amp;isnumber&amp;round:4"/>
+			</entryList>
+		</report>
+		
+		
+		<report id="errorCodeReport" file="errorCodeReport">
+			<entryList>
+			    <entry name="错误码" key="errorCode" value="plain($errorCode$)" condition="$errorCode$!=0" valuefilter="isnumber"/> 
+				<entry id="errorCount" name="错误数量" key="errorCode" value="count()" condition="$errorCode$!=0" valuefilter="isnumber"/> 
+				<entry name="错误比例" key="errorCode" value="plain(entry(errorCount)/entry(sum:errorCount))" condition="$errorCode$!=0" valuefilter="&gt;=0&amp;isnumber&amp;round:3"/> 
+			</entryList>
+		</report>
+		
+         <report id="ipReport" file="ipReport">
+            <entryList>
+                <entry name="服务器IP" key="remoteIp" value="plain($remoteIp$)"/>
+                <entry name="访问总量" key="remoteIp" value="count()"/>
+                <entry name="访问成功总量" key="remoteIp" value="count()" condition="$errorCode$=0" />
+             </entryList>
+         </report>	
+         
+		<report id="appReport" file="appReport">
+			<entryList>
+			    <entry name="应用ID" key="appkey" value="plain($appkey$)" />
+			    <entry name="访问总量" key="appkey" value="count()"/>
+                <entry name="访问成功总量" key="appkey" value="count()" condition="$errorCode$=0" />
+			</entryList>
+		</report>
+		
+		<report id="appAPIReport" file="appAPIReport">
+			<entryList>
+			    <entry name="应用ID" key="appkey,apiName" value="plain($appkey$)"/> 
+			    <entry name="服务名称" key="appkey,apiName" value="plain($apiName$)"/>
+			    <entry id="app_api_count" name="访问总量" key="appkey,apiName" value="count()" />
+                <entry id="app_api_successCount" name="访问成功总量" key="appkey,apiName" value="count()" condition="$errorCode$=0" />
+                <entry id="app_api_AverageTimeConsume" name="平均处理时间" key="appkey,apiName" value="average($responseTime$)" valuefilter="&gt;=0&amp;&lt;10000&amp;isnumber&amp;round:3"/>
+				<entry id="app_api_MinTimeConsume" name="处理最小时间" key="appkey,apiName" value="min($responseTime$)" valuefilter="&gt;=0&amp;isnumber"/>
+				<entry id="app_api_MaxTimeConsume" name="处理最大时间" key="appkey,apiName" value="max($responseTime$)"  valuefilter="&gt;=0&amp;&lt;10000&amp;isnumber"/>	     
+			</entryList>
+		</report>
+		
+		<report id="totalHourReport" file="totalHourReport">
+			<entryList>
+			    <entry name="整点时间段" key="timestamp" value="plain($timestamp$)" 
+			    	mapClass="com.taobao.top.analysis.node.map.TimeMap"
+			    	reduceClass="com.taobao.top.analysis.node.reduce.TimeReduce"/> 
+				<entry name="时间段内访问总量" key="timestamp" value="count()" 
+						mapClass="com.taobao.top.analysis.node.map.TimeMap"/>
+				<entry name="时间段内访问成功总量" key="timestamp" value="count()" condition="$errorCode$=0"
+						mapClass="com.taobao.top.analysis.node.map.TimeMap"/>
+				<entry name="时间段内访问失败总量" key="timestamp" value="count()" condition="$errorCode$!=0"
+						mapClass="com.taobao.top.analysis.node.map.TimeMap" valuefilter="&gt;=0&amp;isnumber&amp;round:3"/>
+				<entry name="时间段内访问业务平均耗时(ms)" key="timestamp" value="average($responseTime$ - $platformConsumeTime$)"  
+						mapClass="com.taobao.top.analysis.node.map.TimeMap" valuefilter="&gt;=0&amp;isnumber&amp;round:3"/>
+				<entry name="时间段内访问平台平均耗时(ms)" key="timestamp" value="average($platformConsumeTime$)"  
+						mapClass="com.taobao.top.analysis.node.map.TimeMap" valuefilter="&gt;=0&amp;isnumber&amp;round:3"/>
+			</entryList>
+		</report>
+			
+		<!-- 以上的所有报表都是全量报表，也就是按照指定时间增量统计合并，也就是job会被执行很多轮，每一轮的结果会合并到主干，例如一天的访问量，
+			但牵涉到如果统计后结果基数还是非常大的情况的时候，例如用户ip维度的统计，一种方式就是直接让slave每次都输出task，另一种就是job一轮所有
+			task执行完毕以后，合并的结果输出后就清空，不再和下一轮合并，下面的配置就是这样的情况,注意report定义中有一个period的属性
+			需要注意的是当前程序里面固化写死了时间段字段必须放在第一位，例如key="timestamp,remoteIp,apiName"，timestamp这个分片参数必须放在第一位，后续可以改为可定义
+		 -->
+			
+		<report id="ipAPIReportPeriod" file="ipAPIReportPeriod" period="true">
+			<entryList>
+				<entry name="远端ip" key="timestamp,remoteIp,apiName" value="plain($remoteIp$)"
+					mapClass="com.taobao.top.analysis.node.map.TimeMap" mapParams="minute:5" />
+				<entry name="api名称" key="timestamp,remoteIp,apiName" value="plain($apiName$)"
+					mapClass="com.taobao.top.analysis.node.map.TimeMap" mapParams="minute:5" />
+				<entry name="访问总量" key="timestamp,remoteIp,apiName" value="count()"
+					mapClass="com.taobao.top.analysis.node.map.TimeMap" mapParams="minute:5" />
+				<entry name="时间段" key="timestamp,remoteIp,apiName" value="plain($timestamp$)"
+					mapClass="com.taobao.top.analysis.node.map.TimeMap" mapParams="minute:5"
+					reduceClass="com.taobao.top.analysis.node.reduce.TimeReduce"
+					reduceParams="minute:5" />
+			</entryList>
+		</report>
+		
+	</reports>
+
+	
+</top_reports>

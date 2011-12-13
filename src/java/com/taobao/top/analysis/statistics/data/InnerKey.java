@@ -29,14 +29,14 @@ public class InnerKey implements java.io.Serializable{
 	 */
 	private static final long serialVersionUID = 5343510577689025678L;
 	
-	private String key;
+	private int key;
 	private String file;
 	private Map<String,String> innerKeys;
 	
-	public String getKey() {
+	public int getKey() {
 		return key;
 	}
-	public void setKey(String key) {
+	public void setKey(int key) {
 		this.key = key;
 	}
 	public String getFile() {
