@@ -23,6 +23,7 @@ import com.taobao.top.analysis.exception.AnalysisException;
 import com.taobao.top.analysis.node.IJobResultMerger;
 import com.taobao.top.analysis.node.connect.ISlaveConnector;
 import com.taobao.top.analysis.node.event.GetTaskRequestEvent;
+import com.taobao.top.analysis.node.event.SendResultsRequestEvent;
 import com.taobao.top.analysis.node.event.SlaveNodeEvent;
 import com.taobao.top.analysis.node.job.JobTask;
 import com.taobao.top.analysis.node.job.JobTaskResult;
@@ -142,6 +143,7 @@ public class SlaveNode extends AbstractNode<SlaveNodeEvent,SlaveConfig>{
 		
 		JobTask[] jobTasks = slaveConnector.getJobTasks(event);	
 		
+		
 		if (jobTasks != null && jobTasks.length > 0)
 		{
 			//只有一个任务的情况
@@ -150,7 +152,12 @@ public class SlaveNode extends AbstractNode<SlaveNodeEvent,SlaveConfig>{
 				try 
 				{
 					//计算并输出
-					statisticsEngine.doExport(jobTasks[0],statisticsEngine.doAnalysis(jobTasks[0]));
+					JobTaskResult jobTaskResult = statisticsEngine.doAnalysis(jobTasks[0]);
+					if (jobTaskResult != null)
+					{
+						statisticsEngine.doExport(jobTasks[0],jobTaskResult);
+						slaveConnector.sendJobTaskResults(generateSendResultsRequestEvent(jobTaskResult));
+					}
 				} 
 				catch (Exception e) {
 					logger.error(e,e);
@@ -213,6 +220,17 @@ public class SlaveNode extends AbstractNode<SlaveNodeEvent,SlaveConfig>{
 		}
 		
 	}
+	
+	public SendResultsRequestEvent generateSendResultsRequestEvent(JobTaskResult jobTaskResult)
+	{
+		SendResultsRequestEvent responseEvent = new SendResultsRequestEvent(new StringBuilder()
+				.append(System.currentTimeMillis()).append("-").append(sequenceGen.incrementAndGet()).toString());
+
+		responseEvent.setJobTaskResult(jobTaskResult);
+		responseEvent.setMaxEventHoldTime(slaveConnector.getConfig().getMaxClientEventWaitTime());
+
+		return responseEvent;
+	}
 
 	@Override
 	public void processEvent(SlaveNodeEvent event) {
@@ -248,7 +266,14 @@ public class SlaveNode extends AbstractNode<SlaveNodeEvent,SlaveConfig>{
 					try 
 					{
 						//计算并输出
-						statisticsEngine.doExport(jobTasks.get(0),statisticsEngine.doAnalysis(jobTasks.get(0)));
+						JobTaskResult jobTaskResult = statisticsEngine.doAnalysis(jobTasks.get(0));
+						
+						if (jobTaskResult != null)
+						{
+							statisticsEngine.doExport(jobTasks.get(0),jobTaskResult);
+							slaveConnector.sendJobTaskResults(generateSendResultsRequestEvent(jobTaskResult));
+						}
+	
 					} 
 					catch (Exception e) {
 						logger.error(e,e);
@@ -299,8 +324,9 @@ public class SlaveNode extends AbstractNode<SlaveNodeEvent,SlaveConfig>{
 					
 					//合并分析结果
 					JobTaskResult jobTaskResult = jobResultMerger.merge(jobTasks.get(0), taskResults,true);
-					//输出到服务端
+					//输出
 					statisticsEngine.doExport(jobTasks.get(0), jobTaskResult);
+					slaveConnector.sendJobTaskResults(generateSendResultsRequestEvent(jobTaskResult));
 				}
 			}
 			finally

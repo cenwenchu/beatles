@@ -16,7 +16,6 @@ import com.taobao.top.analysis.node.io.FileOutputAdaptor;
 import com.taobao.top.analysis.node.io.HttpInputAdaptor;
 import com.taobao.top.analysis.node.io.IInputAdaptor;
 import com.taobao.top.analysis.node.io.IOutputAdaptor;
-import com.taobao.top.analysis.node.io.MasterOutputAdaptor;
 import com.taobao.top.analysis.statistics.StatisticsEngine;
 
 /**
@@ -69,8 +68,7 @@ public class MasterSlaveIntegrationTest {
 		IInputAdaptor fileInputAdaptor =  new FileInputAdaptor();
 		IInputAdaptor httpInputAdaptor = new HttpInputAdaptor();
 		IOutputAdaptor fileOutAdaptor = new FileOutputAdaptor();
-		IOutputAdaptor masterOutputAdaptor = new MasterOutputAdaptor();
-		((MasterOutputAdaptor)masterOutputAdaptor).setSlaveConnector(slaveConnector);
+
 		
 		FileJobExporter fileJobExporter2 = new FileJobExporter();
 		fileJobExporter2.setMaxCreateReportWorker(2);
@@ -81,7 +79,6 @@ public class MasterSlaveIntegrationTest {
 		statisticsEngine.addInputAdaptor(fileInputAdaptor);
 		statisticsEngine.addInputAdaptor(httpInputAdaptor);
 		statisticsEngine.addOutputAdaptor(fileOutAdaptor);
-		statisticsEngine.addOutputAdaptor(masterOutputAdaptor);
 		slaveNode.startNode();
 		
 		
