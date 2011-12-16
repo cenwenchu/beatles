@@ -13,6 +13,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -24,13 +25,7 @@ import com.taobao.top.analysis.node.io.IOutputAdaptor;
 import com.taobao.top.analysis.node.job.JobTask;
 import com.taobao.top.analysis.node.job.JobTaskExecuteInfo;
 import com.taobao.top.analysis.node.job.JobTaskResult;
-import com.taobao.top.analysis.node.map.IReportMap;
-import com.taobao.top.analysis.node.reduce.IReportReduce;
-import com.taobao.top.analysis.statistics.data.Alias;
-import com.taobao.top.analysis.statistics.data.InnerKey;
 import com.taobao.top.analysis.statistics.data.ReportEntry;
-import com.taobao.top.analysis.statistics.data.ReportEntryValueType;
-import com.taobao.top.analysis.util.AnalysisConstants;
 import com.taobao.top.analysis.util.ReportUtil;
 import com.taobao.top.analysis.util.Threshold;
 
@@ -199,26 +194,15 @@ public class StatisticsEngine implements IStatisticsEngine{
 					
 					String[] contents = StringUtils.splitByWholeSeparator(record, splitRegex);
 					Iterator<String> keys = entryPool.keySet().iterator();
-					List<ReportEntry> childEntrys = new ArrayList<ReportEntry>();
-					Map<String, Object> valueTempPool = new HashMap<String, Object>();
-					
 					while (keys.hasNext()) 
 					{
 						try 
 						{
 							String key = keys.next();
 							entry = entryPool.get(key);
-							
-							if (entry.isLazy())
-								continue;
-							
-							if (entry.getParent() != null)
-							{
-								childEntrys.add(entry);
-								continue;
+							if(!entry.isLazy()){
+								processSingleLine(entry, contents,jobtask,jobTaskResult);
 							}
-							
-							processSingleLine(entry, contents, valueTempPool,jobtask,jobTaskResult);
 							
 						} 
 						catch (Throwable e) 
@@ -232,29 +216,6 @@ public class StatisticsEngine implements IStatisticsEngine{
 								logger.error(new StringBuilder().append("Entry :")
 									.append(entry.getId()).append("\r\n record: ")
 									.append(record).toString(), e);
-						}
-					}
-					
-					for (Iterator<ReportEntry> iterator = childEntrys.iterator(); iterator.hasNext();)
-					{
-						try 
-						{
-							entry = iterator.next();
-							processSingleLine(entry, contents, valueTempPool,jobtask,jobTaskResult);
-						}
-						catch (Throwable e) 
-						{
-							if(!failure) 
-								exceptionLine++;
-							
-							failure=true;
-							
-							if (!threshold.sholdBlock())
-								logger.error(
-									new StringBuilder().append("Entry :")
-											.append(entry.getId())
-											.append("\r\n record: ").append(record)
-											.toString(), e);
 						}
 					}
 
@@ -292,7 +253,7 @@ public class StatisticsEngine implements IStatisticsEngine{
 					logger.error(ex,ex);
 				}
 			}
-
+			System.out.println("####"+(System.currentTimeMillis() - beg));
 			taskExecuteInfo.setAnalysisConsume(System.currentTimeMillis() - beg);
 			taskExecuteInfo.setEmptyLine(emptyLine);
 			taskExecuteInfo.setErrorLine(exceptionLine);
@@ -312,302 +273,19 @@ public class StatisticsEngine implements IStatisticsEngine{
 	}
 	
 	//处理单行数据
-	public void processSingleLine(ReportEntry entry, String[] contents,
-			Map<String, Object> valueTempPool,JobTask jobtask,JobTaskResult jobTaskResult){
-		
-		boolean isChild = true;
-		
-		if (entry.getParent() == null) 
-		{
-			isChild = false;
-		}
-		
+	public void processSingleLine(ReportEntry entry,String[] contents,JobTask jobtask,JobTaskResult jobTaskResult){
 		Map<String, Map<String, Object>> entryResult = jobTaskResult.getResults();
-		Map<String, ReportEntry> entryPool = jobtask.getStatisticsRule().getEntryPool();
-		Map<String, Alias> aliasPool = jobtask.getStatisticsRule().getAliasPool();
-		List<InnerKey> innerKeyPool = jobtask.getStatisticsRule().getInnerKeyPool();
-		Map<String, ReportEntry> parentEntryPool = jobtask.getStatisticsRule().getParentEntryPool();
-
-		Map<String, Object> mapResult = entryResult.get(entry.getId());
-
-		if (mapResult == null) {
-			mapResult = new HashMap<String, Object>();
-			entryResult.put(entry.getId(), mapResult);
-		}
-
-		String key = null;
-		Object value = null;
-		// 如果是孩子
-		if (isChild) {
-			String parent = entry.getParent();
-			ReportEntry parentEntry = entryPool.get(parent);
-			value = valueTempPool.get(parentEntry.getId());
-			if (value == null) {
-				return;
-			} else {
-				if (entry.getKeys() == null) {
-					entry.setKeys(parentEntry.getKeys());
-					entry.setValueType(parentEntry.getValueType());
-					if (entry.getFormatStack() == null) {
-						entry.setFormatStack(parentEntry.getFormatStack());
-					}
-				}
-
+		String key = entry.getMapClass().mapperKey(entry,contents, jobtask);
+		if(key != null){
+			Object value = entry.getMapClass().mapperValue(entry, contents, jobtask);
+			Map<String,Object> result = entryResult.get(entry.getId());
+			if(result == null){
+				result = new HashMap<String, Object>();
+				jobTaskResult.getResults().put(entry.getId(), result);
 			}
-		}
-
-		// 增加全局MapClass的处理
-		if (entry.getGlobalMapClass() != null
-				&& entry.getGlobalMapClass().size() > 0) {
-			for (String mc : entry.getGlobalMapClass()) {
-				IReportMap mapClass = ReportUtil.getInstance(IReportMap.class,
-						Thread.currentThread().getContextClassLoader(), mc,
-						true);
-
-				key = mapClass.generateKey(entry, contents, aliasPool, null,innerKeyPool);
-
-				if (key.equals(AnalysisConstants.IGNORE_PROCESS)) {
-					return;
-				}
-			}
-		}
-
-		if (entry.getMapClass() == null || "".equals(entry.getMapClass())) {
-			if (key == null)
-				key = ReportUtil.generateKey(entry, contents,innerKeyPool);
-		} else {
-			IReportMap mapClass = ReportUtil.getInstance(IReportMap.class,
-					Thread.currentThread().getContextClassLoader(),
-					entry.getMapClass(), true);
-
-			key = mapClass.generateKey(entry, contents, aliasPool, null,innerKeyPool);
-		}
-
-		// 该内容忽略，不做统计
-		if (key.equals(AnalysisConstants.IGNORE_PROCESS)) {
-			return;
-		}
-
-		if (key.equals(""))
-			throw new java.lang.RuntimeException("JobWorker create key error!");
-		
-
-		if (!isChild) {
-			if (entry.getReduceClass() != null
-					&& !"".equals(entry.getReduceClass())) {
-				IReportReduce reduceClass = ReportUtil.getInstance(
-						IReportReduce.class, Thread.currentThread()
-								.getContextClassLoader(), entry
-								.getReduceClass(), true);
-
-				value = reduceClass.generateValue(entry, contents, aliasPool);
-			} else
-				value = generateValue(entry, contents);
-
-		} else {
-			if (value.equals("NULL")) {
-				value = null;
-			}
-
+			entry.getReduceClass().reducer(entry,key,value,result);
 		}
 		
-		// value filter inject
-		if (entry.getValueType() != ReportEntryValueType.COUNT
-				&& entry.getValuefilterStack() != null
-				&& entry.getValuefilterStack().size() > 0) {
-			if (!ReportUtil.checkValue(entry.getValuefilterOpStack(),
-					entry.getValuefilterStack(), value))
-				return;
-		}
-
-		if (!isChild) {
-
-			if (parentEntryPool.get(entry.getId()) != null) {
-				if (value == null) {
-					valueTempPool.put(entry.getId(), "NULL");
-				} else {
-					valueTempPool.put(entry.getId(), value);
-				}
-			}
-		}
-
-		switch (entry.getValueType()) {
-		case AVERAGE:
-			if (value == null)
-				return;
-			value = Double.parseDouble(value.toString());
-			String sumkey = new StringBuilder().append(AnalysisConstants.PREF_SUM).append(key)
-					.toString();
-			String countkey = new StringBuilder().append(AnalysisConstants.PREF_COUNT).append(key)
-					.toString();
-			Double sum = (Double) mapResult.get(sumkey);
-			Double count = (Double) mapResult.get(countkey);
-			if (sum == null || count == null) {
-				mapResult.put(sumkey, (Double) value);
-				mapResult.put(countkey, (Double) 1.0);
-				mapResult.put(key, (Double) value);
-			} else {
-				// 再次验证一下
-				Object tempvalue = ((Double) value + sum)
-						/ (Double) (count + 1);
-				mapResult.put(sumkey, (Double) value + sum);
-				mapResult.put(countkey, (Double) (count + 1));
-				mapResult.put(key, tempvalue);
-			}
-			break;
-		case SUM:
-
-			if (value == null)
-				return;
-
-			if (value instanceof String) {
-				value = Double.parseDouble((String) value);
-			}
-
-			Double _sum = (Double) mapResult.get(key);
-
-			if (_sum == null)
-				mapResult.put(key, (Double) value);
-			else
-				mapResult.put(key, (Double) value + _sum);
-
-			break;
-
-		case MIN:
-			if (value == null)
-				return;
-
-			if (value instanceof String) {
-				value = Double.parseDouble((String) value);
-			}
-
-			Double min = (Double) mapResult.get(key);
-
-			if (min == null)
-				mapResult.put(key, (Double) value);
-			else if ((Double) value < min)
-				mapResult.put(key, (Double) value);
-
-			break;
-
-		case MAX:
-			if (value == null)
-				return;
-
-			if (value instanceof String) {
-				value = Double.parseDouble((String) value);
-			}
-
-			Double max = (Double) mapResult.get(key);
-
-			if (max == null)
-				mapResult.put(key, (Double) value);
-			else if ((Double) value > max)
-				mapResult.put(key, (Double) value);
-
-			break;
-
-		case COUNT:
-
-			Double total = (Double) mapResult.get(key);
-
-			if (total == null)
-				mapResult.put(key, (Double) 1.0);
-			else
-				mapResult.put(key, total + 1);
-
-			break;
-
-		case PLAIN:
-
-			Object o = mapResult.get(key);
-
-			if (o == null)
-				mapResult.put(key, value);
-
-			break;
-
-		}
-
-	}
-	
-	public  Object generateValue(ReportEntry entry, String[] contents)
-	{
-		Object result = null;
-
-		double left = 0;
-
-		if (entry.getBindingStack() != null
-				&& entry.getBindingStack().size() > 0) {
-			List<Object> bindingStack = entry.getBindingStack();
-
-			if (bindingStack.size() > 1) {
-				if (bindingStack.get(0) instanceof String && ((String)bindingStack.get(0)).startsWith("#"))
-					left = Double.valueOf(((String)bindingStack.get(0)).substring(1));
-				else {
-					if ((Integer)bindingStack.get(0) - 1 >= contents.length)
-						return result;
-
-					left = Double.valueOf(contents[(Integer)bindingStack.get(0) - 1]);
-				}
-
-				double right = 0;
-
-				int size = bindingStack.size();
-
-				for (int i = 0; i < size - 1; i++) {
-					if (bindingStack.get(i + 1) instanceof String && ((String)bindingStack.get(i + 1)).startsWith("#"))
-						right = Double.valueOf(((String)bindingStack.get(i + 1))
-								.substring(1));
-					else {
-						if ((Integer)bindingStack.get(i + 1) - 1 >= contents.length)
-							return result;
-
-						right = Double.valueOf(contents[(Integer)bindingStack.get(i + 1) - 1]);
-					}
-
-					if (entry.getOperatorStack().get(i) == AnalysisConstants.OPERATE_PLUS)
-					{
-						left += right;
-						continue;
-					}
-
-					if (entry.getOperatorStack().get(i) == AnalysisConstants.OPERATE_MINUS)
-					{
-						left -= right;
-						continue;
-					}
-
-					if (entry.getOperatorStack().get(i) == AnalysisConstants.OPERATE_RIDE)
-					{
-						left = left * right;
-						continue;
-					}
-
-					if (entry.getOperatorStack().get(i) == AnalysisConstants.OPERATE_DIVIDE)
-					{
-						left = left / right;
-						continue;
-					}
-
-				}
-
-				result = left;
-			} else {
-				if (bindingStack.get(0) instanceof String && ((String)bindingStack.get(0)).startsWith("#"))
-					result = Double.valueOf(((String)bindingStack.get(0)).substring(1));
-				else {
-					if ((Integer)bindingStack.get(0) - 1 >= contents.length)
-						return result;
-
-					result = contents[(Integer)bindingStack.get(0) - 1];
-				}
-
-			}
-
-		}
-
-		return result;
 	}
 
 }

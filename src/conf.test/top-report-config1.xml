@@ -83,7 +83,7 @@
 				<entry name="400与500占总访问百分比" key="apiName" value="plain(entry(api400ErrorCount)+entry(api500ErrorCount)/entry(apiTotalCount))" valuefilter="&gt;=0&amp;isnumber&amp;round:3"/>	
 			</entryList>
 		</report>
-	
+	-->
 		<report id="totalReport" file="totalReport">
 			<entryList>
 				<entry id="totalCount" name="请求总次数" key="GLOBAL_KEY" value="count()" />
@@ -132,18 +132,17 @@
 		<report id="totalHourReport" file="totalHourReport">
 			<entryList>
 			    <entry name="整点时间段" key="timestamp" value="plain($timestamp$)" 
-			    	mapClass="com.taobao.top.analysis.node.map.TimeMap"
-			    	reduceClass="com.taobao.top.analysis.node.reduce.TimeReduce"/> 
+			    	mapClass="com.taobao.top.analysis.statistics.map.TimeMapper"/> 
 				<entry name="时间段内访问总量" key="timestamp" value="count()" 
-						mapClass="com.taobao.top.analysis.node.map.TimeMap"/>
+						mapClass="com.taobao.top.analysis.statistics.map.TimeKeyMapper"/>
 				<entry name="时间段内访问成功总量" key="timestamp" value="count()" condition="$errorCode$=0"
-						mapClass="com.taobao.top.analysis.node.map.TimeMap"/>
+						mapClass="com.taobao.top.analysis.statistics.map.TimeKeyMapper"/>
 				<entry name="时间段内访问失败总量" key="timestamp" value="count()" condition="$errorCode$!=0"
-						mapClass="com.taobao.top.analysis.node.map.TimeMap" valuefilter="&gt;=0&amp;isnumber&amp;round:3"/>
+						mapClass="com.taobao.top.analysis.statistics.map.TimeKeyMapper" valuefilter="&gt;=0&amp;isnumber&amp;round:3"/>
 				<entry name="时间段内访问业务平均耗时(ms)" key="timestamp" value="average($responseTime$ - $platformConsumeTime$)"  
-						mapClass="com.taobao.top.analysis.node.map.TimeMap" valuefilter="&gt;=0&amp;isnumber&amp;round:3"/>
+						mapClass="com.taobao.top.analysis.statistics.map.TimeKeyMapper" valuefilter="&gt;=0&amp;isnumber&amp;round:3"/>
 				<entry name="时间段内访问平台平均耗时(ms)" key="timestamp" value="average($platformConsumeTime$)"  
-						mapClass="com.taobao.top.analysis.node.map.TimeMap" valuefilter="&gt;=0&amp;isnumber&amp;round:3"/>
+						mapClass="com.taobao.top.analysis.statistics.map.TimeKeyMapper" valuefilter="&gt;=0&amp;isnumber&amp;round:3"/>
 			</entryList>
 		</report>
 			
@@ -156,15 +155,13 @@
 		<report id="ipAPIReportPeriod" file="ipAPIReportPeriod" period="true">
 			<entryList>
 				<entry name="远端ip" key="timestamp,remoteIp,apiName" value="plain($remoteIp$)"
-					mapClass="com.taobao.top.analysis.node.map.TimeMap" mapParams="minute:5" />
+					mapClass="com.taobao.top.analysis.statistics.map.TimeKeyMapper" mapParams="minute:5" />
 				<entry name="api名称" key="timestamp,remoteIp,apiName" value="plain($apiName$)"
-					mapClass="com.taobao.top.analysis.node.map.TimeMap" mapParams="minute:5" />
+					mapClass="com.taobao.top.analysis.statistics.map.TimeKeyMapper" mapParams="minute:5" />
 				<entry name="访问总量" key="timestamp,remoteIp,apiName" value="count()"
-					mapClass="com.taobao.top.analysis.node.map.TimeMap" mapParams="minute:5" />
+					mapClass="com.taobao.top.analysis.statistics.map.TimeKeyMapper" mapParams="minute:5" />
 				<entry name="时间段" key="timestamp,remoteIp,apiName" value="plain($timestamp$)"
-					mapClass="com.taobao.top.analysis.node.map.TimeMap" mapParams="minute:5"
-					reduceClass="com.taobao.top.analysis.node.reduce.TimeReduce"
-					reduceParams="minute:5" />
+					mapClass="com.taobao.top.analysis.statistics.map.TimeMapper" mapParams="minute:5"/>
 			</entryList>
 		</report>
 		

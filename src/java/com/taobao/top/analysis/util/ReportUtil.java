@@ -28,11 +28,10 @@ import org.apache.commons.logging.LogFactory;
 
 import com.taobao.top.analysis.exception.AnalysisException;
 import com.taobao.top.analysis.statistics.data.Alias;
-import com.taobao.top.analysis.statistics.data.InnerKey;
 import com.taobao.top.analysis.statistics.data.Report;
 import com.taobao.top.analysis.statistics.data.ReportEntry;
 import com.taobao.top.analysis.statistics.data.ReportOrderComparator;
-
+import com.taobao.top.analysis.statistics.map.DefaultExpReportEntry;
 
 /**
  * 报表工具类
@@ -43,24 +42,19 @@ import com.taobao.top.analysis.statistics.data.ReportOrderComparator;
 public class ReportUtil {
 	private static final Log logger = LogFactory.getLog(ReportUtil.class);
 	private static Map<Object, Object> localCache = new ConcurrentHashMap<Object, Object>();
-	
+
 	private static String ip;
-	
+
 	private static String separator;
-	
-	static 
-	{
-		try 
-		{
+
+	static {
+		try {
 			ip = InetAddress.getLocalHost().getHostAddress();
 			separator = System.getProperty("line.separator");
-		} 
-		catch (UnknownHostException e) {
+		} catch (UnknownHostException e) {
 		}
 	}
-	
-	
-	
+
 	public static String getIp() {
 		return ip;
 	}
@@ -69,22 +63,21 @@ public class ReportUtil {
 		return separator;
 	}
 
-	public static InputStream getInputStreamFromFile(String file) throws IOException
-	{
+	public static InputStream getInputStreamFromFile(String file)
+			throws IOException {
 		InputStream in = null;
-		
+
 		String localdir = new StringBuilder()
 				.append(System.getProperty("user.dir"))
-					.append(File.separatorChar).toString();
+				.append(File.separatorChar).toString();
 		ClassLoader loader = Thread.currentThread().getContextClassLoader();
-		
+
 		if (file.startsWith("file:")) {
 			try {
-				in = new java.io.FileInputStream(new File(
-						file.substring(file.indexOf("file:")
-								+ "file:".length())));
+				in = new java.io.FileInputStream(new File(file.substring(file
+						.indexOf("file:") + "file:".length())));
 			} catch (Exception e) {
-				logger.error(e,e);
+				logger.error(e, e);
 			}
 
 			if (in == null)
@@ -102,238 +95,231 @@ public class ReportUtil {
 
 			in = url.openStream();
 		}
-		
+
 		return in;
 	}
-	
-	public static byte generateOperationFlag(String operation) throws AnalysisException
-	{
-		
-		if (operation.startsWith(AnalysisConstants.CONDITION_EQUALORGREATER_STR))
-		{
+
+	public static byte generateOperationFlag(String operation)
+			throws AnalysisException {
+
+		if (operation
+				.startsWith(AnalysisConstants.CONDITION_EQUALORGREATER_STR)) {
 			return AnalysisConstants.CONDITION_EQUALORGREATER;
 		}
-		
-		if (operation.startsWith(AnalysisConstants.CONDITION_EQUALORLESSER_STR))
-		{
+
+		if (operation.startsWith(AnalysisConstants.CONDITION_EQUALORLESSER_STR)) {
 			return AnalysisConstants.CONDITION_EQUALORLESSER;
 		}
-		
-		if (operation.startsWith(AnalysisConstants.CONDITION_NOT_EQUAL_STR))
-		{
+
+		if (operation.startsWith(AnalysisConstants.CONDITION_NOT_EQUAL_STR)) {
 			return AnalysisConstants.CONDITION_NOT_EQUAL;
 		}
-		
-		if (operation.startsWith(AnalysisConstants.CONDITION_EQUAL_STR))
-		{
+
+		if (operation.startsWith(AnalysisConstants.CONDITION_EQUAL_STR)) {
 			return AnalysisConstants.CONDITION_EQUAL;
-		}	
-		
-		if (operation.startsWith(AnalysisConstants.CONDITION_GREATER_STR))
-		{
+		}
+
+		if (operation.startsWith(AnalysisConstants.CONDITION_GREATER_STR)) {
 			return AnalysisConstants.CONDITION_GREATER;
 		}
-		
-		if (operation.startsWith(AnalysisConstants.CONDITION_LESSER_STR))
-		{
+
+		if (operation.startsWith(AnalysisConstants.CONDITION_LESSER_STR)) {
 			return AnalysisConstants.CONDITION_LESSER;
 		}
-				
-		if (operation.startsWith(AnalysisConstants.CONDITION_ISNUMBER_STR))
-		{
+
+		if (operation.startsWith(AnalysisConstants.CONDITION_ISNUMBER_STR)) {
 			return AnalysisConstants.CONDITION_ISNUMBER;
 		}
-		
+
 		throw new AnalysisException("Entry Operation not support!");
-		
+
 	}
-	
-	public static byte generateOperationFlag(char operation) throws AnalysisException
-	{
-		
-		if (operation == AnalysisConstants.OPERATE_DIVIDE_CHAR)
-		{
+
+	public static byte generateOperationFlag(char operation)
+			throws AnalysisException {
+
+		if (operation == AnalysisConstants.OPERATE_DIVIDE_CHAR) {
 			return AnalysisConstants.OPERATE_DIVIDE;
 		}
-		if (operation == AnalysisConstants.OPERATE_MINUS_CHAR)
-		{
+		if (operation == AnalysisConstants.OPERATE_MINUS_CHAR) {
 			return AnalysisConstants.OPERATE_MINUS;
 		}
-		if (operation == AnalysisConstants.OPERATE_PLUS_CHAR)
-		{
+		if (operation == AnalysisConstants.OPERATE_PLUS_CHAR) {
 			return AnalysisConstants.OPERATE_PLUS;
 		}
-		if (operation == AnalysisConstants.OPERATE_RIDE_CHAR)
-		{
+		if (operation == AnalysisConstants.OPERATE_RIDE_CHAR) {
 			return AnalysisConstants.OPERATE_RIDE;
 		}
-		
+
 		throw new AnalysisException("Entry Operation not support!");
-		
+
 	}
-	
-	/**
-	 * 根据定义获取对应日志行产生的key
-	 * 
-	 * @param entry
-	 * @param contents
-	 * @return
-	 */
-	public static String generateKey(ReportEntry entry, String[] contents,List<InnerKey> innerKeyPool) {
-		StringBuilder key = new StringBuilder();
 
-		try {
-			boolean checkResult = false;
+	// /**
+	// * 根据定义获取对应日志行产生的key
+	// *
+	// * @param entry
+	// * @param contents
+	// * @return
+	// */
+	// public static String generateKey(ReportEntry entry, String[]
+	// contents,List<InnerKey> innerKeyPool) {
+	// StringBuilder key = new StringBuilder();
+	//
+	// try {
+	// boolean checkResult = false;
+	//
+	// if (entry.getConditionKStack() != null
+	// && entry.getConditionKStack().size() > 0) {
+	// for (int i = 0; i < entry.getConditionKStack().size(); i++) {
+	//
+	// Object conditionKey = entry.getConditionKStack().get(i);
+	// byte operator = entry.getConditionOpStack().get(i);
+	// Object conditionValue = entry.getConditionVStack().get(i);
+	// int k = -1;
+	//
+	// // 长度condition特殊处理，没有指定的key列
+	// if (!conditionKey.equals(AnalysisConstants.RECORD_LENGTH)) {
+	// k = (Integer) conditionKey;
+	// }
+	//
+	// checkResult = checkKeyCondition(operator, k,
+	// conditionValue, contents);
+	//
+	// if (entry.isAndCondition() && !checkResult)
+	// return AnalysisConstants.IGNORE_PROCESS;
+	//
+	// if (!entry.isAndCondition() && checkResult)
+	// break;
+	// }
+	// }
+	//
+	// if (!entry.isAndCondition() && !checkResult)
+	// return AnalysisConstants.IGNORE_PROCESS;
+	//
+	// for (int c : entry.getKeys()) {
+	// // 全局统计，没有key
+	// if (c == AnalysisConstants.GLOBAL_KEY)
+	// return AnalysisConstants.GLOBAL_KEY_STR;
+	//
+	// key.append(innerKeyReplace(c,contents[c -
+	// 1],innerKeyPool)).append(AnalysisConstants.SPLIT_KEY);
+	// }
+	//
+	// } catch (Exception ex) {
+	// logger.error("generateKey error",ex);
+	// return AnalysisConstants.IGNORE_PROCESS;
+	// }
+	//
+	// return key.toString();
+	// }
 
-			if (entry.getConditionKStack() != null
-					&& entry.getConditionKStack().size() > 0) {
-				for (int i = 0; i < entry.getConditionKStack().size(); i++) {
+	// private static String innerKeyReplace(int key,String value,List<InnerKey>
+	// innerKeyPool)
+	// {
+	// String result = value;
+	//
+	// if (innerKeyPool == null || (innerKeyPool != null && innerKeyPool.size()
+	// == 0))
+	// return result;
+	//
+	// for(InnerKey ik : innerKeyPool)
+	// {
+	// if (ik.getKey() == key)
+	// {
+	// if (ik.getInnerKeys().get(value) != null)
+	// result = ik.getInnerKeys().get(value);
+	//
+	// break;
+	// }
+	// }
+	//
+	// return result;
+	// }
 
-					Object conditionKey = entry.getConditionKStack().get(i);
-					byte operator = entry.getConditionOpStack().get(i);
-					Object conditionValue = entry.getConditionVStack().get(i);
-					int k = -1;
+	// /**
+	// * 返回是否符合条件
+	// *
+	// * @param operator
+	// * @param conditionKey
+	// * @param conditionValue
+	// * @param contents
+	// * @return
+	// */
+	// private static boolean checkKeyCondition(byte operator, int conditionKey,
+	// Object conditionValue, String[] contents) {
+	// boolean result = false;
+	//
+	// if (operator == AnalysisConstants.CONDITION_EQUAL) {
+	// if (conditionKey > 0)
+	// result = contents[conditionKey - 1].equals(conditionValue);
+	// else
+	// result = contents.length == (Integer)conditionValue;
+	// } else if (operator == AnalysisConstants.CONDITION_NOT_EQUAL) {
+	// if (conditionKey > 0)
+	// result = !contents[conditionKey - 1].equals(conditionValue);
+	// else
+	// result = contents.length != (Integer)conditionValue;
+	// } else {
+	// double cmpValue = 0;
+	//
+	// if (conditionKey > 0)
+	// cmpValue = Double.valueOf(contents[conditionKey - 1])
+	// - (Double)conditionValue;
+	// else
+	// cmpValue = contents.length - (Integer)conditionValue;
+	//
+	// if (operator == AnalysisConstants.CONDITION_EQUALORGREATER)
+	// return cmpValue >= 0;
+	//
+	// if (operator == AnalysisConstants.CONDITION_EQUALORLESSER)
+	// return cmpValue <= 0;
+	//
+	// if (operator == AnalysisConstants.CONDITION_GREATER)
+	// return cmpValue > 0;
+	//
+	// if (operator == AnalysisConstants.CONDITION_LESSER)
+	// return cmpValue < 0;
+	//
+	// }
+	//
+	// return result;
+	// }
 
-					// 长度condition特殊处理，没有指定的key列
-					if (!conditionKey.equals(AnalysisConstants.RECORD_LENGTH)) {
-						k = (Integer) conditionKey;
-					}
+	private static java.text.DateFormat df = new SimpleDateFormat(
+			"yyyy-MM-dd HH:mm:ss");
 
-					checkResult = checkKeyCondition(operator, k,
-							conditionValue, contents);
-
-					if (entry.isAndCondition() && !checkResult)
-						return AnalysisConstants.IGNORE_PROCESS;
-
-					if (!entry.isAndCondition() && checkResult)
-						break;
-				}
-			}
-
-			if (!entry.isAndCondition() && !checkResult)
-				return AnalysisConstants.IGNORE_PROCESS;
-
-			for (int c : entry.getKeys()) {
-				// 全局统计，没有key
-				if (c == AnalysisConstants.GLOBAL_KEY)
-					return AnalysisConstants.GLOBAL_KEY_STR;
-
-				key.append(innerKeyReplace(c,contents[c - 1],innerKeyPool)).append(AnalysisConstants.SPLIT_KEY);
-			}
-
-		} catch (Exception ex) {
-			logger.error("generateKey error",ex);
-			return AnalysisConstants.IGNORE_PROCESS;
-		}
-
-		return key.toString();
-	}
-	
-	private static String innerKeyReplace(int key,String value,List<InnerKey> innerKeyPool)
-	{
-		String result = value;
-		
-		if (innerKeyPool == null || (innerKeyPool != null && innerKeyPool.size() == 0))
-			return result;
-		
-		for(InnerKey ik : innerKeyPool)
-		{
-			if (ik.getKey() == key)
-			{
-				if (ik.getInnerKeys().get(value) != null)
-					result = ik.getInnerKeys().get(value);
-				
-				break;
-			}
-		}
-		
-		return result;
-	}
-	
-	/**
-	 * 返回是否符合条件
-	 * 
-	 * @param operator
-	 * @param conditionKey
-	 * @param conditionValue
-	 * @param contents
-	 * @return
-	 */
-	private static boolean checkKeyCondition(byte operator, int conditionKey,
-			Object conditionValue, String[] contents) {
-		boolean result = false;
-
-		if (operator == AnalysisConstants.CONDITION_EQUAL) {
-			if (conditionKey > 0)
-				result = contents[conditionKey - 1].equals(conditionValue);
-			else
-				result = contents.length == (Integer)conditionValue;
-		} else if (operator == AnalysisConstants.CONDITION_NOT_EQUAL) {
-			if (conditionKey > 0)
-				result = !contents[conditionKey - 1].equals(conditionValue);
-			else
-				result = contents.length != (Integer)conditionValue;
-		} else {
-			double cmpValue = 0;
-
-			if (conditionKey > 0)
-				cmpValue = Double.valueOf(contents[conditionKey - 1])
-						- (Double)conditionValue;
-			else
-				cmpValue = contents.length - (Integer)conditionValue;
-
-			if (operator == AnalysisConstants.CONDITION_EQUALORGREATER)
-				return cmpValue >= 0;
-
-			if (operator == AnalysisConstants.CONDITION_EQUALORLESSER)
-				return cmpValue <= 0;
-
-			if (operator == AnalysisConstants.CONDITION_GREATER)
-				return cmpValue > 0;
-
-			if (operator == AnalysisConstants.CONDITION_LESSER)
-				return cmpValue < 0;
-
-		}
-
-		return result;
-	}
-	
-	
-	private static java.text.DateFormat df=new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-
-	public static String formateDateTime(long time){
-		java.util.Calendar cal=java.util.Calendar.getInstance();
+	public static String formateDateTime(long time) {
+		java.util.Calendar cal = java.util.Calendar.getInstance();
 		cal.setTimeInMillis(time);
 		return df.format(cal.getTime());
 	}
+
 	/**
 	 * 根据别名定义来转换报表模型中定义的key，直接转换为实际的列号
 	 * 
 	 * @param keys
 	 * @param aliasPool
 	 */
-	public static int[] transformVars(String[] keys, Map<String, Alias> aliasPool) {
-		if (keys != null
-				&& keys.length > 0) {
-			
+	public static int[] transformVars(String[] keys,
+			Map<String, Alias> aliasPool) {
+		if (keys != null && keys.length > 0) {
+
 			int[] tKeys = new int[keys.length];
-			
-			for (int i = 0; i < keys.length; i++) 
-			{
-				if (aliasPool != null && aliasPool.size() > 0 && aliasPool.get(keys[i]) != null)
+
+			for (int i = 0; i < keys.length; i++) {
+				if (aliasPool != null && aliasPool.size() > 0
+						&& aliasPool.get(keys[i]) != null)
 					tKeys[i] = aliasPool.get(keys[i]).getKey();
+				else if (keys[i].equals(AnalysisConstants.GLOBAL_KEY_STR))
+					tKeys[i] = -2;
 				else
-					if (keys[i].equals(AnalysisConstants.GLOBAL_KEY_STR))
-						tKeys[i] = -2;
-					else
-						tKeys[i] = Integer.parseInt(keys[i]);
+					tKeys[i] = Integer.parseInt(keys[i]);
 			}
-			
+
 			return tKeys;
-		}
-		else
-			return new int[0]; 
+		} else
+			return new int[0];
 	}
 
 	/**
@@ -353,12 +339,6 @@ public class ReportUtil {
 
 		return result;
 	}
-
-	
-	
-	
-
-	
 
 	/**
 	 * 根据接口定义获取实际的接口实现实例
@@ -503,96 +483,92 @@ public class ReportUtil {
 		return result;
 	}
 
-	/**
-	 * 检查参数是否符合过滤器定义
-	 * 
-	 * @param valuefilterOpStack
-	 * @param valuefilterStack
-	 * @param value
-	 * @return
-	 */
-	public static boolean checkValue(List<Byte> valuefilterOpStack,
-			List<Object> valuefilterStack, Object value) {
-		boolean result = true;
-
-		if (valuefilterStack == null
-				|| (valuefilterStack != null && valuefilterStack.size() == 0))
-			return result;
-
-		try {
-			for (int i = 0; i < valuefilterStack.size(); i++) {
-				Object filterValue = valuefilterStack.get(i);
-				Byte filterOpt = valuefilterOpStack.get(i);
-
-				if (filterOpt == AnalysisConstants.CONDITION_ISNUMBER) {
-					Double.parseDouble(value.toString());
-				}
-
-				if (filterOpt == AnalysisConstants.CONDITION_EQUAL) {
-					if (value.equals(filterValue)) {
-						continue;
-					} else
-						return false;
-				}
-
-				if (filterOpt == AnalysisConstants.CONDITION_EQUALORGREATER) {
-					Double v = Double.valueOf(value.toString());
-					Double compareValue = (Double)filterValue;
-
-					if (v >= compareValue) {
-						continue;
-					} else
-						return false;
-				}
-
-				if (filterOpt == AnalysisConstants.CONDITION_EQUALORLESSER) {
-					Double v = Double.valueOf(value.toString());
-					Double compareValue = (Double)filterValue;
-
-					if (v <= compareValue) {
-						continue;
-					} else
-						return false;
-				}
-
-				if (filterOpt == AnalysisConstants.CONDITION_GREATER) {
-					Double v = Double.valueOf(value.toString());
-					Double compareValue = (Double)filterValue;
-
-					if (v > compareValue) {
-						continue;
-					} else
-						return false;
-				}
-
-				if (filterOpt == AnalysisConstants.CONDITION_LESSER) {
-					Double v = Double.valueOf(value.toString());
-					Double compareValue = (Double)filterValue;
-
-					if (v < compareValue) {
-						continue;
-					} else
-						return false;
-				}
-
-				if (filterOpt == AnalysisConstants.CONDITION_NOT_EQUAL) {
-					if (!value.equals(filterValue)) {
-						continue;
-					} else
-						return false;
-				}
-
-			}
-		} catch (Exception ex) {
-			result = false;
-		}
-
-		return result;
-	}
-
-
-
-	
+	// /**
+	// * 检查参数是否符合过滤器定义
+	// *
+	// * @param valuefilterOpStack
+	// * @param valuefilterStack
+	// * @param value
+	// * @return
+	// */
+	// public static boolean checkValue(List<Byte> valuefilterOpStack,
+	// List<Object> valuefilterStack, Object value) {
+	// boolean result = true;
+	//
+	// if (valuefilterStack == null
+	// || (valuefilterStack != null && valuefilterStack.size() == 0))
+	// return result;
+	//
+	// try {
+	// for (int i = 0; i < valuefilterStack.size(); i++) {
+	// Object filterValue = valuefilterStack.get(i);
+	// Byte filterOpt = valuefilterOpStack.get(i);
+	//
+	// if (filterOpt == AnalysisConstants.CONDITION_ISNUMBER) {
+	// Double.parseDouble(value.toString());
+	// }
+	//
+	// if (filterOpt == AnalysisConstants.CONDITION_EQUAL) {
+	// if (value.equals(filterValue)) {
+	// continue;
+	// } else
+	// return false;
+	// }
+	//
+	// if (filterOpt == AnalysisConstants.CONDITION_EQUALORGREATER) {
+	// Double v = Double.valueOf(value.toString());
+	// Double compareValue = (Double)filterValue;
+	//
+	// if (v >= compareValue) {
+	// continue;
+	// } else
+	// return false;
+	// }
+	//
+	// if (filterOpt == AnalysisConstants.CONDITION_EQUALORLESSER) {
+	// Double v = Double.valueOf(value.toString());
+	// Double compareValue = (Double)filterValue;
+	//
+	// if (v <= compareValue) {
+	// continue;
+	// } else
+	// return false;
+	// }
+	//
+	// if (filterOpt == AnalysisConstants.CONDITION_GREATER) {
+	// Double v = Double.valueOf(value.toString());
+	// Double compareValue = (Double)filterValue;
+	//
+	// if (v > compareValue) {
+	// continue;
+	// } else
+	// return false;
+	// }
+	//
+	// if (filterOpt == AnalysisConstants.CONDITION_LESSER) {
+	// Double v = Double.valueOf(value.toString());
+	// Double compareValue = (Double)filterValue;
+	//
+	// if (v < compareValue) {
+	// continue;
+	// } else
+	// return false;
+	// }
+	//
+	// if (filterOpt == AnalysisConstants.CONDITION_NOT_EQUAL) {
+	// if (!value.equals(filterValue)) {
+	// continue;
+	// } else
+	// return false;
+	// }
+	//
+	// }
+	// } catch (Exception ex) {
+	// result = false;
+	// }
+	//
+	// return result;
+	// }
 
 	/**
 	 * 合并结果集
@@ -621,31 +597,27 @@ public class ReportUtil {
 
 		return result;
 	}
-	
+
 	public static void cleanLazyData(Map<String, Map<String, Object>> result,
-			Map<String, ReportEntry> entryPool)
-	{
-		if (entryPool != null)
-		{
+			Map<String, ReportEntry> entryPool) {
+		if (entryPool != null) {
 			Iterator<String> entryKeys = entryPool.keySet().iterator();
-			
-			while(entryKeys.hasNext())
-			{
+
+			while (entryKeys.hasNext()) {
 				String entryId = entryKeys.next();
-				
+
 				ReportEntry entry = entryPool.get(entryId);
-				
-				if (entry.isLazy())
-				{
+
+				if (entry.isLazy()) {
 					Map<String, Object> t = result.remove(entryId);
-					
-					if(t != null)
+
+					if (t != null)
 						t.clear();
 				}
-				
+
 			}
 		}
-		
+
 	}
 
 	public static void lazyMerge(Map<String, Map<String, Object>> result,
@@ -658,8 +630,8 @@ public class ReportUtil {
 
 		for (String entryId : entryKeys) {
 
-			ReportEntry entry = entryPool.get(entryId);
-
+			DefaultExpReportEntry entry = (DefaultExpReportEntry) entryPool
+					.get(entryId);
 			if (entry.isLazy()) {
 				if (result.get(entryId) == null)
 					result.put(entryId, new HashMap<String, Object>());
@@ -669,11 +641,12 @@ public class ReportUtil {
 					List<Object> _bindingStack = entry.getBindingStack();
 					int size = _bindingStack.size();
 
-					String leftEntryId = (String)_bindingStack.get(0);
+					String leftEntryId = (String) _bindingStack.get(0);
 
 					Map<String, Object> leftMap = result.get(leftEntryId);
 
-					if (leftMap == null|| (leftMap != null && leftMap.size() <= 0)){
+					if (leftMap == null
+							|| (leftMap != null && leftMap.size() <= 0)) {
 						continue;
 					}
 					Iterator<String> iter = leftMap.keySet().iterator();
@@ -681,11 +654,13 @@ public class ReportUtil {
 					while (iter.hasNext()) {
 						try {
 							String nodekey = iter.next();
-							Object nodevalue = result.get(leftEntryId).get(nodekey);
+							Object nodevalue = result.get(leftEntryId).get(
+									nodekey);
 							Object rightvalue;
 
 							for (int i = 0; i < size - 1; i++) {
-								String rightkey = (String)_bindingStack.get(i + 1);
+								String rightkey = (String) _bindingStack
+										.get(i + 1);
 
 								if (rightkey.startsWith("sum:")) {
 									rightkey = rightkey.substring(rightkey
@@ -794,10 +769,8 @@ public class ReportUtil {
 								}
 
 								if (rightvalue != null) {
-									if(nodevalue!=null){
-										if (entry
-												.getOperatorStack()
-												.get(i) == AnalysisConstants.OPERATE_PLUS) {
+									if (nodevalue != null) {
+										if (entry.getOperatorStack().get(i) == AnalysisConstants.OPERATE_PLUS) {
 											if (nodevalue instanceof Double
 													|| rightvalue instanceof Double)
 												nodevalue = Double
@@ -812,9 +785,7 @@ public class ReportUtil {
 											continue;
 										}
 
-										if (entry
-												.getOperatorStack()
-												.get(i)  == AnalysisConstants.OPERATE_MINUS) {
+										if (entry.getOperatorStack().get(i) == AnalysisConstants.OPERATE_MINUS) {
 											if (nodevalue instanceof Double
 													|| rightvalue instanceof Double)
 												nodevalue = Double
@@ -829,9 +800,7 @@ public class ReportUtil {
 											continue;
 										}
 
-										if (entry
-												.getOperatorStack()
-												.get(i) == AnalysisConstants.OPERATE_RIDE) {
+										if (entry.getOperatorStack().get(i) == AnalysisConstants.OPERATE_RIDE) {
 											if (nodevalue instanceof Double
 													|| rightvalue instanceof Double)
 												nodevalue = Double
@@ -846,20 +815,18 @@ public class ReportUtil {
 											continue;
 										}
 
-										if (entry
-												.getOperatorStack()
-												.get(i)  == AnalysisConstants.OPERATE_DIVIDE) {
-											nodevalue = Double.valueOf(nodevalue
-													.toString())
+										if (entry.getOperatorStack().get(i) == AnalysisConstants.OPERATE_DIVIDE) {
+											nodevalue = Double
+													.valueOf(nodevalue
+															.toString())
 													/ Double.valueOf(rightvalue
 															.toString());
 
 											continue;
 										}
-									}else{
-										//nodevalue=rightvalue;
+									} else {
+										// nodevalue=rightvalue;
 									}
-									
 
 								}
 
@@ -867,7 +834,7 @@ public class ReportUtil {
 
 							result.get(entryId).put(nodekey, nodevalue);
 						} catch (Exception ex) {
-						
+
 							logger.error(
 									new StringBuilder("entry : ").append(
 											entry.getName()).append(
@@ -892,19 +859,17 @@ public class ReportUtil {
 		int _index = 0;
 
 		// 过滤一下最前面的空的结果
-		for (int i = 0; i < entryPools.length; i++) 
-		{	
+		for (int i = 0; i < entryPools.length; i++) {
 			_index = i;
-			
+
 			if (entryPools[i] != null) {
-				result = entryPools[i];			
+				result = entryPools[i];
 				break;
 			}
 		}
 
-
 		// 直接用resultPools的第一个作为基础数组，从第二个数组开始
-		for (int i = _index; i < entryPools.length; i++) {
+		for (int i = _index+1; i < entryPools.length; i++) {
 			Map<String, Map<String, Object>> node = entryPools[i];
 			if (node == null || (node != null && node.size() == 0))
 				continue;
@@ -923,203 +888,8 @@ public class ReportUtil {
 					Object value = content.get(key);
 					if (key == null || value == null)
 						continue;
-					try {
-						switch (entry.getValueType()) {
-						case AVERAGE:
-							if (key.startsWith(AnalysisConstants.PREF_SUM)
-									|| key.startsWith(AnalysisConstants.PREF_COUNT))
-								continue;
-							String sumkey = new StringBuilder().append(AnalysisConstants.PREF_SUM)
-									.append(key).toString();
-							String countkey = new StringBuilder()
-									.append(AnalysisConstants.PREF_COUNT).append(key).toString();
-
-							if (content.get(sumkey) != null
-									&& content.get(countkey) != null) {
-								double sum = 0;
-								double count = 0;
-								try {
-									sum = Double.parseDouble(content
-											.get(sumkey).toString());
-									count = Double.parseDouble(content.get(
-											countkey).toString());
-								} catch (Throwable t) {
-									
-									logger.error("reportUtil merge:operator:"
-											+ entry.getValueType() + ",key:"
-											+ key + ",value:" + value, t);
-								}
-
-								for (int j = i + 1; j < entryPools.length; j++) {
-									if (entryPools[j] != null
-											&& entryPools[j].get(entryId) != null
-											&& entryPools[j].get(entryId).get(
-													key) != null) {
-										try {
-											if (entryPools[j]
-															.get(entryId)
-															.get(countkey) == null)
-											{
-												throw new java.lang.RuntimeException("merge error: key exist,but countkey not exist");
-											}
-											
-											count += Double
-													.parseDouble(entryPools[j]
-															.get(entryId)
-															.get(countkey)
-															.toString());
-											sum += Double
-													.parseDouble(entryPools[j]
-															.get(entryId)
-															.get(sumkey)
-															.toString());
-										} catch (Throwable t) {
-											
-											logger.error(
-													"reportUtil merge:operator:"
-															+ entry.getValueType()
-															+ ",key:" + key
-															+ ",value:" + value,
-													t);
-										}
-										entryPools[j].get(entryId).remove(key);
-										entryPools[j].get(entryId).remove(
-												countkey);
-										entryPools[j].get(entryId).remove(
-												sumkey);
-									}
-								}
-
-								if (count != 0) {
-									Double newvalue = sum / count;
-									result.get(entryId).put(key, newvalue);
-									result.get(entryId).put(sumkey, sum);
-									result.get(entryId).put(countkey, count);
-								}
-							}
-							break;
-						case MIN:
-							double min = Double.parseDouble(value.toString());
-							for (int j = i + 1; j < entryPools.length; j++) {
-								if (entryPools[j] != null
-										&& entryPools[j].get(entryId) != null
-										&& entryPools[j].get(entryId).get(key) != null) {
-									double temp;
-									try {
-										temp = Double.parseDouble(entryPools[j]
-												.get(entryId).get(key)
-												.toString());
-										if (temp < min)
-											min = temp;
-									} catch (Throwable t) {
-										
-										logger.error(
-												"reportUtil merge:operator:"
-														+ entry.getValueType()
-														+ ",key:" + key
-														+ ",value:" + value, t);
-									}
-									entryPools[j].get(entryId).remove(key);
-								}
-							}
-							result.get(entryId).put(key, min);
-							break;
-						case MAX:
-							double max = Double.parseDouble(value.toString());
-							for (int j = i + 1; j < entryPools.length; j++) {
-								if (entryPools[j] != null
-										&& entryPools[j].get(entryId) != null
-										&& entryPools[j].get(entryId).get(key) != null) {
-									double temp;
-									try {
-										temp = Double.parseDouble(entryPools[j]
-												.get(entryId).get(key)
-												.toString());
-										if (temp > max)
-											max = temp;
-									} catch (Throwable t) {
-										
-										logger.error(
-												"reportUtil merge:operator:"
-														+ entry.getValueType()
-														+ ",key:" + key
-														+ ",value:" + value, t);
-									}
-									entryPools[j].get(entryId).remove(key);
-								}
-							}
-							result.get(entryId).put(key, max);
-							break;
-						case SUM:
-							double sum = Double.parseDouble(value.toString());
-							for (int j = i + 1; j < entryPools.length; j++) {
-								if (entryPools[j] != null
-										&& entryPools[j].get(entryId) != null
-										&& entryPools[j].get(entryId).get(key) != null) {
-									double temp;
-									try {
-										temp = Double.parseDouble(entryPools[j]
-												.get(entryId).get(key)
-												.toString());
-										sum += temp;
-									} catch (Throwable t) {
-										
-										logger.error(
-												"reportUtil merge:operator:"
-														+ entry.getValueType()
-														+ ",key:" + key
-														+ ",value:" + value, t);
-									}
-									entryPools[j].get(entryId).remove(key);
-								}
-							}
-							result.get(entryId).put(key, sum);
-							break;
-						case COUNT:
-							double count = Double.parseDouble(value.toString());
-							for (int j = i + 1; j < entryPools.length; j++) {
-								if (entryPools[j] != null
-										&& entryPools[j].get(entryId) != null
-										&& entryPools[j].get(entryId).get(key) != null) {
-									double temp;
-									try {
-										temp = Double.parseDouble(entryPools[j]
-												.get(entryId).get(key)
-												.toString());
-										count += temp;
-									} catch (Throwable t) {
-										
-										logger.error(
-												"reportUtil merge:operator:"
-														+ entry.getValueType()
-														+ ",key:" + key
-														+ ",value:" + value, t);
-									}
-									entryPools[j].get(entryId).remove(key);
-								}
-							}
-							result.get(entryId).put(key, count);
-							break;
-						case PLAIN:
-							Object v = value;
-							for (int j = i + 1; j < entryPools.length; j++) {
-								if (entryPools[j] != null
-										&& entryPools[j].get(entryId) != null
-										&& entryPools[j].get(entryId).get(key) != null) {
-									v = entryPools[j].get(entryId).get(key);
-									entryPools[j].get(entryId).remove(key);
-								}
-							}
-							result.get(entryId).put(key, v);
-							break;
-						}
-					} catch (Throwable t) {
-						
-						logger.error(
-								"reportUtil merge:operator:"
-										+ entry.getValueType() + ",key:" + key
-										+ ",value:" + value, t);
-					}
+					entry.getReduceClass().reducer(entry, key, value,
+							result.get(entryId));
 				}
 
 			}
@@ -1219,14 +989,14 @@ public class ReportUtil {
 
 			result.append("</table>");
 		} catch (Exception ex) {
-			
+
 			logger.error(ex, ex);
 		} finally {
 			if (br != null) {
 				try {
 					br.close();
 				} catch (IOException e) {
-					
+
 					logger.error(e, e);
 				}
 			}
@@ -1250,14 +1020,14 @@ public class ReportUtil {
 			out = new ObjectOutputStream(new FileOutputStream(f));
 			out.writeObject(o);
 		} catch (Exception ex) {
-			
+
 			logger.error(ex, ex);
 		} finally {
 			if (out != null)
 				try {
 					out.close();
 				} catch (IOException e) {
-					
+
 					logger.error(e, e);
 				}
 		}
@@ -1280,14 +1050,14 @@ public class ReportUtil {
 			bin = new ObjectInputStream(new FileInputStream(f));
 			result = bin.readObject();
 		} catch (Exception ex) {
-			
+
 			logger.error(ex, ex);
 		} finally {
 			if (bin != null)
 				try {
 					bin.close();
 				} catch (IOException e) {
-					
+
 					logger.error(e, e);
 				}
 		}
@@ -1295,109 +1065,91 @@ public class ReportUtil {
 		return result;
 	}
 
-	
-	//用于不可逆压缩字符串的字典
-		static String[] dict = new String[]{          
-	            "a","b","c","d","e","f","g","h", 
-	            "i","j","k","l","m","n","o","p", 
-	            "q","r","s","t","u","v","w","x", 
-	            "y","z","0","1","2","3","4","5", 
-	            "6","7","8","9","A","B","C","D", 
-	            "E","F","G","H","I","J","K","L", 
-	            "M","N","O","P","Q","R","S","T", 
-	            "U","V","W","X","Y","Z","<",">"
-	        }; 
-		
-		/**
-		 * 不可逆方式压缩字符串，存在一定重复的可能性，指定的compressedLength越小，越容易重复，compress当前最大长度限制为10
-		 * md5后的16byte做压缩,得到指定的压缩长度
-		 * 然后再将中间字母和长度拼接在压缩字符串上
-		 * @param origin
-		 * @param compressedLength,需要压缩到多少位，小于等于20,当等于0的时候，判断原始字符串是否大于32,如果是，则直接用md5转换为Hex串
-		 * @return
-		 */
-		public static String compressString(String origin,int compressedLength)
-		{
-			//特殊处理0
-			if (compressedLength == 0 && (origin != null && origin.length() > 32))
-			{
-				return DigestUtils.md5Hex(origin);
-			}
-			
-			
-			if (origin ==  null || (origin != null && 
-					(origin.length() < compressedLength + 1 + String.valueOf(origin.length()).length())))
-				return origin;
-			
-			if (compressedLength > 20)
-			{
-				compressedLength = 20;
-				logger.warn("compressString function compressedLength must less 20");
-			}
-			
-			StringBuilder result = new StringBuilder();
-			
-			result.append(origin.length()).append(origin.charAt(origin.length()/2));
-				
-			try
-			{
-				byte[] dest = DigestUtils.md5(origin);
-				long destLong1 = 0;
-				long destLong2 = 0;
-				
-				for(int i = 0 ; i < 8; i++)
-				{
-					destLong1 |= dest[i] & 0xff;
-					destLong1 <<= 8;
-				}
-				
-				for(int i = 8 ; i < 15; i++)
-				{
-					destLong2 |= dest[i] & 0xff;
-					destLong2 <<= 8;
-				}
-				
-				if (compressedLength <= 10 )
-				{
-					for(int j = 0 ; j < compressedLength; j++)
-					{
-						long index = destLong1 & 0x0000003F;
-						result.append(dict[(int)index]);
-						destLong1 >>= 6;
-					}
-				}
-				else
-				{
-					for(int j = 0 ; j < 10; j++)
-					{
-						long index = destLong1 & 0x0000003F;
-						result.append(dict[(int)index]);
-						destLong1 >>= 6;
-					}
-					
-					for(int j = 0 ; j < compressedLength - 10; j++)
-					{
-						long index = destLong2 & 0x0000003F;
-						result.append(dict[(int)index]);
-						destLong2 >>= 6;
-					}
-				}
-				
-			}
-			catch(Exception ex)
-			{
-				logger.error("comporessString error !",ex);
-			}
-			
-			return result.toString();
+	// 用于不可逆压缩字符串的字典
+	static String[] dict = new String[] { "a", "b", "c", "d", "e", "f", "g",
+			"h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t",
+			"u", "v", "w", "x", "y", "z", "0", "1", "2", "3", "4", "5", "6",
+			"7", "8", "9", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J",
+			"K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W",
+			"X", "Y", "Z", "<", ">" };
+
+	/**
+	 * 不可逆方式压缩字符串，存在一定重复的可能性，指定的compressedLength越小，越容易重复，compress当前最大长度限制为10
+	 * md5后的16byte做压缩,得到指定的压缩长度 然后再将中间字母和长度拼接在压缩字符串上
+	 * 
+	 * @param origin
+	 * @param compressedLength
+	 *            ,需要压缩到多少位，小于等于20,当等于0的时候，判断原始字符串是否大于32,如果是，则直接用md5转换为Hex串
+	 * @return
+	 */
+	public static String compressString(String origin, int compressedLength) {
+		// 特殊处理0
+		if (compressedLength == 0 && (origin != null && origin.length() > 32)) {
+			return DigestUtils.md5Hex(origin);
 		}
-		
-		public static void main(String[] args)
-		{
-			String test = "1234567890abcdefg";
-			System.out.println(compressString(test,8));
-			System.out.println(compressString(test,10));
-			System.out.println(compressString(test,14));
+
+		if (origin == null
+				|| (origin != null && (origin.length() < compressedLength + 1
+						+ String.valueOf(origin.length()).length())))
+			return origin;
+
+		if (compressedLength > 20) {
+			compressedLength = 20;
+			logger.warn("compressString function compressedLength must less 20");
 		}
+
+		StringBuilder result = new StringBuilder();
+
+		result.append(origin.length()).append(
+				origin.charAt(origin.length() / 2));
+
+		try {
+			byte[] dest = DigestUtils.md5(origin);
+			long destLong1 = 0;
+			long destLong2 = 0;
+
+			for (int i = 0; i < 8; i++) {
+				destLong1 |= dest[i] & 0xff;
+				destLong1 <<= 8;
+			}
+
+			for (int i = 8; i < 15; i++) {
+				destLong2 |= dest[i] & 0xff;
+				destLong2 <<= 8;
+			}
+
+			if (compressedLength <= 10) {
+				for (int j = 0; j < compressedLength; j++) {
+					long index = destLong1 & 0x0000003F;
+					result.append(dict[(int) index]);
+					destLong1 >>= 6;
+				}
+			} else {
+				for (int j = 0; j < 10; j++) {
+					long index = destLong1 & 0x0000003F;
+					result.append(dict[(int) index]);
+					destLong1 >>= 6;
+				}
+
+				for (int j = 0; j < compressedLength - 10; j++) {
+					long index = destLong2 & 0x0000003F;
+					result.append(dict[(int) index]);
+					destLong2 >>= 6;
+				}
+			}
+
+		} catch (Exception ex) {
+			logger.error("comporessString error !", ex);
+		}
+
+		return result.toString();
+	}
+
+	public static void main(String[] args) {
+		String test = "1234567890abcdefg";
+		System.out.println(compressString(test, 8));
+		System.out.println(compressString(test, 10));
+		System.out.println(compressString(test, 14));
+	}
 
 }

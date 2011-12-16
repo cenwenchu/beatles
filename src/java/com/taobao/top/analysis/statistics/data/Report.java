@@ -21,7 +21,6 @@ public class Report implements java.io.Serializable {
 	private String orderby;// 暂时未使用
 	private int rowCount = 0;// 最多获取多少行
 
-	private String conditions;// 该report中key的条件设置 add by fangliang 2010-05-26
 	private boolean period = false;// 是否周期性输出结果，用于片段维度统计
 	private long exportInterval;
 	private long lastExportTime;
@@ -73,14 +72,6 @@ public class Report implements java.io.Serializable {
 
 	public void setReportEntrys(List<ReportEntry> reportEntrys) {
 		this.reportEntrys = reportEntrys;
-	}
-
-	public String getConditions() {
-		return conditions;
-	}
-
-	public void setConditions(String conditions) {
-		this.conditions = conditions;
 	}
 
 	public final long getExportInterval() {

@@ -13,8 +13,10 @@ import java.util.concurrent.CountDownLatch;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+
 import com.taobao.top.analysis.statistics.data.Report;
 import com.taobao.top.analysis.statistics.data.ReportEntry;
+import com.taobao.top.analysis.statistics.map.DefaultExpReportEntry;
 import com.taobao.top.analysis.util.AnalysisConstants;
 import com.taobao.top.analysis.util.ReportUtil;
 
@@ -141,17 +143,17 @@ public class CreateReportOperation implements Runnable {
 							for(int j = i ; j < rs.size(); j++)
 							{
 								
-								ReportEntry tmpEntry = report.getReportEntrys().get(j);
+								DefaultExpReportEntry tmpEntry = (DefaultExpReportEntry) report.getReportEntrys().get(j);
 								
 								Object value = null;
 								
 								if (entryResultPool.get(tmpEntry.getId()) != null)
 									value = entryResultPool.get(tmpEntry.getId()).get(key);
-
-								if (value != null && tmpEntry.getFormatStack() != null
-										&& tmpEntry.getFormatStack().size() > 0) {
+								List<String> formatStack = tmpEntry.getFormatStack();
+								if (value != null && formatStack != null
+										&& formatStack.size() > 0) {
 									value = ReportUtil.formatValue(
-											tmpEntry.getFormatStack(), value);
+											formatStack, value);
 								}
 								
 								if (value != null)

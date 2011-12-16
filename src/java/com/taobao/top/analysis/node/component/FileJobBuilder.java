@@ -12,8 +12,8 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Properties;
 import java.util.Map.Entry;
+import java.util.Properties;
 
 import javax.xml.namespace.QName;
 import javax.xml.stream.XMLEventReader;
@@ -35,11 +35,17 @@ import com.taobao.top.analysis.node.IJobBuilder;
 import com.taobao.top.analysis.node.job.Job;
 import com.taobao.top.analysis.node.job.JobTask;
 import com.taobao.top.analysis.statistics.data.Alias;
+import com.taobao.top.analysis.statistics.data.ExpressionReportEntry;
 import com.taobao.top.analysis.statistics.data.InnerKey;
 import com.taobao.top.analysis.statistics.data.Report;
 import com.taobao.top.analysis.statistics.data.ReportEntry;
-import com.taobao.top.analysis.statistics.data.ReportEntryValueType;
 import com.taobao.top.analysis.statistics.data.Rule;
+import com.taobao.top.analysis.statistics.map.DefaultExpReportEntry;
+import com.taobao.top.analysis.statistics.map.DefaultExpressionMapper;
+import com.taobao.top.analysis.statistics.map.IMapper;
+import com.taobao.top.analysis.statistics.reduce.DefaultExpressionReducer;
+import com.taobao.top.analysis.statistics.reduce.IReducer;
+import com.taobao.top.analysis.statistics.reduce.group.GroupFunctionFactory;
 import com.taobao.top.analysis.util.ReportUtil;
 
 /**
@@ -56,6 +62,10 @@ public class FileJobBuilder implements IJobBuilder{
 	private final Log logger = LogFactory.getLog(FileJobBuilder.class);
 	private MasterConfig config;
 	private boolean needRebuild = false;
+	
+	private IMapper defaultMapper = new DefaultExpressionMapper();
+	private IReducer defaultReducer = new DefaultExpressionReducer();
+	
 	/**
 	 * 可用于rebuild，缓存上次的编译文件路径
 	 */
@@ -354,7 +364,7 @@ public class FileJobBuilder implements IJobBuilder{
 
 					if (tag.equalsIgnoreCase("ReportEntry")
 							|| tag.equalsIgnoreCase("entry")) {
-						ReportEntry entry = new ReportEntry();
+						DefaultExpReportEntry entry = new DefaultExpReportEntry();
 						if (tag.equalsIgnoreCase("ReportEntry"))
 							setReportEntry(true, start, entry, report,
 									rule.getEntryPool(), rule.getAliasPool(),
@@ -389,19 +399,21 @@ public class FileJobBuilder implements IJobBuilder{
 														.size() - 1));
 						}
 
-						ReportEntry _tmpEntry = entry;
+						DefaultExpReportEntry _tmpEntry = entry;
 
 						if (_tmpEntry.getId() == null
 								&& report.getReportEntrys() != null
 								&& report.getReportEntrys().size() > 0)
-							_tmpEntry = report.getReportEntrys().get(
+							_tmpEntry = (DefaultExpReportEntry) report.getReportEntrys().get(
 									report.getReportEntrys().size() - 1);
-
-						if (_tmpEntry.getBindingStack() != null) {
-							if (_tmpEntry.getValueExpression() != null
-									&& _tmpEntry.getValueExpression().indexOf(
+						
+						List<Object> bindingStack = _tmpEntry.getBindingStack();
+						String valueExpression = _tmpEntry.getValue();
+						if (bindingStack != null) {
+							if (valueExpression != null
+									&& valueExpression.indexOf(
 											"entry(") >= 0)
-								for (Object k : _tmpEntry.getBindingStack()) {
+								for (Object k : bindingStack) {
 									rule.getReferEntrys().put((String)k, null);
 								}
 						}
@@ -543,11 +555,6 @@ public class FileJobBuilder implements IJobBuilder{
 					new QName("", "rowCount")).getValue()));
 		}
 
-		// 以下新增条件设置 add by fangliang 2010-05-26
-		Attribute attr = start.getAttributeByName(new QName("", "condition"));
-		if (attr != null) {
-			report.setConditions(attr.getValue());
-		}
 	}
 
 	/**
@@ -568,39 +575,17 @@ public class FileJobBuilder implements IJobBuilder{
 	 * @throws AnalysisException 
 	 */
 	public void setReportEntry(boolean isPublic, StartElement start,
-			ReportEntry entry, Report report,
+			DefaultExpReportEntry entry, Report report,
 			Map<String, ReportEntry> entryPool, Map<String, Alias> aliasPool,
 			StringBuilder globalConditions, StringBuilder globalValuefilter,
 			List<String> globalMapClass, List<String> parents) throws AnalysisException {
 
 		if (start.getAttributeByName(new QName("", "refId")) != null) {
-			ReportEntry node = entryPool.get(start.getAttributeByName(
+			ExpressionReportEntry node = (ExpressionReportEntry)entryPool.get(start.getAttributeByName(
 					new QName("", "refId")).getValue());
 
 			if (node != null) {
-				if (report.getConditions() != null
-						&& report.getConditions().length() > 0) { // entry时如果report有conditions则克隆
-					ReportEntry cloneReportEntry = node.clone();
-					String id = start.getAttributeByName(new QName("", "id"))
-							.getValue();
-					if (id != null && !"".equals(id.trim())) {
-						cloneReportEntry.setId(id);
-					} else {
-						cloneReportEntry.setId(report.getId() + "_"
-								+ cloneReportEntry.getId());
-					}
-
-					cloneReportEntry.appendConditions(report.getConditions(),
-							aliasPool);
-				
-					report.getReportEntrys().add(cloneReportEntry);
-					if (entryPool.get(cloneReportEntry.getId()) != null)
-						throw new java.lang.RuntimeException("ID confict:"
-								+ cloneReportEntry.getId());
-					entryPool.put(cloneReportEntry.getId(), cloneReportEntry);
-				} else {
-					report.getReportEntrys().add(node);
-				}
+				report.getReportEntrys().add(node);
 			} else {
 				String errorMsg = new StringBuilder()
 						.append("ref Entry not exist :")
@@ -621,22 +606,7 @@ public class FileJobBuilder implements IJobBuilder{
 					new QName("", "id")).getValue());
 
 			if (node != null) {
-				if (report.getConditions() != null
-						&& report.getConditions().length() > 0) { // entry时如果report有conditions则克隆
-					ReportEntry cloneReportEntry = node.clone();
-					cloneReportEntry.setId(report.getId() + "_"
-							+ cloneReportEntry.getId());
-					cloneReportEntry.appendConditions(report.getConditions(),
-							aliasPool);
-				
-					report.getReportEntrys().add(cloneReportEntry);
-					if (entryPool.get(cloneReportEntry.getId()) != null)
-						throw new java.lang.RuntimeException("ID confict:"
-								+ cloneReportEntry.getId());
-					entryPool.put(cloneReportEntry.getId(), cloneReportEntry);
-				} else {
-					report.getReportEntrys().add(node);
-				}
+				report.getReportEntrys().add(node);
 			} else {
 				String errorMsg = new StringBuilder()
 						.append("reportEntry not exist :")
@@ -667,13 +637,39 @@ public class FileJobBuilder implements IJobBuilder{
 
 		if (entry.getId() == null)
 			throw new java.lang.RuntimeException("entry id can't be null...");
+		
+		if (start.getAttributeByName(new QName("", "mapClass")) != null) {
+			String className = start.getAttributeByName(
+					new QName("", "mapClass")).getValue();
+			IMapper<ReportEntry> mapper = ReportUtil.getInstance(IMapper.class,
+					Thread.currentThread().getContextClassLoader(),className,
+					true);
+			assert mapper != null;
+			entry.setMapClass(mapper);
+		}else{
+			entry.setMapClass(defaultMapper);
+		}
 
-		if (start.getAttributeByName(new QName("", "parent")) != null) {
-			String parent = start.getAttributeByName(new QName("", "parent"))
-					.getValue();
-			entry.setParent(parent);
-			parents.add(parent);
+		if (start.getAttributeByName(new QName("", "reduceClass")) != null) {
+			String className = start.getAttributeByName(
+					new QName("", "reduceClass")).getValue();
+			IReducer<ReportEntry> reducer = ReportUtil.getInstance(IReducer.class,
+					Thread.currentThread().getContextClassLoader(),className,
+					true);
+			assert reducer != null;
+			entry.setReduceClass(reducer);
+		}else{
+			entry.setReduceClass(defaultReducer);
+		}
 
+		if (start.getAttributeByName(new QName("", "mapParams")) != null) {
+			entry.setMapParams(start.getAttributeByName(
+					new QName("", "mapParams")).getValue());
+		}
+
+		if (start.getAttributeByName(new QName("", "reduceParams")) != null) {
+			entry.setReduceParams(start.getAttributeByName(
+					new QName("", "reduceParams")).getValue());
 		}
 
 		if (start.getAttributeByName(new QName("", "key")) != null) {
@@ -692,49 +688,35 @@ public class FileJobBuilder implements IJobBuilder{
 			String type = content.substring(0, content.indexOf("("));
 			String expression = content.substring(content.indexOf("(") + 1,
 					content.lastIndexOf(")"));
-			entry.setValueType(ReportEntryValueType.getType(type));
-			entry.setValueExpression(expression, aliasPool);
+			entry.setGroupFunction(GroupFunctionFactory.getFunction(type));
+			if (content.indexOf("entry(") >= 0){
+				entry.setLazy(true);
+			}
+			entry.setValue(expression, aliasPool);
+//			entry.setValueExpression(expression, aliasPool);
 		}
 
-		if (start.getAttributeByName(new QName("", "mapClass")) != null) {
-			entry.setMapClass(start.getAttributeByName(
-					new QName("", "mapClass")).getValue());
-		}
-
-		if (start.getAttributeByName(new QName("", "reduceClass")) != null) {
-			entry.setReduceClass(start.getAttributeByName(
-					new QName("", "reduceClass")).getValue());
-		}
-
-		if (start.getAttributeByName(new QName("", "mapParams")) != null) {
-			entry.setMapParams(start.getAttributeByName(
-					new QName("", "mapParams")).getValue());
-		}
-
-		if (start.getAttributeByName(new QName("", "reduceParams")) != null) {
-			entry.setReduceParams(start.getAttributeByName(
-					new QName("", "reduceParams")).getValue());
-		}
-
-		if (start.getAttributeByName(new QName("", "engine")) != null) {
-			entry.setEngine(start.getAttributeByName(new QName("", "engine"))
-					.getValue());
-		}
+		
+//
+//		if (start.getAttributeByName(new QName("", "engine")) != null) {
+//			entry.setEngine(start.getAttributeByName(new QName("", "engine"))
+//					.getValue());
+//		}
 
 		if (start.getAttributeByName(new QName("", "lazy")) != null) {
 			entry.setLazy(Boolean.valueOf(start.getAttributeByName(
 					new QName("", "lazy")).getValue()));
 		}
-		
-		if (start.getAttributeByName(new QName("", "useCompressKeyMode")) != null) {
-			entry.setUseCompressKeyMode(start.getAttributeByName(
-					new QName("", "useCompressKeyMode")).getValue());
-		}
-		
-		if (start.getAttributeByName(new QName("", "compressedDestMaxLength")) != null) {
-			entry.setCompressedDestMaxLength(Integer.parseInt(start.getAttributeByName(
-					new QName("", "compressedDestMaxLength")).getValue()));
-		}
+		//FIXME 壓縮
+//		if (start.getAttributeByName(new QName("", "useCompressKeyMode")) != null) {
+//			entry.setUseCompressKeyMode(start.getAttributeByName(
+//					new QName("", "useCompressKeyMode")).getValue());
+//		}
+//		
+//		if (start.getAttributeByName(new QName("", "compressedDestMaxLength")) != null) {
+//			entry.setCompressedDestMaxLength(Integer.parseInt(start.getAttributeByName(
+//					new QName("", "compressedDestMaxLength")).getValue()));
+//		}
 		
 
 		// 以下修改conditions的设置方式 modify by fangliang 2010-05-26
@@ -742,35 +724,37 @@ public class FileJobBuilder implements IJobBuilder{
 		if (globalConditions != null && globalConditions.length() > 0) {
 			conditions.append(globalConditions);
 		}
-		if (report != null && report.getConditions() != null
-				&& report.getConditions().length() > 0 && !isPublic) { // 在非共享模式下
-																		// 设置conditions
-			conditions.append("&" + report.getConditions());
-		}
 		Attribute attr = start.getAttributeByName(new QName("", "condition"));
 		if (attr != null) {
 			conditions.append("&" + attr.getValue());
 		}
 		if (conditions.length() > 0) {
-			entry.setConditions(conditions.toString(), aliasPool);
+//			entry.setConditions(conditions.toString(), aliasPool);
+			entry.setCondition(conditions.toString(), aliasPool);
 		}
-
+		String filter = null;
 		if (start.getAttributeByName(new QName("", "valuefilter")) != null) {
 			if (globalValuefilter != null && globalValuefilter.length() > 0)
-				entry.setValuefilter(new StringBuilder(globalValuefilter)
-						.append(start.getAttributeByName(
-								new QName("", "valuefilter")).getValue())
-						.toString());
+//				entry.setValuefilter(new StringBuilder(globalValuefilter)
+//						.append(start.getAttributeByName(
+//								new QName("", "valuefilter")).getValue())
+//						.toString());
+				filter = new StringBuilder(globalValuefilter)
+				.append(start.getAttributeByName(
+				new QName("", "valuefilter")).getValue()).toString();
 			else
-				entry.setValuefilter(start.getAttributeByName(
-						new QName("", "valuefilter")).getValue());
+//				entry.setValuefilter(start.getAttributeByName(
+//						new QName("", "valuefilter")).getValue());
+				filter = start.getAttributeByName(new QName("", "valuefilter")).getValue();
 		} else {
 			if (globalValuefilter != null && globalValuefilter.length() > 0)
-				entry.setValuefilter(globalValuefilter.toString());
+//				entry.setValuefilter(globalValuefilter.toString());
+				filter = globalValuefilter.toString();
 		}
-
-		if (globalMapClass != null && globalMapClass.size() > 0)
-			entry.setGlobalMapClass(globalMapClass);
+		entry.setFilter(filter,aliasPool);
+		//FIXME GLOBLEMAPPER
+//		if (globalMapClass != null && globalMapClass.size() > 0)
+//			entry.setGlobalMapClass(globalMapClass);
 
 		if (report != null)
 			report.getReportEntrys().add(entry);

@@ -55,7 +55,7 @@ public class DefaultAnalysisEngineTest {
 			
 		FileJobBuilder jobBuilder = new FileJobBuilder();
 		Map<String,Job> jobs = jobBuilder.build("jobs-config-engine.properties");
-		
+		long time = System.currentTimeMillis();
 		for(Job job : jobs.values())
 		{
 			List<JobTask> tasks = job.getJobTasks();
@@ -71,7 +71,7 @@ public class DefaultAnalysisEngineTest {
 			
 			defaultAnalysisEngine.doExport(tasks.get(0), jobTaskResult);
 		}
-
+		System.out.println(System.currentTimeMillis() - time);
 		fileJobExporter.releaseResource();
 		jobResultMerger.releaseResource();
 		defaultAnalysisEngine.releaseResource();
