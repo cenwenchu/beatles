@@ -9,6 +9,7 @@ import com.taobao.top.analysis.util.AnalysisConstants;
 /**
  * 
  * @author zhudi
+ * 默认的mapper实现
  *
  */
 public class DefaultMapper extends AbstractMapper {
@@ -30,7 +31,7 @@ public class DefaultMapper extends AbstractMapper {
 			key.append(innerKeyReplace(c,contents[c - 1],jobtask.getStatisticsRule().getInnerKeyPool())).append(AnalysisConstants.SPLIT_KEY);
 			
 		}
-		return key.toString();
+		return key.toString().intern();
 	}
 	
 	private static String innerKeyReplace(int key,String value,List<InnerKey> innerKeyPool)
