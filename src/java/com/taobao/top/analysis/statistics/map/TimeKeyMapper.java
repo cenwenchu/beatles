@@ -1,6 +1,7 @@
 package com.taobao.top.analysis.statistics.map;
 
 import com.taobao.top.analysis.node.job.JobTask;
+import com.taobao.top.analysis.statistics.data.ReportEntry;
 import com.taobao.top.analysis.util.AnalysisConstants;
 
 /**
@@ -11,7 +12,7 @@ import com.taobao.top.analysis.util.AnalysisConstants;
  * 2011-11-26
  *
  */
-public class TimeKeyMapper extends DefaultExpressionMapper {
+public class TimeKeyMapper extends DefaultMapper {
 	
 	/**
 	 * 
@@ -21,7 +22,7 @@ public class TimeKeyMapper extends DefaultExpressionMapper {
 	
 
 	@Override
-	protected String generateKey(DefaultExpReportEntry entry,
+	protected String generateKey(ReportEntry entry,
 			String[] contents, JobTask jobtask) {
 		long currentTime = Long.valueOf(contents[Integer.valueOf(entry
 				.getKeys()[0]) - 1]);

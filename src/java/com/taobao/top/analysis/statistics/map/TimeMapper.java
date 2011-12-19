@@ -4,6 +4,7 @@ import java.util.Calendar;
 import java.util.Date;
 
 import com.taobao.top.analysis.node.job.JobTask;
+import com.taobao.top.analysis.statistics.data.ReportEntry;
 
 /**
  * 时间类型的MapClass实现
@@ -23,7 +24,7 @@ public class TimeMapper extends TimeKeyMapper {
 	private static final long serialVersionUID = 971861884374324170L;
 
 	@Override
-	protected Object generateValue(DefaultExpReportEntry entry,
+	protected Object generateValue(ReportEntry entry,
 			Object[] contents, JobTask jobtask) {
 
 

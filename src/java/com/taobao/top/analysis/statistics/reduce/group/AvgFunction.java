@@ -6,6 +6,11 @@ import com.taobao.top.analysis.util.AnalysisConstants;
 
 public class AvgFunction implements GroupFunction {
 
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = -9022021538712756593L;
+
 	@Override
 	public void group(String key, Object value, Map<String, Object> result) {
 		if (value == null)

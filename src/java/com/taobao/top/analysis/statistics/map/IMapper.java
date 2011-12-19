@@ -10,11 +10,10 @@ import com.taobao.top.analysis.statistics.data.ReportEntry;
  *
  * @param <T>
  */
-public interface IMapper<T extends ReportEntry> extends Cloneable,Serializable{
+public interface IMapper extends Cloneable,Serializable{
 	
-	public String mapperKey(T entry,String[] content,JobTask jobtask);
-	
-	
-	public Object mapperValue(T entry,Object[] content,JobTask jobtask);
+	public String mapperKey(ReportEntry entry,String[] content,JobTask jobtask);
+
+	public Object mapperValue(ReportEntry entry,Object[] content,JobTask jobtask);
 
 }

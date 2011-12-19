@@ -4,6 +4,11 @@ import java.util.Map;
 
 public class CountFunction implements GroupFunction {
 
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = -627834910678760568L;
+
 	@Override
 	public void group(String key, Object value, Map<String, Object> result) {
 		Double total = (Double) result.get(key);

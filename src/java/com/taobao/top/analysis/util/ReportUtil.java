@@ -31,7 +31,7 @@ import com.taobao.top.analysis.statistics.data.Alias;
 import com.taobao.top.analysis.statistics.data.Report;
 import com.taobao.top.analysis.statistics.data.ReportEntry;
 import com.taobao.top.analysis.statistics.data.ReportOrderComparator;
-import com.taobao.top.analysis.statistics.map.DefaultExpReportEntry;
+import com.taobao.top.analysis.statistics.data.impl.SimpleCalculator;
 
 /**
  * 报表工具类
@@ -630,15 +630,15 @@ public class ReportUtil {
 
 		for (String entryId : entryKeys) {
 
-			DefaultExpReportEntry entry = (DefaultExpReportEntry) entryPool
+			ReportEntry entry = entryPool
 					.get(entryId);
 			if (entry.isLazy()) {
 				if (result.get(entryId) == null)
 					result.put(entryId, new HashMap<String, Object>());
-
-				if (entry.getBindingStack() != null
-						&& entry.getBindingStack().size() > 0) {
-					List<Object> _bindingStack = entry.getBindingStack();
+				SimpleCalculator c = (SimpleCalculator)entry.getCalculator();
+				if (c.getBindingStack() != null
+						&& c.getBindingStack().size() > 0) {
+					List<Object> _bindingStack = c.getBindingStack();
 					int size = _bindingStack.size();
 
 					String leftEntryId = (String) _bindingStack.get(0);
@@ -770,7 +770,7 @@ public class ReportUtil {
 
 								if (rightvalue != null) {
 									if (nodevalue != null) {
-										if (entry.getOperatorStack().get(i) == AnalysisConstants.OPERATE_PLUS) {
+										if (c.getOperatorStack().get(i) == AnalysisConstants.OPERATE_PLUS) {
 											if (nodevalue instanceof Double
 													|| rightvalue instanceof Double)
 												nodevalue = Double
@@ -785,7 +785,7 @@ public class ReportUtil {
 											continue;
 										}
 
-										if (entry.getOperatorStack().get(i) == AnalysisConstants.OPERATE_MINUS) {
+										if (c.getOperatorStack().get(i) == AnalysisConstants.OPERATE_MINUS) {
 											if (nodevalue instanceof Double
 													|| rightvalue instanceof Double)
 												nodevalue = Double
@@ -800,7 +800,7 @@ public class ReportUtil {
 											continue;
 										}
 
-										if (entry.getOperatorStack().get(i) == AnalysisConstants.OPERATE_RIDE) {
+										if (c.getOperatorStack().get(i) == AnalysisConstants.OPERATE_RIDE) {
 											if (nodevalue instanceof Double
 													|| rightvalue instanceof Double)
 												nodevalue = Double
@@ -815,7 +815,7 @@ public class ReportUtil {
 											continue;
 										}
 
-										if (entry.getOperatorStack().get(i) == AnalysisConstants.OPERATE_DIVIDE) {
+										if (c.getOperatorStack().get(i) == AnalysisConstants.OPERATE_DIVIDE) {
 											nodevalue = Double
 													.valueOf(nodevalue
 															.toString())

@@ -4,6 +4,11 @@ import java.util.Map;
 
 public class MinFunction implements GroupFunction {
 
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = -5755380133525364196L;
+
 	@Override
 	public void group(String key, Object value, Map<String, Object> result) {
 		if (value == null)

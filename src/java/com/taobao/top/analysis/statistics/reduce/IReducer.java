@@ -10,9 +10,9 @@ import com.taobao.top.analysis.statistics.data.ReportEntry;
  *
  * @param <T>
  */
-public interface IReducer<T extends ReportEntry> extends Cloneable,Serializable {
+public interface IReducer extends Cloneable,Serializable {
 	
-	public void reducer(T entry,String key,Object value,Map<String, Object> result);
+	public void reducer(ReportEntry entry,String key,Object value,Map<String, Object> result);
 	
 
 }

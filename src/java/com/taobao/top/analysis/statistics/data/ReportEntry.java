@@ -7,6 +7,7 @@ import java.io.Serializable;
 
 import com.taobao.top.analysis.statistics.map.IMapper;
 import com.taobao.top.analysis.statistics.reduce.IReducer;
+import com.taobao.top.analysis.statistics.reduce.group.GroupFunction;
 
 /**
  * SimpleMapReduce Entry
@@ -36,11 +37,21 @@ public class ReportEntry implements Serializable, Cloneable {
 	/**
 	 * 自定义key生成方法
 	 */
-	private IMapper<ReportEntry> mapClass;
+	private IMapper mapClass;
+	
+	private int[] keys;
+	
+	private ICalculator calculator;
+	
+	private ICondition condition;
+	
+	private IFilter valueFilter;
 	/**
-	 * 自定义value生成方法
+	 * 自定义合并方式
 	 */
-	private IReducer<ReportEntry> reduceClass;
+	private IReducer reduceClass;
+	
+	private GroupFunction groupFunction;
 	/**
 	 * mapClass带入的参数
 	 */
@@ -69,16 +80,16 @@ public class ReportEntry implements Serializable, Cloneable {
 		this.name = name;
 	}
 	
-	public IMapper<ReportEntry> getMapClass() {
+	public IMapper getMapClass() {
 		return mapClass;
 	}
-	public void setMapClass(IMapper<ReportEntry> mapClass) {
+	public void setMapClass(IMapper mapClass) {
 		this.mapClass = mapClass;
 	}
-	public IReducer<ReportEntry> getReduceClass() {
+	public IReducer getReduceClass() {
 		return reduceClass;
 	}
-	public void setReduceClass(IReducer<ReportEntry> reduceClass) {
+	public void setReduceClass(IReducer reduceClass) {
 		this.reduceClass = reduceClass;
 	}
 	public String getMapParams() {
@@ -92,6 +103,36 @@ public class ReportEntry implements Serializable, Cloneable {
 	}
 	public void setReduceParams(String reduceParams) {
 		this.reduceParams = reduceParams;
+	}
+	public ICalculator getCalculator() {
+		return calculator;
+	}
+	public void setCalculator(ICalculator calculator) {
+		this.calculator = calculator;
+	}
+	public ICondition getCondition() {
+		return condition;
+	}
+	public void setCondition(ICondition condition) {
+		this.condition = condition;
+	}
+	public IFilter getValueFilter() {
+		return valueFilter;
+	}
+	public void setValueFilter(IFilter valueFilter) {
+		this.valueFilter = valueFilter;
+	}
+	public int[] getKeys() {
+		return keys;
+	}
+	public void setKeys(int[] keys) {
+		this.keys = keys;
+	}
+	public GroupFunction getGroupFunction() {
+		return groupFunction;
+	}
+	public void setGroupFunction(GroupFunction groupFunction) {
+		this.groupFunction = groupFunction;
 	}
 	@Override
 	public ReportEntry clone() throws CloneNotSupportedException {

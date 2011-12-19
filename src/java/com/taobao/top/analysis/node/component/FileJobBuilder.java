@@ -35,15 +35,16 @@ import com.taobao.top.analysis.node.IJobBuilder;
 import com.taobao.top.analysis.node.job.Job;
 import com.taobao.top.analysis.node.job.JobTask;
 import com.taobao.top.analysis.statistics.data.Alias;
-import com.taobao.top.analysis.statistics.data.ExpressionReportEntry;
 import com.taobao.top.analysis.statistics.data.InnerKey;
 import com.taobao.top.analysis.statistics.data.Report;
 import com.taobao.top.analysis.statistics.data.ReportEntry;
 import com.taobao.top.analysis.statistics.data.Rule;
-import com.taobao.top.analysis.statistics.map.DefaultExpReportEntry;
-import com.taobao.top.analysis.statistics.map.DefaultExpressionMapper;
+import com.taobao.top.analysis.statistics.data.impl.SimpleCalculator;
+import com.taobao.top.analysis.statistics.data.impl.SimpleCondition;
+import com.taobao.top.analysis.statistics.data.impl.SimpleFilter;
+import com.taobao.top.analysis.statistics.map.DefaultMapper;
 import com.taobao.top.analysis.statistics.map.IMapper;
-import com.taobao.top.analysis.statistics.reduce.DefaultExpressionReducer;
+import com.taobao.top.analysis.statistics.reduce.DefaultReducer;
 import com.taobao.top.analysis.statistics.reduce.IReducer;
 import com.taobao.top.analysis.statistics.reduce.group.GroupFunctionFactory;
 import com.taobao.top.analysis.util.ReportUtil;
@@ -63,8 +64,8 @@ public class FileJobBuilder implements IJobBuilder{
 	private MasterConfig config;
 	private boolean needRebuild = false;
 	
-	private IMapper defaultMapper = new DefaultExpressionMapper();
-	private IReducer defaultReducer = new DefaultExpressionReducer();
+	private IMapper defaultMapper = new DefaultMapper();
+	private IReducer defaultReducer = new DefaultReducer();
 	
 	/**
 	 * 可用于rebuild，缓存上次的编译文件路径
@@ -364,7 +365,7 @@ public class FileJobBuilder implements IJobBuilder{
 
 					if (tag.equalsIgnoreCase("ReportEntry")
 							|| tag.equalsIgnoreCase("entry")) {
-						DefaultExpReportEntry entry = new DefaultExpReportEntry();
+						ReportEntry entry = new ReportEntry();
 						if (tag.equalsIgnoreCase("ReportEntry"))
 							setReportEntry(true, start, entry, report,
 									rule.getEntryPool(), rule.getAliasPool(),
@@ -399,16 +400,16 @@ public class FileJobBuilder implements IJobBuilder{
 														.size() - 1));
 						}
 
-						DefaultExpReportEntry _tmpEntry = entry;
+						ReportEntry _tmpEntry = entry;
 
 						if (_tmpEntry.getId() == null
 								&& report.getReportEntrys() != null
 								&& report.getReportEntrys().size() > 0)
-							_tmpEntry = (DefaultExpReportEntry) report.getReportEntrys().get(
+							_tmpEntry = report.getReportEntrys().get(
 									report.getReportEntrys().size() - 1);
 						
-						List<Object> bindingStack = _tmpEntry.getBindingStack();
-						String valueExpression = _tmpEntry.getValue();
+						List<Object> bindingStack = ((SimpleCalculator)_tmpEntry.getCalculator()).getBindingStack();
+						String valueExpression = ((SimpleCalculator)_tmpEntry.getCalculator()).getValue();
 						if (bindingStack != null) {
 							if (valueExpression != null
 									&& valueExpression.indexOf(
@@ -575,13 +576,13 @@ public class FileJobBuilder implements IJobBuilder{
 	 * @throws AnalysisException 
 	 */
 	public void setReportEntry(boolean isPublic, StartElement start,
-			DefaultExpReportEntry entry, Report report,
+			ReportEntry entry, Report report,
 			Map<String, ReportEntry> entryPool, Map<String, Alias> aliasPool,
 			StringBuilder globalConditions, StringBuilder globalValuefilter,
 			List<String> globalMapClass, List<String> parents) throws AnalysisException {
 
 		if (start.getAttributeByName(new QName("", "refId")) != null) {
-			ExpressionReportEntry node = (ExpressionReportEntry)entryPool.get(start.getAttributeByName(
+			ReportEntry node = entryPool.get(start.getAttributeByName(
 					new QName("", "refId")).getValue());
 
 			if (node != null) {
@@ -641,7 +642,7 @@ public class FileJobBuilder implements IJobBuilder{
 		if (start.getAttributeByName(new QName("", "mapClass")) != null) {
 			String className = start.getAttributeByName(
 					new QName("", "mapClass")).getValue();
-			IMapper<ReportEntry> mapper = ReportUtil.getInstance(IMapper.class,
+			IMapper mapper = ReportUtil.getInstance(IMapper.class,
 					Thread.currentThread().getContextClassLoader(),className,
 					true);
 			assert mapper != null;
@@ -653,7 +654,7 @@ public class FileJobBuilder implements IJobBuilder{
 		if (start.getAttributeByName(new QName("", "reduceClass")) != null) {
 			String className = start.getAttributeByName(
 					new QName("", "reduceClass")).getValue();
-			IReducer<ReportEntry> reducer = ReportUtil.getInstance(IReducer.class,
+			IReducer reducer = ReportUtil.getInstance(IReducer.class,
 					Thread.currentThread().getContextClassLoader(),className,
 					true);
 			assert reducer != null;
@@ -692,7 +693,7 @@ public class FileJobBuilder implements IJobBuilder{
 			if (content.indexOf("entry(") >= 0){
 				entry.setLazy(true);
 			}
-			entry.setValue(expression, aliasPool);
+			entry.setCalculator(new SimpleCalculator(expression, aliasPool));
 //			entry.setValueExpression(expression, aliasPool);
 		}
 
@@ -730,7 +731,7 @@ public class FileJobBuilder implements IJobBuilder{
 		}
 		if (conditions.length() > 0) {
 //			entry.setConditions(conditions.toString(), aliasPool);
-			entry.setCondition(conditions.toString(), aliasPool);
+			entry.setCondition(new SimpleCondition(conditions.toString(), aliasPool));
 		}
 		String filter = null;
 		if (start.getAttributeByName(new QName("", "valuefilter")) != null) {
@@ -751,7 +752,7 @@ public class FileJobBuilder implements IJobBuilder{
 //				entry.setValuefilter(globalValuefilter.toString());
 				filter = globalValuefilter.toString();
 		}
-		entry.setFilter(filter,aliasPool);
+		entry.setValueFilter(new SimpleFilter(filter));
 		//FIXME GLOBLEMAPPER
 //		if (globalMapClass != null && globalMapClass.size() > 0)
 //			entry.setGlobalMapClass(globalMapClass);

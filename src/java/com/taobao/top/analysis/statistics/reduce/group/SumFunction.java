@@ -4,6 +4,11 @@ import java.util.Map;
 
 public class SumFunction implements GroupFunction {
 
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 4958058432655840945L;
+
 	@Override
 	public void group(String key, Object value, Map<String, Object> result) {
 

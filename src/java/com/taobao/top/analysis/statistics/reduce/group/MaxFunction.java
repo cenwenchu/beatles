@@ -4,6 +4,11 @@ import java.util.Map;
 
 public class MaxFunction implements GroupFunction {
 
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 6931061799076650571L;
+
 	@Override
 	public void group(String key, Object value, Map<String, Object> result) {
 		if (value == null)
