@@ -19,7 +19,7 @@ public class MasterConfig extends AbstractConfig{
 	/**
 	 * 当前cpu数量
 	 */
-	private static int processorCount = 1;
+	private static int processorCount;
 	/**
 	 * 
 	 */
