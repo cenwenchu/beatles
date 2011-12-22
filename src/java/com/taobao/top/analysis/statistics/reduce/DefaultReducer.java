@@ -6,6 +6,7 @@ import com.taobao.top.analysis.statistics.data.ReportEntry;
 /**
  * 
  * @author zhudi
+ * 默认的实现类
  *
  */
 public class DefaultReducer implements IReducer {

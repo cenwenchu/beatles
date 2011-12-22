@@ -8,7 +8,11 @@ import java.io.Serializable;
  *
  */
 public interface IFilter extends Cloneable,Serializable{
-	
+	/**
+	 * 生成了value之后用来过滤生成的value的
+	 * @param value
+	 * @return
+	 */
 	public Object filter(Object value);
 
 }

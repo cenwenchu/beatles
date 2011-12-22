@@ -1,6 +1,8 @@
 package com.taobao.top.analysis.statistics.reduce.group;
 
 /**
+ * 
+ * 组方法工厂
  * 报表Entry统计模式，支持最小，最大，总和，计数，平均，直接显示
  * 
  * @author fangweng
