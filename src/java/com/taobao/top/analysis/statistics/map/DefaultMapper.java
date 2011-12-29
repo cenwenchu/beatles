@@ -31,7 +31,7 @@ public class DefaultMapper extends AbstractMapper {
 			key.append(innerKeyReplace(c,contents[c - 1],jobtask.getStatisticsRule().getInnerKeyPool())).append(AnalysisConstants.SPLIT_KEY);
 			
 		}
-		return key.toString().intern();
+		return key.toString();
 	}
 	
 	private static String innerKeyReplace(int key,String value,List<InnerKey> innerKeyPool)
