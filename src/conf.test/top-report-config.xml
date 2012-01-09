@@ -64,7 +64,7 @@
 		id为报表主键，除了数字也可以用英文字符串
 		file为报表保存的名称，不建议使用中文
 		entryList描述了报表包含的所有的entry，可以引用上面定义的全局性的entry，也可以内部定义私有的entry。
-		
+		key可以被没有定义key的内部entry继承，外部ReportEntry无法继承
 	 -->
 	<reports>
 		<report id="apiReport" file="apiReport" key="apiName">
