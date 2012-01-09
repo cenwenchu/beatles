@@ -27,8 +27,18 @@ public class Report implements java.io.Serializable {
 	private boolean append=false; 
 	
 	//如果内部的entry没有设置key，则使用report默认的key
+	//如果设置了condition，则默认与其他的condition为与的关系
 	private String key;
+	private String condition;
 	
+	public String getCondition() {
+		return condition;
+	}
+
+	public void setCondition(String condition) {
+		this.condition = condition;
+	}
+
 	public String getKey() {
 		return key;
 	}

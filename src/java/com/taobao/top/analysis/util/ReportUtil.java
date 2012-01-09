@@ -130,6 +130,10 @@ public class ReportUtil {
 		if (operation.startsWith(AnalysisConstants.CONDITION_ISNUMBER_STR)) {
 			return AnalysisConstants.CONDITION_ISNUMBER;
 		}
+		
+		if (operation.startsWith(AnalysisConstants.CONDITION_IN_STR)) {
+			return AnalysisConstants.CONDITION_IN;
+		}
 
 		throw new AnalysisException("Entry Operation not support!");
 

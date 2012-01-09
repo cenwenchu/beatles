@@ -528,6 +528,11 @@ public class FileJobBuilder implements IJobBuilder{
 			report.setKey(start.getAttributeByName(new QName("", "key"))
 					.getValue());
 		}
+		
+		if (start.getAttributeByName(new QName("", "condition")) != null) {
+			report.setCondition(start.getAttributeByName(new QName("", "condition"))
+					.getValue());
+		}
 
 		if (start.getAttributeByName(new QName("", "file")) != null) {
 			report.setFile(start.getAttributeByName(new QName("", "file"))
@@ -746,6 +751,13 @@ public class FileJobBuilder implements IJobBuilder{
 		if (globalConditions != null && globalConditions.length() > 0) {
 			conditions.append(globalConditions);
 		}
+		
+		//add by fangweng report 也可以有condition
+		if (report != null && report.getCondition() != null && report.getCondition().length() > 0)
+		{
+			conditions.append("&").append(report.getCondition());
+		}
+		
 		Attribute attr = start.getAttributeByName(new QName("", "condition"));
 		if (attr != null) {
 			conditions.append("&" + attr.getValue());

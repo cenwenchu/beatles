@@ -59,25 +59,27 @@ public class SimpleCondition implements ICondition {
 			}
 
 			for (String con : cons) {
+				con = con.trim();
 				if (!con.startsWith("$"))
 					continue;
 
 				Object key = ReportUtil.transformVar(
 						con.substring(1, con.lastIndexOf("$")), aliasPool);
-				String value = con.substring(con.lastIndexOf("$") + 1);
+				String value = con.substring(con.lastIndexOf("$") + 1).trim();
 				String operate = null;
 
 				if (value.startsWith(AnalysisConstants.CONDITION_NOT_EQUAL_STR)
 						|| value.startsWith(AnalysisConstants.CONDITION_EQUALORGREATER_STR)
-						|| value.startsWith(AnalysisConstants.CONDITION_EQUALORLESSER_STR)) {
+						|| value.startsWith(AnalysisConstants.CONDITION_EQUALORLESSER_STR)
+						|| value.startsWith(AnalysisConstants.CONDITION_IN_STR)) {
 					operate = value.substring(0, 2);
-					value = value.substring(2);
+					value = value.substring(2).trim();
 				} else {
 					if (value.startsWith(AnalysisConstants.CONDITION_EQUAL_STR)
 							|| value.startsWith(AnalysisConstants.CONDITION_LESSER_STR)
 							|| value.startsWith(AnalysisConstants.CONDITION_GREATER_STR)) {
 						operate = value.substring(0, 1);
-						value = value.substring(1);
+						value = value.substring(1).trim();
 					}
 				}
 
@@ -86,7 +88,8 @@ public class SimpleCondition implements ICondition {
 					conditionKStack.add(key);
 					
 					if (operate.equals(AnalysisConstants.CONDITION_EQUAL_STR)
-							|| operate.equals(AnalysisConstants.CONDITION_NOT_EQUAL_STR))
+							|| operate.equals(AnalysisConstants.CONDITION_NOT_EQUAL_STR)
+							|| operate.equals(AnalysisConstants.CONDITION_IN_STR))
 					{
 						conditionVStack.add(value);
 					}
@@ -96,7 +99,7 @@ public class SimpleCondition implements ICondition {
 				else
 				{
 					conditionKStack.add(key);
-					conditionVStack.add(Integer.valueOf(value));
+					conditionVStack.add(Integer.valueOf(value.trim()));
 				}
 
 				
@@ -177,7 +180,13 @@ public class SimpleCondition implements ICondition {
 				result = !contents[conditionKey - 1].equals(conditionValue);
 			else
 				result = contents.length != (Integer)conditionValue;
-		} else {
+		} 
+		else if (operator == AnalysisConstants.CONDITION_IN) {
+			if (conditionKey > 0)
+				result = (new StringBuilder().append(conditionValue).append(","))
+					.indexOf(new StringBuilder().append(contents[conditionKey - 1]).append(",").toString())>=0;
+		} 
+		else {
 			double cmpValue = 0;
 
 			if (conditionKey > 0)

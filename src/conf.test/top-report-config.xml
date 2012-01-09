@@ -109,6 +109,14 @@
              </entryList>
          </report>	
          
+         <report id="ipReport2" key="remoteIp" condition="$remoteIp$ in 10.232.11.217,10.232.11.216" file="ipReport2">
+            <entryList>
+                <entry name="服务器IP" value="plain($remoteIp$)" />
+                <entry name="访问总量" value="count()" />
+                <entry name="访问成功总量" value="count()" condition="$errorCode$=0" />
+             </entryList>
+         </report>	
+         
 		<report id="appReport" key="appkey" file="appReport">
 			<entryList>
 			    <entry name="应用ID"  value="plain($appkey$)" />
