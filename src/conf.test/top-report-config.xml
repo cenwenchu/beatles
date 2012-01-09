@@ -67,81 +67,81 @@
 		
 	 -->
 	<reports>
-		<report id="apiReport" file="apiReport">
+		<report id="apiReport" file="apiReport" key="apiName">
 			<entryList>
-			    <entry name="服务名称" key="apiName" value="plain($apiName$)" /> 
+			    <entry name="服务名称" value="plain($apiName$)" /> 
 				<entry id="apiTotalCount"/>
 				<entry id="apiFlow"/>
-				<entry name="占总量比例" key="apiName" value="plain(entry(apiTotalCount)/entry(sum:apiTotalCount))" valuefilter="&gt;=0&amp;isnumber&amp;round:3"/> 
+				<entry name="占总量比例" value="plain(entry(apiTotalCount)/entry(sum:apiTotalCount))" valuefilter="&gt;=0&amp;isnumber&amp;round:3"/> 
 				<entry id="apiSuccessCount"/>
-				<entry name="服务请求成功率" key="apiName" value="plain(entry(apiSuccessCount)/entry(apiTotalCount))" valuefilter="&gt;=0&amp;isnumber&amp;round:3"/> 
+				<entry name="服务请求成功率" value="plain(entry(apiSuccessCount)/entry(apiTotalCount))" valuefilter="&gt;=0&amp;isnumber&amp;round:3"/> 
 				<entry id="apiFailCount" />
 				<entry id="apiAverageTimeConsume"/>
 				<entry id="apiMinTimeConsume"/>
 				<entry id="apiMaxTimeConsume"/>
 				<entry id="apiAverageServiceConsume"/>
-				<entry name="400与500占总访问百分比" key="apiName" value="plain(entry(api400ErrorCount)+entry(api500ErrorCount)/entry(apiTotalCount))" valuefilter="&gt;=0&amp;isnumber&amp;round:3"/>	
+				<entry name="400与500占总访问百分比" value="plain(entry(api400ErrorCount)+entry(api500ErrorCount)/entry(apiTotalCount))" valuefilter="&gt;=0&amp;isnumber&amp;round:3"/>	
 			</entryList>
 		</report>
 		
-		<report id="totalReport" file="totalReport">
+		<report id="totalReport" file="totalReport" key="GLOBAL_KEY">
 			<entryList>
-				<entry id="totalCount" name="请求总次数" key="GLOBAL_KEY" value="count()" />
-				<entry id="successCount" name="成功总数" key="GLOBAL_KEY" value="count()" condition="$errorCode$=0"/>
-				<entry name="访问总流量(M)" key="GLOBAL_KEY" value="sum($readBytes$*#8#)"  valuefilter="&gt;=0&amp;isnumber&amp;round:4"/>
+				<entry id="totalCount" name="请求总次数"  value="count()" />
+				<entry id="successCount" name="成功总数"  value="count()" condition="$errorCode$=0"/>
+				<entry name="访问总流量(M)" value="sum($readBytes$*#8#)"  valuefilter="&gt;=0&amp;isnumber&amp;round:4"/>
 			</entryList>
 		</report>
 		
 		
-		<report id="errorCodeReport" file="errorCodeReport">
+		<report id="errorCodeReport" key="errorCode" file="errorCodeReport">
 			<entryList>
-			    <entry name="错误码" key="errorCode" value="plain($errorCode$)" condition="$errorCode$!=0" valuefilter="isnumber"/> 
-				<entry id="errorCount" name="错误数量" key="errorCode" value="count()" condition="$errorCode$!=0" valuefilter="isnumber"/> 
-				<entry name="错误比例" key="errorCode" value="plain(entry(errorCount)/entry(sum:errorCount))" condition="$errorCode$!=0" valuefilter="&gt;=0&amp;isnumber&amp;round:3"/> 
+			    <entry name="错误码"  value="plain($errorCode$)" condition="$errorCode$!=0" valuefilter="isnumber"/> 
+				<entry id="errorCount" name="错误数量" value="count()" condition="$errorCode$!=0" valuefilter="isnumber"/> 
+				<entry name="错误比例" value="plain(entry(errorCount)/entry(sum:errorCount))" condition="$errorCode$!=0" valuefilter="&gt;=0&amp;isnumber&amp;round:3"/> 
 			</entryList>
 		</report>
 		
-         <report id="ipReport" file="ipReport">
+         <report id="ipReport" key="remoteIp" file="ipReport">
             <entryList>
-                <entry name="服务器IP" key="remoteIp" value="plain($remoteIp$)"/>
-                <entry name="访问总量" key="remoteIp" value="count()"/>
-                <entry name="访问成功总量" key="remoteIp" value="count()" condition="$errorCode$=0" />
+                <entry name="服务器IP" value="plain($remoteIp$)"/>
+                <entry name="访问总量" value="count()"/>
+                <entry name="访问成功总量" value="count()" condition="$errorCode$=0" />
              </entryList>
          </report>	
          
-		<report id="appReport" file="appReport">
+		<report id="appReport" key="appkey" file="appReport">
 			<entryList>
-			    <entry name="应用ID" key="appkey" value="plain($appkey$)" />
-			    <entry name="访问总量" key="appkey" value="count()"/>
-                <entry name="访问成功总量" key="appkey" value="count()" condition="$errorCode$=0" />
+			    <entry name="应用ID"  value="plain($appkey$)" />
+			    <entry name="访问总量" value="count()"/>
+                <entry name="访问成功总量" value="count()" condition="$errorCode$=0" />
 			</entryList>
 		</report>
 		
-		<report id="appAPIReport" file="appAPIReport">
+		<report id="appAPIReport" key="appkey,apiName" file="appAPIReport">
 			<entryList>
-			    <entry name="应用ID" key="appkey,apiName" value="plain($appkey$)"/> 
-			    <entry name="服务名称" key="appkey,apiName" value="plain($apiName$)"/>
-			    <entry id="app_api_count" name="访问总量" key="appkey,apiName" value="count()" />
-                <entry id="app_api_successCount" name="访问成功总量" key="appkey,apiName" value="count()" condition="$errorCode$=0" />
-                <entry id="app_api_AverageTimeConsume" name="平均处理时间" key="appkey,apiName" value="average($responseTime$)" valuefilter="&gt;=0&amp;&lt;10000&amp;isnumber&amp;round:3"/>
-				<entry id="app_api_MinTimeConsume" name="处理最小时间" key="appkey,apiName" value="min($responseTime$)" valuefilter="&gt;=0&amp;isnumber"/>
-				<entry id="app_api_MaxTimeConsume" name="处理最大时间" key="appkey,apiName" value="max($responseTime$)"  valuefilter="&gt;=0&amp;&lt;10000&amp;isnumber"/>	     
+			    <entry name="应用ID" value="plain($appkey$)"/> 
+			    <entry name="服务名称" value="plain($apiName$)"/>
+			    <entry id="app_api_count" name="访问总量" value="count()" />
+                <entry id="app_api_successCount" name="访问成功总量" value="count()" condition="$errorCode$=0" />
+                <entry id="app_api_AverageTimeConsume" name="平均处理时间" value="average($responseTime$)" valuefilter="&gt;=0&amp;&lt;10000&amp;isnumber&amp;round:3"/>
+				<entry id="app_api_MinTimeConsume" name="处理最小时间" value="min($responseTime$)" valuefilter="&gt;=0&amp;isnumber"/>
+				<entry id="app_api_MaxTimeConsume" name="处理最大时间" value="max($responseTime$)"  valuefilter="&gt;=0&amp;&lt;10000&amp;isnumber"/>	     
 			</entryList>
 		</report>
 		
-		<report id="totalHourReport" file="totalHourReport">
+		<report id="totalHourReport" key="timestamp" file="totalHourReport">
 			<entryList>
-			    <entry name="整点时间段" key="timestamp" value="plain($timestamp$)" 
+			    <entry name="整点时间段"  value="plain($timestamp$)" 
 			    	mapClass="com.taobao.top.analysis.statistics.map.TimeMapper"/> 
-				<entry name="时间段内访问总量" key="timestamp" value="count()" 
+				<entry name="时间段内访问总量"  value="count()" 
 						mapClass="com.taobao.top.analysis.statistics.map.TimeKeyMapper"/>
-				<entry name="时间段内访问成功总量" key="timestamp" value="count()" condition="$errorCode$=0"
+				<entry name="时间段内访问成功总量"  value="count()" condition="$errorCode$=0"
 						mapClass="com.taobao.top.analysis.statistics.map.TimeKeyMapper"/>
-				<entry name="时间段内访问失败总量" key="timestamp" value="count()" condition="$errorCode$!=0"
+				<entry name="时间段内访问失败总量" value="count()" condition="$errorCode$!=0"
 						mapClass="com.taobao.top.analysis.statistics.map.TimeKeyMapper" valuefilter="&gt;=0&amp;isnumber&amp;round:3"/>
-				<entry name="时间段内访问业务平均耗时(ms)" key="timestamp" value="average($responseTime$ - $platformConsumeTime$)"  
+				<entry name="时间段内访问业务平均耗时(ms)" value="average($responseTime$ - $platformConsumeTime$)"  
 						mapClass="com.taobao.top.analysis.statistics.map.TimeKeyMapper" valuefilter="&gt;=0&amp;isnumber&amp;round:3"/>
-				<entry name="时间段内访问平台平均耗时(ms)" key="timestamp" value="average($platformConsumeTime$)"  
+				<entry name="时间段内访问平台平均耗时(ms)" value="average($platformConsumeTime$)"  
 						mapClass="com.taobao.top.analysis.statistics.map.TimeKeyMapper" valuefilter="&gt;=0&amp;isnumber&amp;round:3"/>
 			</entryList>
 		</report>
@@ -152,15 +152,15 @@
 			需要注意的是当前程序里面固化写死了时间段字段必须放在第一位，例如key="timestamp,remoteIp,apiName"，timestamp这个分片参数必须放在第一位，后续可以改为可定义
 		 -->
 			
-		<report id="ipAPIReportPeriod" file="ipAPIReportPeriod" period="true">
+		<report id="ipAPIReportPeriod" key="timestamp,remoteIp,apiName" file="ipAPIReportPeriod" period="true">
 			<entryList>
-				<entry name="远端ip" key="timestamp,remoteIp,apiName" value="plain($remoteIp$)"
+				<entry name="远端ip"  value="plain($remoteIp$)"
 					mapClass="com.taobao.top.analysis.statistics.map.TimeKeyMapper" mapParams="minute:5" />
-				<entry name="api名称" key="timestamp,remoteIp,apiName" value="plain($apiName$)"
+				<entry name="api名称" value="plain($apiName$)"
 					mapClass="com.taobao.top.analysis.statistics.map.TimeKeyMapper" mapParams="minute:5" />
-				<entry name="访问总量" key="timestamp,remoteIp,apiName" value="count()"
+				<entry name="访问总量" value="count()"
 					mapClass="com.taobao.top.analysis.statistics.map.TimeKeyMapper" mapParams="minute:5" />
-				<entry name="时间段" key="timestamp,remoteIp,apiName" value="plain($timestamp$)"
+				<entry name="时间段"  value="plain($timestamp$)"
 					mapClass="com.taobao.top.analysis.statistics.map.TimeMapper" mapParams="minute:5"/>
 			</entryList>
 		</report>

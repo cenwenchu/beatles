@@ -25,6 +25,17 @@ public class Report implements java.io.Serializable {
 	private long exportInterval;
 	private long lastExportTime;
 	private boolean append=false; 
+	
+	//如果内部的entry没有设置key，则使用report默认的key
+	private String key;
+	
+	public String getKey() {
+		return key;
+	}
+
+	public void setKey(String key) {
+		this.key = key;
+	}
 
 	public boolean isPeriod() {
 		return period;

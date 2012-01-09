@@ -523,6 +523,11 @@ public class FileJobBuilder implements IJobBuilder{
 			report.setId(start.getAttributeByName(new QName("", "id"))
 					.getValue());
 		}
+		
+		if (start.getAttributeByName(new QName("", "key")) != null) {
+			report.setKey(start.getAttributeByName(new QName("", "key"))
+					.getValue());
+		}
 
 		if (start.getAttributeByName(new QName("", "file")) != null) {
 			report.setFile(start.getAttributeByName(new QName("", "file"))
@@ -682,6 +687,22 @@ public class FileJobBuilder implements IJobBuilder{
 			// 用alias替换部分key
 			entry.setKeys(keys);
 		}
+		else
+		{
+			//直接继承report的key
+			if (!isPublic && report != null && report.getKey() != null)
+			{
+				String[] ks = report.getKey().split(",");
+				
+				int[] keys = ReportUtil.transformVars(ks, aliasPool);
+
+				// 用alias替换部分key
+				entry.setKeys(keys);
+			}
+			else
+				throw new AnalysisException("entry key should not be null! entry name :" + entry.getName());
+		}
+		
 
 		if (start.getAttributeByName(new QName("", "value")) != null) {
 			String content = start.getAttributeByName(new QName("", "value"))
