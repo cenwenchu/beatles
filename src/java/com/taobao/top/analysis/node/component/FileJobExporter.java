@@ -18,6 +18,8 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+
+import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import com.taobao.top.analysis.config.MasterConfig;
@@ -98,18 +100,18 @@ public class FileJobExporter implements IJobExporter {
 
 	@Override
 	public List<String> exportReport(Job job,boolean needTimeSuffix) {
-		return exportReport(job.getStatisticsRule(),job.getJobConfig().getOutput(),
+		return exportReport(job.getStatisticsRule(),job.getJobName(),job.getJobConfig().getOutput(),
 				job.getJobName(),needTimeSuffix,job.getJobResult(),job.getJobConfig().getOutputEncoding());
 	}
 	
 	@Override
 	public List<String> exportReport(JobTask jobTask,JobTaskResult jobTaskResult,boolean needTimeSuffix) {
 		
-		return exportReport(jobTask.getStatisticsRule(),jobTask.getOutput()
+		return exportReport(jobTask.getStatisticsRule(),null,jobTask.getOutput()
 				,jobTask.getTaskId(),needTimeSuffix,jobTaskResult.getResults(),jobTask.getOutputEncoding());
 	}
 	
-	protected List<String> exportReport(Rule statisticsRule,String reportOutput,String id,boolean needTimeSuffix
+	protected List<String> exportReport(Rule statisticsRule,String masterName,String reportOutput,String id,boolean needTimeSuffix
 			,Map<String, Map<String, Object>> entryResultPool,String outputEncoding)
 	{
 		if (logger.isInfoEnabled())
@@ -151,7 +153,11 @@ public class FileJobExporter implements IJobExporter {
 		if (!rootDir.endsWith(File.separator))
 			rootDir = new StringBuilder(rootDir).append(File.separator).toString();
 		
-		rootDir = new StringBuilder(rootDir).append(id).append(File.separator).toString();
+		if (StringUtils.isNotEmpty(masterName))
+			rootDir = new StringBuilder(rootDir).append(masterName)
+				.append(File.separator).append(id).append(File.separator).toString();
+		else
+			rootDir = new StringBuilder(rootDir).append(id).append(File.separator).toString();
 		
 		StringBuilder periodRootDir = new StringBuilder();
 		StringBuilder periodDir = new StringBuilder();

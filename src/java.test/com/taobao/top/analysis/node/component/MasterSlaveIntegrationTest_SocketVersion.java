@@ -54,7 +54,7 @@ public class MasterSlaveIntegrationTest_SocketVersion {
 		masterNode.setConfig(config);
 		masterNode.startNode();
 		
-		Thread.sleep(1000000000);
+		Thread.sleep(1000);
 		
 		//build SlaveNode
 		SlaveNode slaveNode = new SlaveNode();

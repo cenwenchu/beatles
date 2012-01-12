@@ -156,7 +156,7 @@ public class FileJobBuilder implements IJobBuilder{
 				}
 				
 				//编译好rule后针对当前是否有mastergroup来做多master的report分配
-				if (StringUtils.isNotEmpty(this.config.getMasterGroup()))
+				if (this.config != null && StringUtils.isNotEmpty(this.config.getMasterGroup()))
 				{
 					String[] ms = StringUtils.split(this.config.getMasterGroup(),",");
 					List<String> masters = new ArrayList<String>();
