@@ -176,6 +176,19 @@ public class FileJobBuilder implements IJobBuilder{
 						}
 						
 						rule.getReport2Master().putAll(ReportUtil.SimpleAllocationAlgorithm(masters, reports, "|"));
+						
+						if (logger.isWarnEnabled() && rule.getReport2Master() != null)
+						{
+							StringBuilder report2Master = new StringBuilder("report2Master Info : ");
+							
+							for(Entry<String,String> r : rule.getReport2Master().entrySet())
+							{
+								report2Master.append("report: ")
+									.append(r.getKey()).append(" -> master: ").append(r.getValue()).append(" , ");
+							}
+							
+							logger.warn(report2Master.toString());
+						}
 					}
 					
 				}

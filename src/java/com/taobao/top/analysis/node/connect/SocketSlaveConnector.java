@@ -84,7 +84,7 @@ public class SocketSlaveConnector extends AbstractSlaveConnector {
 
 	}
 
-	public void connectServer() {
+	public void connectServer() throws AnalysisException {
 		if (channels != null) {
 			releaseResource();
 		}
@@ -94,7 +94,7 @@ public class SocketSlaveConnector extends AbstractSlaveConnector {
 		leaderChannel = getChannel(config.getMasterAddress(), config.getMasterPort());
 	}
 	
-	public Channel getChannel(String address)
+	public Channel getChannel(String address) throws AnalysisException
 	{
 		Channel channel = channels.get(address);
 		
@@ -108,6 +108,7 @@ public class SocketSlaveConnector extends AbstractSlaveConnector {
 		future.awaitUninterruptibly();
 		if (!future.isSuccess()) {
 			logger.error("connect fail.", future.getCause());
+			throw new AnalysisException("connect fail.", future.getCause());
 		}
 
 		channel = future.getChannel();
@@ -116,7 +117,7 @@ public class SocketSlaveConnector extends AbstractSlaveConnector {
 		return channel;
 	}
 	
-	public Channel getChannel(String ip,int port)
+	public Channel getChannel(String ip,int port) throws AnalysisException
 	{
 		String address = new StringBuilder().append(ip).append(":").append(port).toString();
 		return getChannel(address);
@@ -235,7 +236,7 @@ public class SocketSlaveConnector extends AbstractSlaveConnector {
 				return responseEvent.getResponse();
 			}
 		} catch (Exception ex) {
-			logger.equals(ex);
+			logger.error("sendJobTaskResults error.",ex);
 		}
 
 		return null;

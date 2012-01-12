@@ -180,6 +180,7 @@ public class CreateReportOperation implements Runnable {
 					
 				}//end all entrys
 				
+				
 				// 周期类报表就输出一次，结果将会被删除
 				if (report.isPeriod()) 
 				{

@@ -198,6 +198,19 @@ public class FileJobExporter implements IJobExporter {
 		
 		while (iter.hasNext()) {
 			Report report = iter.next();
+			
+			//判断是否是自己要输出的报表，在多个master情况下
+			if (statisticsRule.getReport2Master() != null 
+					&& statisticsRule.getReport2Master().size() > 0 && config != null)
+			{
+				String r = statisticsRule.getReport2Master().get(report.getId());
+				if (!r.startsWith(config.getMasterName()) || !r.endsWith(String.valueOf(config.getMasterPort())))
+				{
+					countDownLatch.countDown();
+					continue;
+				}
+			}
+			
 			String reportFile;
 			String reportDir = normalDir.toString();
 			if(rootDir==null) reportDir = new StringBuilder(report.getFile()).append(File.separator).toString();

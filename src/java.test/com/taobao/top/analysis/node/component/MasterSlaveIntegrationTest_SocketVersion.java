@@ -27,10 +27,8 @@ import com.taobao.top.analysis.statistics.StatisticsEngine;
  */
 public class MasterSlaveIntegrationTest_SocketVersion {
 	
-	@Test
-	public void test() throws AnalysisException, InterruptedException
+	public static MasterNode buildMaster(String configfile) throws InterruptedException
 	{
-		//build MasterNode
 		MasterNode masterNode = new MasterNode();
 		SocketMasterConnector masterConnector = new SocketMasterConnector();
 		JobManager jobManager = new JobManager();
@@ -50,13 +48,16 @@ public class MasterSlaveIntegrationTest_SocketVersion {
 		masterNode.setMasterConnector(masterConnector);	
 		
 		MasterConfig config = new MasterConfig();
-		config.load("master-config-ms.properties");
+		config.load(configfile);
 		masterNode.setConfig(config);
 		masterNode.startNode();
 		
-		Thread.sleep(1000);
 		
-		//build SlaveNode
+		return masterNode;
+	}
+	
+	public static SlaveNode buildSlave(String configfile)
+	{
 		SlaveNode slaveNode = new SlaveNode();
 		JobResultMerger jobResultMerger2 = new JobResultMerger();
 		SocketSlaveConnector slaveConnector = new SocketSlaveConnector();
@@ -65,7 +66,7 @@ public class MasterSlaveIntegrationTest_SocketVersion {
 			
 		StatisticsEngine statisticsEngine = new StatisticsEngine();
 		SlaveConfig slaveConfig = new SlaveConfig();
-		slaveConfig.load("slave-config.properties");
+		slaveConfig.load(configfile);
 		slaveNode.setConfig(slaveConfig);
 		slaveNode.setSlaveConnector(slaveConnector);
 		slaveNode.setStatisticsEngine(statisticsEngine);
@@ -86,10 +87,29 @@ public class MasterSlaveIntegrationTest_SocketVersion {
 		statisticsEngine.addOutputAdaptor(fileOutAdaptor);
 		slaveNode.startNode();
 		
+		return slaveNode;
+	}
+	
+	@Test
+	public void test() throws AnalysisException, InterruptedException
+	{
+		//build MasterNode1
+		MasterNode masterNode = buildMaster("master-config-ms.properties");
+		MasterNode masterNode1 = buildMaster("master-config-ms1.properties");
+		MasterNode masterNode2 = buildMaster("master-config-ms2.properties");
+		
+		Thread.sleep(2000);
+		
+		
+		//build SlaveNode
+		SlaveNode slaveNode = buildSlave("slave-config.properties");
+		
 		
 		Thread.sleep(35 * 1000);
 		
 		masterNode.stopNode();
+		masterNode1.stopNode();
+		masterNode2.stopNode();
 		slaveNode.stopNode();
 		
 		Thread.sleep(3000);

@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -28,6 +29,8 @@ import com.taobao.top.analysis.node.event.SlaveNodeEvent;
 import com.taobao.top.analysis.node.job.JobTask;
 import com.taobao.top.analysis.node.job.JobTaskResult;
 import com.taobao.top.analysis.statistics.IStatisticsEngine;
+import com.taobao.top.analysis.statistics.data.ReportEntry;
+import com.taobao.top.analysis.statistics.data.Rule;
 import com.taobao.top.analysis.util.NamedThreadFactory;
 
 /**
@@ -223,7 +226,62 @@ public class SlaveNode extends AbstractNode<SlaveNodeEvent,SlaveConfig>{
 	void handleTaskResult(JobTask jobTask,JobTaskResult jobTaskResult)
 	{
 		statisticsEngine.doExport(jobTask,jobTaskResult);
-		slaveConnector.sendJobTaskResults(generateSendResultsRequestEvent(jobTaskResult),config.getMasterAddress()+":"+config.getMasterPort());
+		
+		Rule rule = jobTask.getStatisticsRule();
+		Map<String, String> report2Master = rule.getReport2Master();
+		
+		//判断是否需要分开多个master投递结果
+		if (report2Master!= null 
+				&& report2Master.size() > 0)
+		{
+			Map<String, Map<String, Object>> _entryResults = jobTaskResult.getResults();
+			
+			//第一级String为masteraddress
+			Map<String,Map<String, Map<String, Object>>> _masterEntryResults = new HashMap<String,Map<String, Map<String, Object>>>();
+			
+			for(String entryId : _entryResults.keySet())
+			{
+				ReportEntry reportEntry = rule.getEntryPool().get(entryId);
+				List<String> reports = reportEntry.getReports();
+				
+				for(String r : reports)
+				{
+					String master = report2Master.get(r);
+					
+					if (master == null)
+					{
+						master = config.getMasterAddress()+":"+config.getMasterPort();
+						
+						logger.error("report" + r + " has no master process,send to default master.");
+					}
+					else
+						master = master.substring(master.indexOf(":")+1);
+					
+					
+					if (_masterEntryResults.get(master) == null)
+					{
+						_masterEntryResults.put(master, new HashMap<String,Map<String,Object>>());
+					}
+					
+					_masterEntryResults.get(master).put(entryId, _entryResults.get(entryId));		
+				}
+				
+			}
+			
+			SendResultsRequestEvent event = generateSendResultsRequestEvent(jobTaskResult);
+			
+			for(Entry<String,Map<String,Map<String,Object>>> e : _masterEntryResults.entrySet())
+			{
+				event.getJobTaskResult().setResults(e.getValue());
+				slaveConnector.sendJobTaskResults(event,e.getKey());
+				
+				logger.info("send piece result to master :" + e.getKey());
+			}
+			
+		}
+		else
+			slaveConnector.sendJobTaskResults(generateSendResultsRequestEvent(jobTaskResult),
+						config.getMasterAddress()+":"+config.getMasterPort());
 	}
 	
 	public SendResultsRequestEvent generateSendResultsRequestEvent(JobTaskResult jobTaskResult)
@@ -333,6 +391,10 @@ public class SlaveNode extends AbstractNode<SlaveNodeEvent,SlaveConfig>{
 						handleTaskResult(jobTasks.get(0),jobTaskResult);
 					
 				}
+			}
+			catch(Exception ex)
+			{
+				logger.error("BundleTasksExecutable error.",ex);
 			}
 			finally
 			{

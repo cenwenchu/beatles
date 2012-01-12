@@ -3,8 +3,10 @@ package com.taobao.top.analysis.node.job;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.commons.logging.Log;
@@ -66,6 +68,10 @@ public class Job {
 	//用于纪录报表最近一次的时间戳，比较是否要重置报表
 	int reportPeriodFlag;
 	
+	//用于协同多个master的情况
+	private ReentrantLock waitlock;
+	private Condition waitToJobReset;
+	
 	
 	/**
 	 * 处理后的结果池，key是entry的id， value是Map(key是entry定义的key组合,value是统计后的结果)
@@ -89,10 +95,68 @@ public class Job {
 		threshold = new Threshold(5000);
 		trunkLock = new ReentrantReadWriteLock();
 		loadLock = new ReentrantLock();
+		waitlock = new ReentrantLock();
+		waitToJobReset = waitlock.newCondition();
+		
 		lastExportTime = 0;
 		reportPeriodFlag = -1;
 		epoch = new AtomicInteger(0);
 		reset();
+	}
+	
+	public void notifySomeWaitResetJob()
+	{
+		boolean flag = false;
+		
+		try
+		{
+			flag = waitlock.tryLock(50,TimeUnit.MILLISECONDS);
+			
+			if (flag)
+				waitToJobReset.signalAll();
+		}
+		catch(InterruptedException ie)
+		{
+			//do nothing;
+		}
+		catch(Exception ex)
+		{
+			logger.error(ex);
+		}
+		finally
+		{
+			if (flag)
+				waitlock.unlock();
+		}
+	}
+	
+	public void blockToResetJob(long waittime)
+	{
+		if (waittime < 0)
+			return;
+			
+		boolean flag = waitlock.tryLock();
+		
+		if (flag)
+		{
+			try
+			{
+				waitToJobReset.await(waittime, TimeUnit.MILLISECONDS);
+			}
+			catch(InterruptedException ie)
+			{
+				//do nothing;
+			}
+			catch(Exception ex)
+			{
+				logger.error("blockToResetJob error.",ex);
+			}
+			finally
+			{
+				waitlock.unlock();
+			}
+		}
+			
 	}
 
 
@@ -176,6 +240,8 @@ public class Job {
 		exporting = new AtomicBoolean(false);
 		exported = new AtomicBoolean(false);
 		diskResult = null;
+		
+		notifySomeWaitResetJob();
 		
 	}
 	

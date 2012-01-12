@@ -248,11 +248,21 @@ public class JobManager implements IJobManager {
 			if (jobTaskResult.getJobEpoch()!= jobTaskPool.get(jobTaskResult.getTaskIds().get(0)).getJobEpoch())
 			{
 				if (jobTaskResult.getJobEpoch() < jobTaskPool.get(jobTaskResult.getTaskIds().get(0)).getJobEpoch())
+				{
 					logger.error("old task result will be discard!");
+					return;
+				}
 				else
-					logger.error("otherMaster can't merge in time!");
-				
-				return;
+				{
+					//给一定的容忍时间，暂时定为5秒
+					jobs.get(jobTaskPool.get(jobTaskResult.getTaskIds().get(0)).getJobName()).blockToResetJob(5000);
+					
+					if (jobTaskResult.getJobEpoch() > jobTaskPool.get(jobTaskResult.getTaskIds().get(0)).getJobEpoch())
+					{
+						logger.error("otherMaster can't merge in time!");
+						return;
+					}
+				}
 			}
 			
 			if (logger.isInfoEnabled())
