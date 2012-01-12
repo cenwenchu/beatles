@@ -100,18 +100,18 @@ public class FileJobExporter implements IJobExporter {
 
 	@Override
 	public List<String> exportReport(Job job,boolean needTimeSuffix) {
-		return exportReport(job.getStatisticsRule(),job.getJobName(),job.getJobConfig().getOutput(),
+		return exportReport(job.getStatisticsRule(),job.getJobConfig().getOutput(),
 				job.getJobName(),needTimeSuffix,job.getJobResult(),job.getJobConfig().getOutputEncoding());
 	}
 	
 	@Override
 	public List<String> exportReport(JobTask jobTask,JobTaskResult jobTaskResult,boolean needTimeSuffix) {
 		
-		return exportReport(jobTask.getStatisticsRule(),null,jobTask.getOutput()
+		return exportReport(jobTask.getStatisticsRule(),jobTask.getOutput()
 				,jobTask.getTaskId(),needTimeSuffix,jobTaskResult.getResults(),jobTask.getOutputEncoding());
 	}
 	
-	protected List<String> exportReport(Rule statisticsRule,String masterName,String reportOutput,String id,boolean needTimeSuffix
+	protected List<String> exportReport(Rule statisticsRule,String reportOutput,String id,boolean needTimeSuffix
 			,Map<String, Map<String, Object>> entryResultPool,String outputEncoding)
 	{
 		if (logger.isInfoEnabled())
@@ -153,8 +153,8 @@ public class FileJobExporter implements IJobExporter {
 		if (!rootDir.endsWith(File.separator))
 			rootDir = new StringBuilder(rootDir).append(File.separator).toString();
 		
-		if (StringUtils.isNotEmpty(masterName))
-			rootDir = new StringBuilder(rootDir).append(masterName)
+		if (config != null && StringUtils.isNotEmpty(config.getMasterName()))
+			rootDir = new StringBuilder(rootDir).append(config.getMasterName())
 				.append(File.separator).append(id).append(File.separator).toString();
 		else
 			rootDir = new StringBuilder(rootDir).append(id).append(File.separator).toString();
