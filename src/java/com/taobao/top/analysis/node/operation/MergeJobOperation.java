@@ -125,7 +125,7 @@ public class MergeJobOperation implements Runnable {
 			{
 				if (job.getNeedLoadResultFile().compareAndSet(true, false))
 				{
-					new JobDataOperation(job,AnalysisConstants.JOBMANAGER_EVENT_LOADDATA_TO_TMP).run();
+					new JobDataOperation(job,AnalysisConstants.JOBMANAGER_EVENT_LOADDATA_TO_TMP,this.config).run();
 				}
 				
 				boolean gotLock = job.getLoadLock().tryLock(80, TimeUnit.SECONDS);
@@ -157,7 +157,7 @@ public class MergeJobOperation implements Runnable {
 			if (!config.getSaveTmpResultToFile() &&
 					job.getJobResult() == null)
 			{
-				new JobDataOperation(job,AnalysisConstants.JOBMANAGER_EVENT_LOADDATA).run();
+				new JobDataOperation(job,AnalysisConstants.JOBMANAGER_EVENT_LOADDATA,this.config).run();
 			}
 		}
 		

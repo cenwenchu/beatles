@@ -327,21 +327,21 @@ public class FileJobExporter implements IJobExporter {
 
 	@Override
 	public void exportEntryData(Job job) {
-		JobDataOperation jobDataOperation = new JobDataOperation(job,AnalysisConstants.JOBMANAGER_EVENT_EXPORTDATA);
+		JobDataOperation jobDataOperation = new JobDataOperation(job,AnalysisConstants.JOBMANAGER_EVENT_EXPORTDATA,this.config);
 		createReportFileThreadPool.execute(jobDataOperation);
 	}
 
 
 	@Override
 	public void loadEntryData(Job job) {
-		JobDataOperation jobDataOperation = new JobDataOperation(job,AnalysisConstants.JOBMANAGER_EVENT_LOADDATA);
+		JobDataOperation jobDataOperation = new JobDataOperation(job,AnalysisConstants.JOBMANAGER_EVENT_LOADDATA,this.config);
 		createReportFileThreadPool.submit(jobDataOperation);
 	}
 
 
 	@Override
 	public void loadEntryDataToTmp(Job job) {
-		JobDataOperation jobDataOperation = new JobDataOperation(job,AnalysisConstants.JOBMANAGER_EVENT_LOADDATA_TO_TMP);
+		JobDataOperation jobDataOperation = new JobDataOperation(job,AnalysisConstants.JOBMANAGER_EVENT_LOADDATA_TO_TMP,this.config);
 		createReportFileThreadPool.submit(jobDataOperation);
 	}
 

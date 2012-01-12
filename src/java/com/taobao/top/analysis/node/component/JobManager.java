@@ -525,7 +525,7 @@ public class JobManager implements IJobManager {
 			//删除临时文件，防止重复载入使得清空不生效
 			if (config.getSaveTmpResultToFile())
 			{
-				JobDataOperation jobDataOperation = new JobDataOperation(job,AnalysisConstants.JOBMANAGER_EVENT_DEL_DATAFILE);
+				JobDataOperation jobDataOperation = new JobDataOperation(job,AnalysisConstants.JOBMANAGER_EVENT_DEL_DATAFILE,this.config);
 				jobDataOperation.run();
 			}
 			
@@ -538,7 +538,7 @@ public class JobManager implements IJobManager {
 		{
 			logger.warn("@ disk2Mem mode: " + job.getJobName() + " store trunk to disk now .");
 			
-			JobDataOperation jobDataOperation = new JobDataOperation(job,AnalysisConstants.JOBMANAGER_EVENT_SETNULL_EXPORTDATA);
+			JobDataOperation jobDataOperation = new JobDataOperation(job,AnalysisConstants.JOBMANAGER_EVENT_SETNULL_EXPORTDATA,this.config);
 			jobDataOperation.run();
 			
 		}
@@ -549,7 +549,7 @@ public class JobManager implements IJobManager {
 			{
 				logger.warn("export job: " + job.getJobName() + " trunk to disk.");
 				
-				JobDataOperation jobDataOperation = new JobDataOperation(job,AnalysisConstants.JOBMANAGER_EVENT_EXPORTDATA);
+				JobDataOperation jobDataOperation = new JobDataOperation(job,AnalysisConstants.JOBMANAGER_EVENT_EXPORTDATA,this.config);
 				jobDataOperation.run();
 			}
 		}

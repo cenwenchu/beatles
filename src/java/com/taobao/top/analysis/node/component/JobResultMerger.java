@@ -157,7 +157,7 @@ public class JobResultMerger implements IJobResultMerger {
 				
 				if (job.getNeedLoadResultFile().compareAndSet(true, false))
 				{
-					new Thread(new JobDataOperation(job,AnalysisConstants.JOBMANAGER_EVENT_LOADDATA_TO_TMP)).start();
+					new Thread(new JobDataOperation(job,AnalysisConstants.JOBMANAGER_EVENT_LOADDATA_TO_TMP,this.config)).start();
 				}
 			}
 

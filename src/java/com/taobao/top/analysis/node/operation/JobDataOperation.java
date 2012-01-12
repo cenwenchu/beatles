@@ -25,6 +25,8 @@ import java.util.zip.InflaterInputStream;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+
+import com.taobao.top.analysis.config.MasterConfig;
 import com.taobao.top.analysis.exception.AnalysisException;
 import com.taobao.top.analysis.node.job.Job;
 import com.taobao.top.analysis.util.AnalysisConstants;
@@ -43,12 +45,14 @@ public class JobDataOperation implements Runnable {
 	private final Log logger = LogFactory.getLog(JobDataOperation.class);
 	Job job;
 	String operation;
+	MasterConfig config;
 	
 	
-	public JobDataOperation(Job job,String operation)
+	public JobDataOperation(Job job,String operation,MasterConfig config)
 	{
 		this.job = job;
 		this.operation = operation;
+		this.config = config;
 	}
 
 	@Override
@@ -460,7 +464,10 @@ public class JobDataOperation implements Runnable {
 		if (!output.endsWith(File.separator))
 			output = output + File.separator;
 		
-		return output + "tmp" + File.separator;
+		if (config != null && config.getMasterName() != null)
+			return output + config.getMasterName() + File.separator + "tmp" + File.separator;
+		else
+			return output + "tmp" + File.separator;
 	}
 	
 	/**
