@@ -154,6 +154,32 @@ public class FileJobBuilder implements IJobBuilder{
 					buildTasks(job);
 					jobs.put(job.getJobName(), job);
 				}
+				
+				//编译好rule后针对当前是否有mastergroup来做多master的report分配
+				if (StringUtils.isNotEmpty(this.config.getMasterGroup()))
+				{
+					String[] ms = StringUtils.split(this.config.getMasterGroup(),",");
+					List<String> masters = new ArrayList<String>();
+					List<String> reports = new ArrayList<String>();
+					for(String m : ms)
+						masters.add(m);
+							
+					for(Job j : jobs.values())
+					{
+						Rule rule = j.getStatisticsRule();
+						reports.clear();
+						
+						for(Report r : rule.getReportPool().values())
+						{
+							reports.add(new StringBuilder().append(r.getId())
+									.append("|").append(r.getWeight()).toString());
+						}
+						
+						rule.getReport2Master().putAll(ReportUtil.SimpleAllocationAlgorithm(masters, reports, "|"));
+					}
+					
+				}
+				
 			}
 		}
 		catch(IOException ex)
@@ -524,6 +550,11 @@ public class FileJobBuilder implements IJobBuilder{
 					.getValue());
 		}
 		
+		if (start.getAttributeByName(new QName("", "weight")) != null) {
+			report.setWeight(Integer.valueOf(start.getAttributeByName(new QName("", "weight"))
+					.getValue()));
+		}
+		
 		if (start.getAttributeByName(new QName("", "key")) != null) {
 			report.setKey(start.getAttributeByName(new QName("", "key"))
 					.getValue());
@@ -591,33 +622,20 @@ public class FileJobBuilder implements IJobBuilder{
 			StringBuilder globalConditions, StringBuilder globalValuefilter,
 			List<String> globalMapClass, List<String> parents) throws AnalysisException {
 
-		if (start.getAttributeByName(new QName("", "refId")) != null) {
-			ReportEntry node = entryPool.get(start.getAttributeByName(
-					new QName("", "refId")).getValue());
-
-			if (node != null) {
-				report.getReportEntrys().add(node);
-			} else {
-				String errorMsg = new StringBuilder()
-						.append("ref Entry not exist :")
-						.append(start
-								.getAttributeByName(new QName("", "refId"))
-								.getValue()).toString();
-
-				throw new java.lang.RuntimeException(errorMsg);
-			}
-
-			return;
-		}
 		// 引用的方式,只在非共享模式下有用
-		if (!isPublic && start.getAttributeByName(new QName("", "id")) != null
-				&& start.getAttributeByName(new QName("", "name")) == null) {
+		if ((!isPublic && start.getAttributeByName(new QName("", "id")) != null
+				&& start.getAttributeByName(new QName("", "name")) == null) 
+				||(start.getAttributeByName(new QName("", "refId")) != null))
+		{
 
 			ReportEntry node = entryPool.get(start.getAttributeByName(
 					new QName("", "id")).getValue());
 
 			if (node != null) {
 				report.getReportEntrys().add(node);
+				
+				//给node增加report的属性
+				node.getReports().add(report.getId());
 			} else {
 				String errorMsg = new StringBuilder()
 						.append("reportEntry not exist :")
@@ -628,6 +646,12 @@ public class FileJobBuilder implements IJobBuilder{
 			}
 
 			return;
+		}
+		
+		if (report != null)
+		{
+			//给node增加report的属性
+			entry.getReports().add(report.getId());
 		}
 
 		if (start.getAttributeByName(new QName("", "name")) != null) {
@@ -720,31 +744,14 @@ public class FileJobBuilder implements IJobBuilder{
 				entry.setLazy(true);
 			}
 			entry.setCalculator(new SimpleCalculator(expression, aliasPool));
-//			entry.setValueExpression(expression, aliasPool);
 		}
 
-		
-//
-//		if (start.getAttributeByName(new QName("", "engine")) != null) {
-//			entry.setEngine(start.getAttributeByName(new QName("", "engine"))
-//					.getValue());
-//		}
 
 		if (start.getAttributeByName(new QName("", "lazy")) != null) {
 			entry.setLazy(Boolean.valueOf(start.getAttributeByName(
 					new QName("", "lazy")).getValue()));
 		}
-		//FIXME 壓縮
-//		if (start.getAttributeByName(new QName("", "useCompressKeyMode")) != null) {
-//			entry.setUseCompressKeyMode(start.getAttributeByName(
-//					new QName("", "useCompressKeyMode")).getValue());
-//		}
-//		
-//		if (start.getAttributeByName(new QName("", "compressedDestMaxLength")) != null) {
-//			entry.setCompressedDestMaxLength(Integer.parseInt(start.getAttributeByName(
-//					new QName("", "compressedDestMaxLength")).getValue()));
-//		}
-		
+
 
 		// 以下修改conditions的设置方式 modify by fangliang 2010-05-26
 		StringBuilder conditions = new StringBuilder();
@@ -763,32 +770,21 @@ public class FileJobBuilder implements IJobBuilder{
 			conditions.append("&" + attr.getValue());
 		}
 		if (conditions.length() > 0) {
-//			entry.setConditions(conditions.toString(), aliasPool);
 			entry.setCondition(new SimpleCondition(conditions.toString(), aliasPool));
 		}
 		String filter = null;
 		if (start.getAttributeByName(new QName("", "valuefilter")) != null) {
 			if (globalValuefilter != null && globalValuefilter.length() > 0)
-//				entry.setValuefilter(new StringBuilder(globalValuefilter)
-//						.append(start.getAttributeByName(
-//								new QName("", "valuefilter")).getValue())
-//						.toString());
 				filter = new StringBuilder(globalValuefilter)
 				.append(start.getAttributeByName(
 				new QName("", "valuefilter")).getValue()).toString();
 			else
-//				entry.setValuefilter(start.getAttributeByName(
-//						new QName("", "valuefilter")).getValue());
 				filter = start.getAttributeByName(new QName("", "valuefilter")).getValue();
 		} else {
 			if (globalValuefilter != null && globalValuefilter.length() > 0)
-//				entry.setValuefilter(globalValuefilter.toString());
 				filter = globalValuefilter.toString();
 		}
 		entry.setValueFilter(new SimpleFilter(filter));
-		//FIXME GLOBLEMAPPER
-//		if (globalMapClass != null && globalMapClass.size() > 0)
-//			entry.setGlobalMapClass(globalMapClass);
 
 		if (report != null)
 			report.getReportEntrys().add(entry);

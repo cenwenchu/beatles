@@ -20,9 +20,12 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
+import java.util.PriorityQueue;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.commons.codec.digest.DigestUtils;
+import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -1037,6 +1040,178 @@ public class ReportUtil {
 		}
 
 	}
+	
+	
+	/**
+	 * 简单的支持双向权重的分配算法
+	 * @param 资源要分配的对象，支持member split weight的表示方法
+	 * @param 对象要获得的资源，支持resource split weight的表示方法
+	 * @return resource:member
+	 */
+	public static Map<String,String> SimpleAllocationAlgorithm(List<String> member,List<String> resource,String split)
+	{
+		Map<String,String> result = new HashMap<String,String>();
+		
+		if (member == null || resource == null 
+				|| (member != null && member.size() == 0)
+				|| (resource != null && resource.size() == 0))
+			return result;
+		
+		if (member.size() == 1)
+		{
+			String m = StringUtils.splitByWholeSeparator(member.get(0),split)[0];
+			
+			for(String r : resource)
+			{
+				result.put(r, m);
+			}
+			return result;
+		}
+		
+		PriorityQueue<KeyWeight> memberWeights = new PriorityQueue<KeyWeight>();
+		PriorityQueue<RevertKeyWeight> resourceWeights = new PriorityQueue<RevertKeyWeight>();
+		
+		//先将member中带有权重的情况打散
+		for(int i = 0 ; i < member.size(); i++)
+		{
+			String m = member.get(i);
+			if (m.indexOf(split) <= 0)
+			{
+				memberWeights.add(new KeyWeight(m, 0));
+				continue;
+			}
+			
+			String[] marr = StringUtils.splitByWholeSeparator(m,split);
+			
+			try
+			{
+				int weight = Integer.valueOf(marr[1]);
+				
+				for(int j = 0 ; j < weight; j++)
+					memberWeights.add(new KeyWeight(marr[0], 0));
+			}
+			catch(Exception ex)
+			{
+				logger.error("SimpleAllocationAlgorithm error",ex);
+			}
+			
+		}
+		
+		for(int i = 0 ; i < resource.size(); i++)
+		{
+			String res = resource.get(i);
+			
+			if (res.indexOf(split) <= 0)
+			{
+				resourceWeights.add(new RevertKeyWeight(res,1));
+				continue;
+			}
+			
+			String[] marr = StringUtils.splitByWholeSeparator(res,split);
+			
+			try
+			{
+				int weight = Integer.valueOf(marr[1]);
+				
+				resourceWeights.add(new RevertKeyWeight(marr[0], weight));
+			}
+			catch(Exception ex)
+			{
+				logger.error("SimpleAllocationAlgorithm error",ex);
+			}
+			
+		}
+		
+		KeyWeight _res = null;
+		
+		while((_res = resourceWeights.poll()) != null)
+		{
+			
+			KeyWeight _member = memberWeights.poll();
+			_member.setWeight(_member.getWeight() + _res.getWeight());
+			memberWeights.add(_member);
+			
+			result.put(_res.getKey(), _member.getKey());
+		}
+		
+		return result;
+	}
+	
+	public static void main(String[] args)
+	{
+		List<String> member = new ArrayList<String>();
+		List<String> resource = new ArrayList<String>();
+		
+		member.add("analysis1");
+		member.add("analysis2");
+		member.add("analysis3");
+		
+		resource.add("job1");
+		resource.add("job2");
+		resource.add("job3");
+		resource.add("job4");
+		resource.add("job5");
+		
+		Map<String,String> r2m = SimpleAllocationAlgorithm(member,resource,":");
+		
+		for(Entry<String,String> t : r2m.entrySet())
+		{
+			System.out.println(t.getKey() + ":" + t.getValue());
+		}
+		
+		System.out.println("-----------------");
+		member.clear();
+		resource.clear();
+		r2m.clear();
+		
+		member.add("analysis1");
+		member.add("analysis2");
+		member.add("analysis3");
+		
+		resource.add("job1");
+		resource.add("job2");
+		resource.add("job3:4");
+		resource.add("job4");
+		resource.add("job5:2");
+		resource.add("job6");
+		resource.add("job7");
+		resource.add("job8");
+		
+		r2m = SimpleAllocationAlgorithm(member,resource,":");
+		
+		for(Entry<String,String> t : r2m.entrySet())
+		{
+			System.out.println(t.getKey() + ":" + t.getValue());
+		}
+		
+		System.out.println("-----------------");
+		member.clear();
+		resource.clear();
+		r2m.clear();
+		
+		member.add("analysis1:4");
+		member.add("analysis2");
+		member.add("analysis3");
+		
+		resource.add("job1");
+		resource.add("job2");
+		resource.add("job3:4");
+		resource.add("job4");
+		resource.add("job5:2");
+		resource.add("job6");
+		resource.add("job7");
+		resource.add("job8");
+		
+		r2m = SimpleAllocationAlgorithm(member,resource,":");
+		
+		for(Entry<String,String> t : r2m.entrySet())
+		{
+			System.out.println(t.getKey() + ":" + t.getValue());
+		}
+		
+		
+	}
+	
 
 	/**
 	 * 读取对象从文件
@@ -1149,11 +1324,58 @@ public class ReportUtil {
 		return result.toString();
 	}
 
-	public static void main(String[] args) {
-		String test = "1234567890abcdefg";
-		System.out.println(compressString(test, 8));
-		System.out.println(compressString(test, 10));
-		System.out.println(compressString(test, 14));
+//	public static void main(String[] args) {
+//		String test = "1234567890abcdefg";
+//		System.out.println(compressString(test, 8));
+//		System.out.println(compressString(test, 10));
+//		System.out.println(compressString(test, 14));
+//	}
+
+}
+
+class KeyWeight implements java.lang.Comparable<KeyWeight>
+{
+	String key;
+	int weight;
+	
+	public KeyWeight(String key,int weight)
+	{
+		this.key = key;
+		this.weight = weight;
+	}
+	
+	public String getKey() {
+		return key;
 	}
 
+
+	public void setKey(String key) {
+		this.key = key;
+	}
+
+
+	public int getWeight() {
+		return weight;
+	}
+	public void setWeight(int weight) {
+		this.weight = weight;
+	}
+
+	@Override
+	public int compareTo(KeyWeight o) {
+		return weight - o.weight;
+	}
+}
+
+class RevertKeyWeight extends KeyWeight
+{
+	public RevertKeyWeight(String key,int weight)
+	{
+		super(key,weight);
+	}
+	
+	@Override
+	public int compareTo(KeyWeight o) {
+		return o.weight - weight;
+	}
 }

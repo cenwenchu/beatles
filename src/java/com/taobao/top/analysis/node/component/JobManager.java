@@ -232,7 +232,6 @@ public class JobManager implements IJobManager {
 	{
 		jobTask.setStatus(JobTaskStatus.DOING);
 		jobTask.setStartTime(System.currentTimeMillis());
-		jobTask.setOtherMasters(config.getOtherMasters());
 	}
 
 	//分配任务和结果提交处理由于是单线程处理，

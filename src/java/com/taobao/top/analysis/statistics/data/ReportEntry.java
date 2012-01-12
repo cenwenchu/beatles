@@ -4,6 +4,8 @@
 package com.taobao.top.analysis.statistics.data;
 
 import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.List;
 
 import com.taobao.top.analysis.statistics.map.IMapper;
 import com.taobao.top.analysis.statistics.reduce.IReducer;
@@ -61,6 +63,17 @@ public class ReportEntry implements Serializable, Cloneable {
 	 */
 	private String reduceParams;
 	
+	/**
+	 * 该entry所属的report
+	 */
+	private List<String> reports = new ArrayList<String>();	
+	
+	public List<String> getReports() {
+		return reports;
+	}
+	public void setReports(List<String> reports) {
+		this.reports = reports;
+	}
 	public boolean isLazy() {
 		return lazy;
 	}

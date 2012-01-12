@@ -20,6 +20,8 @@ public class Report implements java.io.Serializable {
 	private List<ReportEntry> reportEntrys;// entry的列表
 	private String orderby;// 暂时未使用
 	private int rowCount = 0;// 最多获取多少行
+	
+	private int weight = 1;//权重，用来判断结果数据量有多少，越大表示数据越多，在多个master做合并的时候会有用
 
 	private boolean period = false;// 是否周期性输出结果，用于片段维度统计
 	private long exportInterval;
@@ -31,6 +33,14 @@ public class Report implements java.io.Serializable {
 	private String key;
 	private String condition;
 	
+	public int getWeight() {
+		return weight;
+	}
+
+	public void setWeight(int weight) {
+		this.weight = weight;
+	}
+
 	public String getCondition() {
 		return condition;
 	}

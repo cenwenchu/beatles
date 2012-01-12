@@ -25,6 +25,12 @@ public class Rule implements Serializable {
 	 * 报表定义池
 	 */
 	private Map<String, Report> reportPool;
+	
+	/**
+	 * 支持多个master来分担合并数据的任务，这里保存的是报表和master的对应关系
+	 * reportid,masterip:port
+	 */
+	private Map<String, String> report2Master;
 	/**
 	 * 别名定义池
 	 */
@@ -57,6 +63,7 @@ public class Rule implements Serializable {
 		entryPool = new HashMap<String, ReportEntry>();
 		parentEntryPool = new HashMap<String, ReportEntry>();
 		reportPool = new TreeMap<String, Report>();
+		report2Master = new HashMap<String,String>();
 		aliasPool = new HashMap<String, Alias>();
 		referEntrys = new HashMap<String, ReportEntry>();
 		innerKeyPool = new ArrayList<InnerKey>();
@@ -70,9 +77,18 @@ public class Rule implements Serializable {
 		aliasPool.clear();
 		referEntrys.clear();
 		innerKeyPool.clear();
+		report2Master.clear();
 
 		domain = null;
 		version = 0;
+	}
+
+	public Map<String, String> getReport2Master() {
+		return report2Master;
+	}
+
+	public void setReport2Master(Map<String, String> report2Master) {
+		this.report2Master = report2Master;
 	}
 
 	public List<InnerKey> getInnerKeyPool() {

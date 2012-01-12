@@ -94,6 +94,7 @@ public class MixJobBuilder implements IJobBuilder {
 	public void init() {
 		jobBuilders = new HashMap<String,IJobBuilder>();
 		jobBuilders.put("file", new FileJobBuilder());
+		jobBuilders.get("file").setConfig(config);
 	}
 
 	@Override

@@ -86,19 +86,19 @@ public class MasterConfig extends AbstractConfig{
 
 	//支持多个master，不过其他master仅仅作为分担合并任务的工作，
 	//主要目的就是分担主master的业务合并压力，部分报表可以定义给其他master合并
-	//配置方式（ip:port的方式）：otherMasters=127.0.0.1:8877,127.0.0.1:6654
-	private final static String OTHER_MASTERS = "otherMasters";
+	//配置方式（name:ip:port|weight的方式,weight默认是1可以不填写）：masterGroup=TOPAnalyzer:127.0.0.1:6800,TOPAnalyzer1:127.0.0.1:6801
+	private final static String MASTER_GROUP = "masterGroup";
 	
-	public String getOtherMasters()
+	public String getMasterGroup()
 	{
-		if(this.properties.containsKey(OTHER_MASTERS))
-			return (String)this.properties.get(OTHER_MASTERS);
+		if(this.properties.containsKey(MASTER_GROUP))
+			return (String)this.properties.get(MASTER_GROUP);
 		else
 			return null;
 	}
 	
-	public void setOtherMasters(String otherMasters) {
-		this.properties.put(OTHER_MASTERS,otherMasters);
+	public void setMasterGroup(String masterGroup) {
+		this.properties.put(MASTER_GROUP,masterGroup);
 	}
 	
 	public boolean isUseAsynModeToSendResponse() {

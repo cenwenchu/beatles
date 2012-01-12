@@ -67,11 +67,6 @@ public class JobTask implements Serializable{
 	 * 该task所属的job分配时的代数
 	 */
 	private int jobEpoch;
-	
-	/**
-	 * 可以将任务结果发送到其他多个master去做合并，减轻master压力
-	 */
-	String otherMasters;
 
 	public JobTask(JobConfig jobConfig)
 	{
@@ -86,19 +81,6 @@ public class JobTask implements Serializable{
 		recycleCounter= new AtomicInteger(0);
 	}
 	
-	
-	public String getOtherMasters() {
-		return otherMasters;
-	}
-
-
-
-	public void setOtherMasters(String otherMasters) {
-		this.otherMasters = otherMasters;
-	}
-
-
-
 	public int getJobEpoch() {
 		return jobEpoch;
 	}
