@@ -155,12 +155,11 @@ public class SlaveNode extends AbstractNode<SlaveNodeEvent,SlaveConfig>{
 					JobTaskResult jobTaskResult = statisticsEngine.doAnalysis(jobTasks[0]);
 					if (jobTaskResult != null)
 					{
-						statisticsEngine.doExport(jobTasks[0],jobTaskResult);
-						slaveConnector.sendJobTaskResults(generateSendResultsRequestEvent(jobTaskResult));
+						handleTaskResult(jobTasks[0],jobTaskResult);
 					}
 				} 
 				catch (Exception e) {
-					logger.error(e,e);
+					logger.error("SlaveNode send result error.",e);
 				}
 			}
 			else
@@ -221,6 +220,12 @@ public class SlaveNode extends AbstractNode<SlaveNodeEvent,SlaveConfig>{
 		
 	}
 	
+	void handleTaskResult(JobTask jobTask,JobTaskResult jobTaskResult)
+	{
+		statisticsEngine.doExport(jobTask,jobTaskResult);
+		slaveConnector.sendJobTaskResults(generateSendResultsRequestEvent(jobTaskResult),config.getMasterAddress()+":"+config.getMasterPort());
+	}
+	
 	public SendResultsRequestEvent generateSendResultsRequestEvent(JobTaskResult jobTaskResult)
 	{
 		SendResultsRequestEvent responseEvent = new SendResultsRequestEvent(new StringBuilder()
@@ -270,13 +275,12 @@ public class SlaveNode extends AbstractNode<SlaveNodeEvent,SlaveConfig>{
 						
 						if (jobTaskResult != null)
 						{
-							statisticsEngine.doExport(jobTasks.get(0),jobTaskResult);
-							slaveConnector.sendJobTaskResults(generateSendResultsRequestEvent(jobTaskResult));
+							handleTaskResult(jobTasks.get(0),jobTaskResult);
 						}
 	
 					} 
 					catch (Exception e) {
-						logger.error(e,e);
+						logger.error("SlaveNode send result error.",e);
 					}
 				}
 				else
@@ -325,8 +329,9 @@ public class SlaveNode extends AbstractNode<SlaveNodeEvent,SlaveConfig>{
 					//合并分析结果
 					JobTaskResult jobTaskResult = jobResultMerger.merge(jobTasks.get(0), taskResults,true);
 					//输出
-					statisticsEngine.doExport(jobTasks.get(0), jobTaskResult);
-					slaveConnector.sendJobTaskResults(generateSendResultsRequestEvent(jobTaskResult));
+					if (jobTaskResult != null)
+						handleTaskResult(jobTasks.get(0),jobTaskResult);
+					
 				}
 			}
 			finally

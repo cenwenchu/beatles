@@ -4,11 +4,13 @@
 package com.taobao.top.analysis.node.connect;
 
 import java.net.InetSocketAddress;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.jboss.netty.bootstrap.ClientBootstrap;
@@ -47,11 +49,15 @@ public class SocketSlaveConnector extends AbstractSlaveConnector {
 	ClientBootstrap bootstrap;
 	ChannelFactory factory;
 	ChannelFuture future;
-	Channel channel;
+	//默认的channel
+	Channel leaderChannel;
 	ChannelDownstreamHandler downstreamHandler;
 	ChannelUpstreamHandler upstreamHandler;
 	Map<String, MasterNodeEvent> responseQueue = new ConcurrentHashMap<String, MasterNodeEvent>();
 	SlaveEventTimeOutQueue slaveEventTimeQueue;
+	
+	//支持多个master来分担合并压力
+	Map<String,Channel> channels;
 
 	@Override
 	public void init() throws AnalysisException {
@@ -79,12 +85,25 @@ public class SocketSlaveConnector extends AbstractSlaveConnector {
 	}
 
 	public void connectServer() {
-		if (channel != null) {
+		if (channels != null) {
 			releaseResource();
 		}
-
-		future = bootstrap.connect(new InetSocketAddress(config
-				.getMasterAddress(), config.getMasterPort()));
+		
+		channels = new HashMap<String,Channel>();
+		
+		leaderChannel = getChannel(config.getMasterAddress(), config.getMasterPort());
+	}
+	
+	public Channel getChannel(String address)
+	{
+		Channel channel = channels.get(address);
+		
+		if (channel != null)
+			return channel;
+		
+		String[] _addr = StringUtils.split(address,":");
+		
+		future = bootstrap.connect(new InetSocketAddress(_addr[0],Integer.valueOf(_addr[1])));
 
 		future.awaitUninterruptibly();
 		if (!future.isSuccess()) {
@@ -92,6 +111,15 @@ public class SocketSlaveConnector extends AbstractSlaveConnector {
 		}
 
 		channel = future.getChannel();
+		channels.put(address, channel);
+		
+		return channel;
+	}
+	
+	public Channel getChannel(String ip,int port)
+	{
+		String address = new StringBuilder().append(ip).append(":").append(port).toString();
+		return getChannel(address);
 	}
 
 	@Override
@@ -100,7 +128,18 @@ public class SocketSlaveConnector extends AbstractSlaveConnector {
 			if (slaveEventTimeQueue != null)
 				slaveEventTimeQueue.release();
 
-			channel.getCloseFuture().awaitUninterruptibly();
+			for(Channel channel : channels.values())
+			{
+				try
+				{
+					channel.getCloseFuture().awaitUninterruptibly();
+				}
+				catch(Exception ex)
+				{
+					logger.error(ex);
+				}
+			}
+					
 			factory.releaseExternalResources();
 			responseQueue.clear();
 		} catch (Exception ex) {
@@ -121,7 +160,7 @@ public class SocketSlaveConnector extends AbstractSlaveConnector {
 			responseQueue.put(requestEvent.getSequence(), requestEvent);
 			slaveEventTimeQueue.add(requestEvent);
 			
-			ChannelFuture channelFuture = channel.write(requestEvent);
+			ChannelFuture channelFuture = leaderChannel.write(requestEvent);
 
 			channelFuture.await(10, TimeUnit.SECONDS);
 
@@ -158,7 +197,7 @@ public class SocketSlaveConnector extends AbstractSlaveConnector {
 	}
 
 	@Override
-	public String sendJobTaskResults(SendResultsRequestEvent jobResponseEvent) {
+	public String sendJobTaskResults(SendResultsRequestEvent jobResponseEvent,String master) {
 
 		try 
 		{
@@ -167,6 +206,8 @@ public class SocketSlaveConnector extends AbstractSlaveConnector {
 			// 简单的用这种模式模拟阻塞请求
 			responseQueue.put(jobResponseEvent.getSequence(), jobResponseEvent);
 			slaveEventTimeQueue.add(jobResponseEvent);
+			
+			Channel channel = getChannel(master);
 			
 			ChannelFuture channelFuture = channel.write(jobResponseEvent);
 			channelFuture.await(10, TimeUnit.SECONDS);

@@ -28,8 +28,9 @@ public interface ISlaveConnector extends IComponent<SlaveConfig>{
 	/**
 	 * 发送分析后的结果
 	 * @param 分析后的结果
+	 * @param 支持多个master分担处理结果
 	 * @return
 	 */
-	public String sendJobTaskResults(SendResultsRequestEvent jobResponseEvent);
+	public String sendJobTaskResults(SendResultsRequestEvent jobResponseEvent,String master);
 
 }

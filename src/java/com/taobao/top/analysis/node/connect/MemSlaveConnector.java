@@ -72,7 +72,7 @@ public class MemSlaveConnector extends AbstractSlaveConnector {
 
 	
 	@Override
-	public String sendJobTaskResults(SendResultsRequestEvent jobResponseEvent) {
+	public String sendJobTaskResults(SendResultsRequestEvent jobResponseEvent,String master) {
 		
 		tunnel.getMasterSide().offer(jobResponseEvent);
 		
