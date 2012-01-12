@@ -84,6 +84,22 @@ public class MasterConfig extends AbstractConfig{
 	//默认打开，根据自己实现和选择的Connector判断发送是否消耗来开关
 	private final static String USE_ASYN_MODE_TO_SEND_RESPONSE = "useAsynModeToSendResponse";
 
+	//支持多个master，不过其他master仅仅作为分担合并任务的工作，
+	//主要目的就是分担主master的业务合并压力，部分报表可以定义给其他master合并
+	//配置方式（ip:port的方式）：otherMasters=127.0.0.1:8877,127.0.0.1:6654
+	private final static String OTHER_MASTERS = "otherMasters";
+	
+	public String getOtherMasters()
+	{
+		if(this.properties.containsKey(OTHER_MASTERS))
+			return (String)this.properties.get(OTHER_MASTERS);
+		else
+			return null;
+	}
+	
+	public void setOtherMasters(String otherMasters) {
+		this.properties.put(OTHER_MASTERS,otherMasters);
+	}
 	
 	public boolean isUseAsynModeToSendResponse() {
 		if(this.properties.containsKey(USE_ASYN_MODE_TO_SEND_RESPONSE))

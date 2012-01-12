@@ -87,7 +87,7 @@ public class MasterSlaveIntegrationTest_SocketVersion {
 		slaveNode.startNode();
 		
 		
-		Thread.sleep(30 * 1000);
+		Thread.sleep(35 * 1000);
 		
 		masterNode.stopNode();
 		slaveNode.stopNode();

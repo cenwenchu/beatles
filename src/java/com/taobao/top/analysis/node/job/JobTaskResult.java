@@ -27,7 +27,7 @@ public class JobTaskResult implements Serializable {
 	 */
 	private List<String> taskIds;
 	
-	private long creatTime;
+	private int jobEpoch;
 	
 	/**
 	 * 处理后的结果池，key是entry的id， value是Map(key是entry定义的key组合,value是统计后的结果)
@@ -47,6 +47,17 @@ public class JobTaskResult implements Serializable {
 		taskExecuteInfos = new ArrayList<JobTaskExecuteInfo>();
 	}
 	
+	
+	public int getJobEpoch() {
+		return jobEpoch;
+	}
+
+
+	public void setJobEpoch(int jobEpoch) {
+		this.jobEpoch = jobEpoch;
+	}
+
+
 	public void addTaskId(String taskId)
 	{
 		taskIds.add(taskId);
@@ -90,12 +101,5 @@ public class JobTaskResult implements Serializable {
 		this.results = results;
 	}
 
-	public long getCreatTime() {
-		return creatTime;
-	}
-
-	public void setCreatTime(long creatTime) {
-		this.creatTime = creatTime;
-	}
 
 }

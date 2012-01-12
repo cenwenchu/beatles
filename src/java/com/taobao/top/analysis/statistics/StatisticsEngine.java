@@ -156,7 +156,7 @@ public class StatisticsEngine implements IStatisticsEngine{
 		
 		JobTaskResult jobTaskResult = new JobTaskResult();
 		jobTaskResult.addTaskId(jobtask.getTaskId());
-		jobTaskResult.setCreatTime(jobtask.getCreatTime());
+		jobTaskResult.setJobEpoch(jobtask.getJobEpoch());
 		
 		JobTaskExecuteInfo taskExecuteInfo = new JobTaskExecuteInfo();
 		jobTaskResult.addTaskExecuteInfo(taskExecuteInfo);
@@ -253,7 +253,7 @@ public class StatisticsEngine implements IStatisticsEngine{
 					logger.error(ex,ex);
 				}
 			}
-			System.out.println("####"+(System.currentTimeMillis() - beg));
+			
 			taskExecuteInfo.setAnalysisConsume(System.currentTimeMillis() - beg);
 			taskExecuteInfo.setEmptyLine(emptyLine);
 			taskExecuteInfo.setErrorLine(exceptionLine);
@@ -263,6 +263,7 @@ public class StatisticsEngine implements IStatisticsEngine{
 			
 			if (logger.isWarnEnabled())
 				logger.warn(new StringBuilder("jobtask ").append(jobtask.getTaskId())
+					.append(",analysis consume time: ").append(taskExecuteInfo.getAnalysisConsume())
 					.append(",normal line count: ").append(normalLine)
 					.append(",exception line count:").append(exceptionLine)
 					.append(",empty line:").append(emptyLine).toString());

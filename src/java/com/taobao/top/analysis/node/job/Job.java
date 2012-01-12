@@ -78,6 +78,11 @@ public class Job {
 	 */
 	private Map<String, Map<String, Object>> diskResult;
 	
+	/**
+	 * 任务被重复执行了多少次，标识任务已经生存到了多少代，当跨过数据外置的时候，清零
+	 */
+	private AtomicInteger epoch;
+	
 	public Job()
 	{
 		jobTasks = new ArrayList<JobTask>();
@@ -86,10 +91,23 @@ public class Job {
 		loadLock = new ReentrantLock();
 		lastExportTime = 0;
 		reportPeriodFlag = -1;
+		epoch = new AtomicInteger(0);
 		reset();
 	}
-	
-	
+
+
+	public AtomicInteger getEpoch() {
+		return epoch;
+	}
+
+
+
+	public void setEpoch(AtomicInteger epoch) {
+		this.epoch = epoch;
+	}
+
+
+
 	public ReentrantLock getLoadLock() {
 		return loadLock;
 	}
@@ -136,11 +154,15 @@ public class Job {
 	
 	public void reset()
 	{
+		epoch.incrementAndGet();
+		
 		for(JobTask task : jobTasks)
 		{
 			task.setStatus(JobTaskStatus.UNDO);
 			task.setCreatTime(System.currentTimeMillis());
+			task.setStartTime(0);
 			task.getRecycleCounter().set(0);
+			task.setJobEpoch(epoch.get());
 		}
 			
 		taskCount = jobTasks.size();
@@ -154,6 +176,7 @@ public class Job {
 		exporting = new AtomicBoolean(false);
 		exported = new AtomicBoolean(false);
 		diskResult = null;
+		
 	}
 	
 

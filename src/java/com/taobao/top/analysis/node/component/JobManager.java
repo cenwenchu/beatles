@@ -175,8 +175,7 @@ public class JobManager implements IJobManager {
 				{
 					if (statusPool.replace(jobTask.getTaskId(),JobTaskStatus.UNDO,JobTaskStatus.DOING))
 					{
-						jobTask.setStatus(JobTaskStatus.DOING);
-						jobTask.setStartTime(System.currentTimeMillis());
+						this.allocateTask(jobTask);
 						jobTasks.add(jobTask);
 						
 						if (jobTasks.size() == jobCount)
@@ -198,8 +197,7 @@ public class JobManager implements IJobManager {
 				{
 					if (statusPool.replace(taskId,JobTaskStatus.UNDO,JobTaskStatus.DOING))
 					{
-						jobTask.setStatus(JobTaskStatus.DOING);
-						jobTask.setStartTime(System.currentTimeMillis());
+						this.allocateTask(jobTask);
 						jobTasks.add(jobTask);
 						
 						if (jobTasks.size() >= jobCount)
@@ -230,6 +228,12 @@ public class JobManager implements IJobManager {
 		
 	}
 
+	private void allocateTask(JobTask jobTask)
+	{
+		jobTask.setStatus(JobTaskStatus.DOING);
+		jobTask.setStartTime(System.currentTimeMillis());
+		jobTask.setOtherMasters(config.getOtherMasters());
+	}
 
 	//分配任务和结果提交处理由于是单线程处理，
 	//因此本身不用做状态池并发控制，将消耗较多的发送操作交给ServerConnector多线程操作
@@ -241,9 +245,14 @@ public class JobManager implements IJobManager {
 		if (jobTaskResult.getTaskIds() != null && jobTaskResult.getTaskIds().size() > 0)
 		{
 			//判断是否是过期的一些老任务数据，根据task和taskresult的createtime来判断
-			if (jobTaskResult.getCreatTime() != jobTaskPool.get(jobTaskResult.getTaskIds().get(0)).getCreatTime())
+			//以后要扩展成为如果发现当前的epoch < 结果的epoch，表明这台可能是从属的master，负责reduce，但是速度跟不上了
+			if (jobTaskResult.getJobEpoch()!= jobTaskPool.get(jobTaskResult.getTaskIds().get(0)).getJobEpoch())
 			{
-				logger.warn("old task result will be discard!");
+				if (jobTaskResult.getJobEpoch() < jobTaskPool.get(jobTaskResult.getTaskIds().get(0)).getJobEpoch())
+					logger.error("old task result will be discard!");
+				else
+					logger.error("otherMaster can't merge in time!");
+				
 				return;
 			}
 			
@@ -512,6 +521,7 @@ public class JobManager implements IJobManager {
 		if (needToSetJobResultNull)
 		{
 			job.setJobResult(null);
+			job.getEpoch().set(0);
 			
 			//删除临时文件，防止重复载入使得清空不生效
 			if (config.getSaveTmpResultToFile())
@@ -559,7 +569,7 @@ public class JobManager implements IJobManager {
 			JobTaskStatus taskStatus = statusPool.get(taskId);
 			JobTask jobTask = jobTaskPool.get(taskId);
 			
-			if (taskStatus == JobTaskStatus.DOING && 
+			if (taskStatus == JobTaskStatus.DOING &&  jobTask.getStartTime() != 0 &&
 					System.currentTimeMillis() - jobTask.getStartTime() >= jobTask.getTaskRecycleTime() * 1000)
 			{
 				if (statusPool.replace(taskId, JobTaskStatus.DOING, JobTaskStatus.UNDO))
