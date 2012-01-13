@@ -143,7 +143,7 @@ public class SlaveConfig extends AbstractConfig {
 		if(this.properties.containsKey(ANALYSIS_WORKER_NUM))
 			return Integer.parseInt((String)this.properties.get(ANALYSIS_WORKER_NUM));
 		else
-			return 10;
+			return 20;
 	}
 
 	public void setAnalysisWorkerNum(String analysisWorkerNum) {

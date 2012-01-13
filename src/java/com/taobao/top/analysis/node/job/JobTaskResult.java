@@ -47,6 +47,20 @@ public class JobTaskResult implements Serializable {
 		taskExecuteInfos = new ArrayList<JobTaskExecuteInfo>();
 	}
 	
+	/**
+	 * 克隆一个对象，但不包含里面的结果集
+	 * @return
+	 * @throws CloneNotSupportedException
+	 */
+	public JobTaskResult cloneWithOutResults() {
+		JobTaskResult clone = new JobTaskResult();
+		clone.jobEpoch = jobEpoch;
+		clone.taskIds = taskIds;
+		clone.taskExecuteInfos = taskExecuteInfos;
+		
+		return clone;
+	}
+	
 	
 	public int getJobEpoch() {
 		return jobEpoch;

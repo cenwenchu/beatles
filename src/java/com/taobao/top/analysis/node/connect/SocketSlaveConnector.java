@@ -9,6 +9,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.ReentrantLock;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
@@ -58,10 +59,13 @@ public class SocketSlaveConnector extends AbstractSlaveConnector {
 	
 	//支持多个master来分担合并压力
 	Map<String,Channel> channels;
+	//用于创建管道时候控制并发
+	ReentrantLock channelLock;
 
 	@Override
 	public void init() throws AnalysisException {
 		slaveEventTimeQueue = new SlaveEventTimeOutQueue();
+		channelLock = new ReentrantLock();
 
 		factory = new NioClientSocketChannelFactory(
 				Executors.newCachedThreadPool(),
@@ -102,17 +106,43 @@ public class SocketSlaveConnector extends AbstractSlaveConnector {
 			return channel;
 		
 		String[] _addr = StringUtils.split(address,":");
-		
-		future = bootstrap.connect(new InetSocketAddress(_addr[0],Integer.valueOf(_addr[1])));
-
-		future.awaitUninterruptibly();
-		if (!future.isSuccess()) {
-			logger.error("connect fail.", future.getCause());
-			throw new AnalysisException("connect fail.", future.getCause());
+		boolean isLock = false;
+			
+		try
+		{
+			isLock = channelLock.tryLock(10, TimeUnit.SECONDS);
+			
+			if (isLock)
+			{
+				//double check
+				channel = channels.get(address);
+				
+				if (channel != null)
+					return channel;
+				
+				future = bootstrap.connect(new InetSocketAddress(_addr[0],Integer.valueOf(_addr[1])));
+	
+				future.awaitUninterruptibly();
+				if (!future.isSuccess()) {
+					logger.error("connect fail.", future.getCause());
+					throw new AnalysisException("connect fail.", future.getCause());
+				}
+	
+				channel = future.getChannel();
+				channels.put(address, channel);
+			}
+			else
+				throw new AnalysisException("can't get lock to create channel");
 		}
-
-		channel = future.getChannel();
-		channels.put(address, channel);
+		catch(InterruptedException e)
+		{
+			//do nothing
+		}
+		finally
+		{
+			if (isLock)
+				channelLock.unlock();
+		}
 		
 		return channel;
 	}
@@ -236,7 +266,7 @@ public class SocketSlaveConnector extends AbstractSlaveConnector {
 				return responseEvent.getResponse();
 			}
 		} catch (Exception ex) {
-			logger.error("sendJobTaskResults error.",ex);
+			logger.error("sendJobTaskResults error,master address : " + master,ex);
 		}
 
 		return null;

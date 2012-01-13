@@ -268,14 +268,49 @@ public class SlaveNode extends AbstractNode<SlaveNodeEvent,SlaveConfig>{
 				
 			}
 			
-			SendResultsRequestEvent event = generateSendResultsRequestEvent(jobTaskResult);
 			
+			//批量发送消息
+			final CountDownLatch taskCountDownLatch = new CountDownLatch(_masterEntryResults.size());
+					
 			for(Entry<String,Map<String,Map<String,Object>>> e : _masterEntryResults.entrySet())
 			{
-				event.getJobTaskResult().setResults(e.getValue());
-				slaveConnector.sendJobTaskResults(event,e.getKey());
+				final Entry<String,Map<String,Map<String,Object>>> entrySet = e;
+				final JobTaskResult tResult = jobTaskResult.cloneWithOutResults();
+				tResult.setResults(entrySet.getValue());
 				
-				logger.info("send piece result to master :" + e.getKey());
+				analysisWorkerThreadPool.execute(
+						new Runnable()
+						{
+							public void run()
+							{
+								try 
+								{
+									SendResultsRequestEvent event = generateSendResultsRequestEvent(tResult);
+									slaveConnector.sendJobTaskResults(event,entrySet.getKey());
+									
+									logger.info("send piece result to master :" + entrySet.getKey());
+								} 
+								catch (Exception e) 
+								{
+									logger.error(e,e);
+								} 
+								finally
+								{
+									taskCountDownLatch.countDown();
+								}
+							}
+						}
+						);
+			}				
+			
+			
+			try 
+			{
+				if (!taskCountDownLatch.await(10,TimeUnit.SECONDS))
+					logger.error("send piece result to master timeout !");
+			} 
+			catch (InterruptedException e) {
+				//do nothing
 			}
 			
 		}

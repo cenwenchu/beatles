@@ -98,7 +98,7 @@ public class MasterSlaveIntegrationTest_SocketVersion {
 		MasterNode masterNode1 = buildMaster("master-config-ms1.properties");
 		MasterNode masterNode2 = buildMaster("master-config-ms2.properties");
 		
-		Thread.sleep(2000);
+		Thread.sleep(1000);
 		
 		
 		//build SlaveNode

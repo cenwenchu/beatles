@@ -282,13 +282,7 @@ public class JobDataOperation implements Runnable {
 	 */
 	private Map<String, Map<String, Object>> load(File[] totalFiles) throws AnalysisException
 	{
-		BufferedReader breader = null;
-		InflaterInputStream inflaterInputStream = null;
 		boolean error=false;
-		
-		Map<String, Map<String, Object>> resultPool = new HashMap<String,Map<String,Object>>();
-		
-		long beg = System.currentTimeMillis();
 		
 		// 当天的备份数据
 		Calendar calendar = Calendar.getInstance();
@@ -306,55 +300,16 @@ public class JobDataOperation implements Runnable {
 			
 			try
 			{
-				inflaterInputStream = new InflaterInputStream(
-						new FileInputStream(f));
+				Map<String, Map<String, Object>> resultPool = this.load(f);
 				
-				breader = new BufferedReader(new InputStreamReader(inflaterInputStream));
-				
-				String line;
-				while((line = breader.readLine()) != null)
-				{
-					String[] contents = StringUtils.splitByWholeSeparator(line, AnalysisConstants.EXPORT_RECORD_SPLIT);
-					
-					Map<String,Object> m = new HashMap<String,Object>();
-
-					resultPool.put(contents[0], m);
-					
-					for(int i = 1; i < contents.length; i++)
-					{
-						String[] tt = StringUtils.splitByWholeSeparator(contents[i], AnalysisConstants.EXPORT_COLUMN_SPLIT);
-						
-						if (tt.length >= 2)
-							if (tt.length == 2)
-								m.put(tt[0], tt[1]);
-							else
-								m.put(tt[0], Double.parseDouble(tt[2]));
-					}
-					
-				}
-				
-				if (logger.isWarnEnabled())
-					logger.warn("Load file "+f.getName()+" Success , use : " + String.valueOf(System.currentTimeMillis() - beg));
-				
-				return resultPool;
+				if(resultPool != null && resultPool.size() > 0)
+					return resultPool;
 			}
 			catch(Exception ex)
 			{
 				logger.error("Load file "+f.getName()+" Error", ex);
 				error = true;
 			}
-			finally
-			{
-				if (breader != null)
-				{
-					try {
-						breader.close();
-					} catch (IOException e) {
-						logger.error(e.getMessage(), e);
-					}
-				}
-			}
-			
 		}
 		
 		if (error)
@@ -471,11 +426,76 @@ public class JobDataOperation implements Runnable {
 	}
 	
 	/**
+	 * 内部协议导入文件生成对象
+	 * @param fileName
+	 * @return
+	 * @throws AnalysisException 
+	 */
+	public Map<String, Map<String, Object>> load(File file) throws AnalysisException
+	{
+		BufferedReader breader = null;
+		InflaterInputStream inflaterInputStream = null;
+		Map<String, Map<String, Object>> resultPool = new HashMap<String,Map<String,Object>>();
+		long beg = System.currentTimeMillis();
+		
+		try
+		{
+			inflaterInputStream = new InflaterInputStream(
+					new FileInputStream(file));
+			
+			breader = new BufferedReader(new InputStreamReader(inflaterInputStream));
+			
+			String line;
+			while((line = breader.readLine()) != null)
+			{
+				String[] contents = StringUtils.splitByWholeSeparator(line, AnalysisConstants.EXPORT_RECORD_SPLIT);
+				
+				Map<String,Object> m = new HashMap<String,Object>();
+
+				resultPool.put(contents[0], m);
+				
+				for(int i = 1; i < contents.length; i++)
+				{
+					String[] tt = StringUtils.splitByWholeSeparator(contents[i], AnalysisConstants.EXPORT_COLUMN_SPLIT);
+					
+					if (tt.length >= 2)
+						if (tt.length == 2)
+							m.put(tt[0], tt[1]);
+						else
+							m.put(tt[0], Double.parseDouble(tt[2]));
+				}
+				
+			}
+			
+			if (logger.isWarnEnabled())
+				logger.warn("Load file "+ file.getName() +" Success , use : " + String.valueOf(System.currentTimeMillis() - beg));
+			
+			return resultPool;
+		}
+		catch(Exception ex)
+		{
+			logger.error("Load file "+ file.getName() +" Error", ex);
+			throw new AnalysisException("Load file "+ file.getName() +" Error", ex);
+		}
+		finally
+		{
+			if (breader != null)
+			{
+				try {
+					breader.close();
+				} catch (IOException e) {
+					logger.error(e.getMessage(), e);
+				}
+			}
+		}
+	}
+	
+	/**
 	 * 内部协议导出对象
 	 * @param resultPool
 	 * @param FileName
 	 */
-	private void export(Map<String, Map<String, Object>> resultPool,String FileName)
+	public void export(Map<String, Map<String, Object>> resultPool,String FileName)
 	{
 		BufferedWriter bwriter = null;
 		
