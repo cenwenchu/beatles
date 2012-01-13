@@ -1068,67 +1068,31 @@ public class ReportUtil {
 			return result;
 		}
 		
-		PriorityQueue<KeyWeight> memberWeights = new PriorityQueue<KeyWeight>();
-		PriorityQueue<RevertKeyWeight> resourceWeights = new PriorityQueue<RevertKeyWeight>();
+		PriorityQueue<MemberWeight> memberWeights = new PriorityQueue<MemberWeight>();
+		PriorityQueue<ResourceWeight> resourceWeights = new PriorityQueue<ResourceWeight>();
 		
 		//先将member中带有权重的情况打散
 		for(int i = 0 ; i < member.size(); i++)
 		{
 			String m = member.get(i);
-			if (m.indexOf(split) <= 0)
-			{
-				memberWeights.add(new KeyWeight(m, 0));
-				continue;
-			}
 			
-			String[] marr = StringUtils.splitByWholeSeparator(m,split);
-			
-			try
-			{
-				int weight = Integer.valueOf(marr[1]);
-				
-				for(int j = 0 ; j < weight; j++)
-					memberWeights.add(new KeyWeight(marr[0], 0));
-			}
-			catch(Exception ex)
-			{
-				logger.error("SimpleAllocationAlgorithm error",ex);
-			}
-			
+			memberWeights.add(new MemberWeight(m,split));
 		}
 		
 		for(int i = 0 ; i < resource.size(); i++)
 		{
 			String res = resource.get(i);
 			
-			if (res.indexOf(split) <= 0)
-			{
-				resourceWeights.add(new RevertKeyWeight(res,1));
-				continue;
-			}
-			
-			String[] marr = StringUtils.splitByWholeSeparator(res,split);
-			
-			try
-			{
-				int weight = Integer.valueOf(marr[1]);
-				
-				resourceWeights.add(new RevertKeyWeight(marr[0], weight));
-			}
-			catch(Exception ex)
-			{
-				logger.error("SimpleAllocationAlgorithm error",ex);
-			}
-			
+			resourceWeights.add(new ResourceWeight(res,split));
 		}
 		
-		KeyWeight _res = null;
+		ResourceWeight _res = null;
 		
 		while((_res = resourceWeights.poll()) != null)
 		{
 			
-			KeyWeight _member = memberWeights.poll();
-			_member.setWeight(_member.getWeight() + _res.getWeight());
+			MemberWeight _member = memberWeights.poll();
+			_member.setTaskWeight(_member.getTaskWeight() + _res.getWeight());
 			memberWeights.add(_member);
 			
 			result.put(_res.getKey(), _member.getKey());
@@ -1201,6 +1165,7 @@ public class ReportUtil {
 		resource.add("job6");
 		resource.add("job7");
 		resource.add("job8");
+		resource.add("job9:20");
 		
 		r2m = SimpleAllocationAlgorithm(member,resource,":");
 		
@@ -1333,26 +1298,57 @@ public class ReportUtil {
 
 }
 
-class KeyWeight implements java.lang.Comparable<KeyWeight>
+class MemberWeight implements java.lang.Comparable<MemberWeight>
 {
+	private static final Log logger = LogFactory.getLog(MemberWeight.class);
+			
 	String key;
 	int weight;
+	int taskWeight;
 	
-	public KeyWeight(String key,int weight)
+	public MemberWeight(String memWeight,String split)
 	{
-		this.key = key;
-		this.weight = weight;
+		if (memWeight.indexOf(split) <= 0)
+			init(memWeight,1);
+		else
+		{
+			String[] marr = StringUtils.splitByWholeSeparator(memWeight,split);
+			
+			try
+			{
+				init(marr[0], Integer.valueOf(marr[1]));
+			}
+			catch(Exception ex)
+			{
+				logger.error("SimpleAllocationAlgorithm error",ex);
+			}
+		}
 	}
 	
+	public MemberWeight(String key,int weight)
+	{
+		init(key,weight);
+	}
+	
+	void init(String key,int weight)
+	{
+		this.key = key;
+		
+		if(weight <= 0)
+			this.weight = 1;
+		else
+			this.weight = weight;
+		
+		this.taskWeight = 0;
+	}
+
 	public String getKey() {
 		return key;
 	}
 
-
 	public void setKey(String key) {
 		this.key = key;
 	}
-
 
 	public int getWeight() {
 		return weight;
@@ -1361,21 +1357,35 @@ class KeyWeight implements java.lang.Comparable<KeyWeight>
 		this.weight = weight;
 	}
 
+	public int getTaskWeight() {
+		return taskWeight;
+	}
+
+	public void setTaskWeight(int taskWeight) {
+		this.taskWeight = taskWeight;
+	}
+
 	@Override
-	public int compareTo(KeyWeight o) {
-		return weight - o.weight;
+	public int compareTo(MemberWeight o) {
+		if (taskWeight == 0)
+			return 1/weight - 1/o.weight;
+		else
+			return taskWeight/weight - o.taskWeight/o.weight;
 	}
 }
 
-class RevertKeyWeight extends KeyWeight
+class ResourceWeight extends MemberWeight
 {
-	public RevertKeyWeight(String key,int weight)
+	@Override
+	public int compareTo(MemberWeight o) {
+		
+		return o.weight - this.weight;
+	}
+
+	public ResourceWeight(String memWeight,String split)
 	{
-		super(key,weight);
+		super(memWeight, split);
 	}
 	
-	@Override
-	public int compareTo(KeyWeight o) {
-		return o.weight - weight;
-	}
+	
 }
