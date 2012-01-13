@@ -175,15 +175,21 @@ public class FileJobBuilder implements IJobBuilder{
 									.append("|").append(r.getWeight()).toString());
 						}
 						
-						rule.getReport2Master().putAll(ReportUtil.SimpleAllocationAlgorithm(masters, reports, "|"));
+						//做一下改进，如果原来已经有分配的，为了保证数据一致性，则不再分配(保证中间结果的连贯性)
+						//考虑原来就是比较平均分配的，然后将新来业务平均分配也是一样的
+						Map<String, String> report2Master = ReportUtil.SimpleAllocationAlgorithm(masters, reports, "|");
+						
+						for(Entry<String,String> rm : report2Master.entrySet())
+							if (rule.getReport2Master().get(rm.getKey()) == null)
+								rule.getReport2Master().put(rm.getKey(), rm.getValue());
 						
 						if (logger.isWarnEnabled() && rule.getReport2Master() != null)
 						{
-							StringBuilder report2Master = new StringBuilder("report2Master Info : ");
+							StringBuilder report2MasterStr = new StringBuilder("report2Master Info : ");
 							
 							for(Entry<String,String> r : rule.getReport2Master().entrySet())
 							{
-								report2Master.append("report: ")
+								report2MasterStr.append("report: ")
 									.append(r.getKey()).append(" -> master: ").append(r.getValue()).append(" , ");
 							}
 							
