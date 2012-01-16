@@ -110,6 +110,76 @@ public class MergeJobOperation implements Runnable {
 	
 	}
 	
+	public static boolean  mergeToTrunk(Job job,
+			List<Map<String, Map<String, Object>>> mergeResults)
+	{
+		boolean gotIt = false;
+		
+		try
+		{
+			gotIt = job.getTrunkLock().writeLock().tryLock(1, TimeUnit.MINUTES);
+			boolean flag = false;
+			
+			if (gotIt)
+			{
+				int size = mergeResults.size();
+				long beg = System.currentTimeMillis();
+				
+				if (job.getJobResult() != null
+						&& job.getJobResult().size() > 0) {
+					flag = true;
+					size += 1;
+				}
+				
+				@SuppressWarnings("unchecked")
+				Map<String, Map<String, Object>>[] results = new java.util.HashMap[size];
+
+				if (flag)
+					results[0] = job.getJobResult();
+				
+				for (Map<String, Map<String, Object>> r : mergeResults) {
+					size -= 1;
+					results[size] = r;
+				}
+				
+				logger.warn(new StringBuilder(
+						"==>Start Trunk merge(data recover),instance:"
+								+ job.getJobName())
+						.append(".merge count : ").append(size)
+						.append(", total merged count: ")
+						.append(job.getMergedTaskCount()).toString());
+				
+				job.setJobResult(ReportUtil.mergeEntryResult(results, job.getStatisticsRule().getEntryPool(), false));
+
+				logger.warn(new StringBuilder(
+						"==>End Trunk merge(data recover),instance:"
+								+ job.getJobName())
+						.append(",once merge consume : ")
+						.append(System.currentTimeMillis() - beg)
+						.toString());
+				
+				results = null;
+				mergeResults.clear();
+			}
+			else
+			{
+				logger.error("can't got trunk to load recover data.");
+			}
+		}
+		catch(InterruptedException ex)
+		{
+			//do nothing
+		}
+		finally
+		{
+			if(gotIt)
+				job.getTrunkLock().writeLock().unlock();
+		}
+		
+		return gotIt;
+		
+	}
+	
 	void mergeTrunk(long beg) throws InterruptedException
 	{
 		int size = mergeResults.size();

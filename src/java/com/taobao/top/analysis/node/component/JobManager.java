@@ -33,6 +33,7 @@ import com.taobao.top.analysis.node.job.JobTaskResult;
 import com.taobao.top.analysis.node.job.JobTaskStatus;
 import com.taobao.top.analysis.node.operation.JobDataOperation;
 import com.taobao.top.analysis.util.AnalysisConstants;
+import com.taobao.top.analysis.util.MasterDataRecoverWorker;
 import com.taobao.top.analysis.util.NamedThreadFactory;
 
 /**
@@ -79,6 +80,11 @@ public class JobManager implements IJobManager {
 	 */
 	private ThreadPoolExecutor eventProcessThreadPool;
 	
+	/**
+	 * 用于合并后台历史数据，当master出错时，slave会纪录一些数据在本地用于恢复
+	 */
+	private MasterDataRecoverWorker masterDataRecoverWorker;
+	
 
 	@Override
 	public void init() throws AnalysisException {
@@ -112,6 +118,9 @@ public class JobManager implements IJobManager {
 				this.config.getMaxJobEventWorker(), 0,
 				TimeUnit.SECONDS, new LinkedBlockingQueue<Runnable>(),
 				new NamedThreadFactory("jobManagerEventProcess_worker"));
+		
+		masterDataRecoverWorker = new MasterDataRecoverWorker(config.getMasterName(),config.getTempStoreDataDir(),jobs);
+		masterDataRecoverWorker.start();
 			
 		addJobsToPool();
 		
@@ -124,9 +133,21 @@ public class JobManager implements IJobManager {
 	@Override
 	public void releaseResource() {
 		
+		//导出所有结果，暂时不导出中间data，后面看是否需要
+		for(Job j : jobs.values())
+		{
+			if (!j.isExported().get())
+			{
+				jobExporter.exportReport(j,false);
+				logger.info("releaseResouce now, export job : " + j.getJobName());
+			}
+		}
+		
 		try
 		{
 			eventProcessThreadPool.shutdown();
+			
+			masterDataRecoverWorker.stopWorker();
 		}
 		finally
 		{

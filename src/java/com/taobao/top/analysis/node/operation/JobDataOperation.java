@@ -629,6 +629,13 @@ public class JobDataOperation implements Runnable {
 		Assert.assertEquals(1,resultPools.size());
 		Assert.assertEquals("value4", resultPools.get(0).get("entry1").get("key4"));
 		
+		File destDir = new File("temp");
+		
+		File[] files = destDir.listFiles(new AnalyzerFilenameFilter(AnalysisConstants.TEMP_MASTER_DATAFILE_SUFFIX));
+		
+		System.out.println(files[0].getName().substring(files[0].getName().indexOf(AnalysisConstants.SPLIT_KEY)+AnalysisConstants.SPLIT_KEY.length()
+				,files[0].getName().indexOf(AnalysisConstants.TEMP_MASTER_DATAFILE_SUFFIX)));
+		
 	}
 	
 

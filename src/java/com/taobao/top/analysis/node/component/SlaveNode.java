@@ -257,8 +257,6 @@ public class SlaveNode extends AbstractNode<SlaveNodeEvent,SlaveConfig>{
 						
 						logger.error("report" + r + " has no master process,send to default master.");
 					}
-					else
-						master = master.substring(master.indexOf(":")+1);
 					
 					
 					if (_masterEntryResults.get(master) == null)
@@ -288,15 +286,16 @@ public class SlaveNode extends AbstractNode<SlaveNodeEvent,SlaveConfig>{
 							{
 								try 
 								{
+									String masterAddr = entrySet.getKey().substring(entrySet.getKey().indexOf(":")+1);
 									SendResultsRequestEvent event = generateSendResultsRequestEvent(tResult);
-									String result = slaveConnector.sendJobTaskResults(event,entrySet.getKey());
+									String result = slaveConnector.sendJobTaskResults(event,masterAddr);
 									
 									//做一次重试
 									if (result == null)
 									{
 										Thread.sleep(100);
-										logger.warn("try to send result to master : " + entrySet.getKey() + " again.");
-										result = slaveConnector.sendJobTaskResults(event,entrySet.getKey());
+										logger.warn("try to send result to master : " + masterAddr + " again.");
+										result = slaveConnector.sendJobTaskResults(event,masterAddr);
 										
 										//开始写入本地文件
 										if (result == null)
