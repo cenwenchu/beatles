@@ -62,6 +62,24 @@ public class SlaveConfig extends AbstractConfig {
 	 */
 	private final static String MAX_CLIENT_EVENT_WAIT_TIME = "maxClientEventWaitTime";
 	
+	/**
+	 * 当往多个master发送结果时没有成功的时候，将数据保存在本地
+	 */
+	private final static String TEMP_STORE_DATA_DIR = "tempStoreDataDir";
+	
+	public String getTempStoreDataDir()
+	{
+		if(this.properties.containsKey(TEMP_STORE_DATA_DIR))
+			return (String)this.properties.get(TEMP_STORE_DATA_DIR);
+		else
+			return "temp";
+	}
+	
+	public void setTempStoreDataDir(String tempStoreDataDir)
+	{
+		this.properties.put(TEMP_STORE_DATA_DIR,tempStoreDataDir);
+	}
+	
 	public int getMaxClientEventWaitTime() {
 		if(this.properties.containsKey(MAX_CLIENT_EVENT_WAIT_TIME))
 			return Integer.parseInt((String)this.properties.get(MAX_CLIENT_EVENT_WAIT_TIME));

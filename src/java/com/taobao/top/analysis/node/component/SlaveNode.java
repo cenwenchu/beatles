@@ -5,6 +5,7 @@ package com.taobao.top.analysis.node.component;
 
 
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -28,9 +29,11 @@ import com.taobao.top.analysis.node.event.SendResultsRequestEvent;
 import com.taobao.top.analysis.node.event.SlaveNodeEvent;
 import com.taobao.top.analysis.node.job.JobTask;
 import com.taobao.top.analysis.node.job.JobTaskResult;
+import com.taobao.top.analysis.node.operation.JobDataOperation;
 import com.taobao.top.analysis.statistics.IStatisticsEngine;
 import com.taobao.top.analysis.statistics.data.ReportEntry;
 import com.taobao.top.analysis.statistics.data.Rule;
+import com.taobao.top.analysis.util.AnalysisConstants;
 import com.taobao.top.analysis.util.NamedThreadFactory;
 
 /**
@@ -223,11 +226,11 @@ public class SlaveNode extends AbstractNode<SlaveNodeEvent,SlaveConfig>{
 		
 	}
 	
-	void handleTaskResult(JobTask jobTask,JobTaskResult jobTaskResult)
+	void handleTaskResult(final JobTask jobTask,JobTaskResult jobTaskResult)
 	{
 		statisticsEngine.doExport(jobTask,jobTaskResult);
 		
-		Rule rule = jobTask.getStatisticsRule();
+		final Rule rule = jobTask.getStatisticsRule();
 		Map<String, String> report2Master = rule.getReport2Master();
 		
 		//判断是否需要分开多个master投递结果
@@ -286,7 +289,30 @@ public class SlaveNode extends AbstractNode<SlaveNodeEvent,SlaveConfig>{
 								try 
 								{
 									SendResultsRequestEvent event = generateSendResultsRequestEvent(tResult);
-									slaveConnector.sendJobTaskResults(event,entrySet.getKey());
+									String result = slaveConnector.sendJobTaskResults(event,entrySet.getKey());
+									
+									//做一次重试
+									if (result == null)
+									{
+										Thread.sleep(100);
+										logger.warn("try to send result to master : " + entrySet.getKey() + " again.");
+										result = slaveConnector.sendJobTaskResults(event,entrySet.getKey());
+										
+										//开始写入本地文件
+										if (result == null)
+										{
+											logger.error( new StringBuilder("send result to master : ")
+												.append(entrySet.getKey()).append(" fail again! now to write file to local,jobName : ")
+												.append(jobTask.getJobName()).toString());
+											
+											String destFile = getTempStoreDataFile(entrySet.getKey(),jobTask.getJobName());
+											
+											if (destFile != null)
+											{
+												JobDataOperation.export(event.getJobTaskResult().getResults(), destFile,false,false);
+											}
+										}
+									}
 									
 									logger.info("send piece result to master :" + entrySet.getKey());
 								} 
@@ -317,6 +343,46 @@ public class SlaveNode extends AbstractNode<SlaveNodeEvent,SlaveConfig>{
 		else
 			slaveConnector.sendJobTaskResults(generateSendResultsRequestEvent(jobTaskResult),
 						config.getMasterAddress()+":"+config.getMasterPort());
+	}
+	
+	String getTempStoreDataFile(String master,String jobName)
+	{
+		String destFileName = null;
+		
+		try
+		{
+			StringBuilder tempFile = new StringBuilder();
+			tempFile.append(config.getTempStoreDataDir());
+			
+			File dest =  new File(config.getTempStoreDataDir());
+			
+			if (!dest.exists() || (dest.exists() && !dest.isDirectory()))
+			{
+				new File(config.getTempStoreDataDir()).mkdirs();
+			}
+			
+			if (!config.getTempStoreDataDir().endsWith(File.separator))
+				tempFile.append(File.separator);
+				
+			tempFile.append(master).append(AnalysisConstants.SPLIT_KEY)
+				.append(jobName).append(AnalysisConstants.TEMP_MASTER_DATAFILE_SUFFIX);
+			
+			dest = new File(tempFile.toString());
+			
+			if (!dest.exists())
+			{
+				new File(tempFile.toString()).createNewFile();
+			}
+			
+			destFileName = dest.getAbsolutePath();
+		}
+		catch(Exception ex)
+		{
+			logger.error("getTempStoreDataFile error.",ex);
+		}
+		
+		return destFileName;
+		
 	}
 	
 	public SendResultsRequestEvent generateSendResultsRequestEvent(JobTaskResult jobTaskResult)

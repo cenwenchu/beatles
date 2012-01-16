@@ -60,7 +60,7 @@ import com.taobao.top.analysis.util.ReportUtil;
  */
 public class FileJobBuilder implements IJobBuilder{
 	
-	private final Log logger = LogFactory.getLog(FileJobBuilder.class);
+	private static final Log logger = LogFactory.getLog(FileJobBuilder.class);
 	private MasterConfig config;
 	private boolean needRebuild = false;
 	

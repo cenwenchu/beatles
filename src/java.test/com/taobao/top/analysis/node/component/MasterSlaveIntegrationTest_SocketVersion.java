@@ -115,5 +115,36 @@ public class MasterSlaveIntegrationTest_SocketVersion {
 		Thread.sleep(3000);
 		
 	}
+	
+	@Test
+	public void testFailCover() throws AnalysisException, InterruptedException
+	{
+		//build MasterNode1
+		MasterNode masterNode = buildMaster("master-config-ms.properties");
+		MasterNode masterNode1 = buildMaster("master-config-ms1.properties");
+		
+		Thread.sleep(1000);
+		
+		
+		//build SlaveNode
+		SlaveNode slaveNode = buildSlave("slave-config.properties");
+		
+		
+		Thread.sleep(35 * 1000);
+		
+		masterNode.stopNode();
+		masterNode1.stopNode();
+		
+		
+		MasterNode masterNode2 = buildMaster("master-config-ms2.properties");
+		
+		Thread.sleep(10 * 1000);
+		
+		masterNode2.stopNode();
+		slaveNode.stopNode();
+		
+		Thread.sleep(3000);
+		
+	}
 
 }

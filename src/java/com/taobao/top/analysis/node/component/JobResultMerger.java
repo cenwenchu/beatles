@@ -37,7 +37,7 @@ import com.taobao.top.analysis.util.ReportUtil;
  */
 public class JobResultMerger implements IJobResultMerger {
 
-	private final Log logger = LogFactory.getLog(JobResultMerger.class);
+	private static final Log logger = LogFactory.getLog(JobResultMerger.class);
 	
 	MasterConfig config;
 	

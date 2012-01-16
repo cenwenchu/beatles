@@ -29,7 +29,7 @@ import com.taobao.top.analysis.util.ReportUtil;
  */
 public class CreateReportOperation implements Runnable {
 
-	private final Log logger = LogFactory.getLog(CreateReportOperation.class);
+	private static final Log logger = LogFactory.getLog(CreateReportOperation.class);
 	String reportFile;
 	Report report;
 	Map<String,Map<String, Object>> entryResultPool;

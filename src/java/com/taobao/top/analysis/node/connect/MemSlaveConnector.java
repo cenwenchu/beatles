@@ -26,7 +26,7 @@ import com.taobao.top.analysis.node.job.JobTask;
  */
 public class MemSlaveConnector extends AbstractSlaveConnector {
 
-	private final Log logger = LogFactory.getLog(MemSlaveConnector.class);
+	private static final Log logger = LogFactory.getLog(MemSlaveConnector.class);
 	
 	MemTunnel tunnel;
 

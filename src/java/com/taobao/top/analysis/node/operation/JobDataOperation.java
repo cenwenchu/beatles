@@ -11,9 +11,11 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantReadWriteLock.ReadLock;
@@ -21,6 +23,8 @@ import java.util.concurrent.locks.ReentrantReadWriteLock.WriteLock;
 import java.util.zip.Deflater;
 import java.util.zip.DeflaterOutputStream;
 import java.util.zip.InflaterInputStream;
+
+import junit.framework.Assert;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
@@ -42,7 +46,7 @@ import com.taobao.top.analysis.util.ReportUtil;
  */
 public class JobDataOperation implements Runnable {
 
-	private final Log logger = LogFactory.getLog(JobDataOperation.class);
+	private static final Log logger = LogFactory.getLog(JobDataOperation.class);
 	Job job;
 	String operation;
 	MasterConfig config;
@@ -300,10 +304,10 @@ public class JobDataOperation implements Runnable {
 			
 			try
 			{
-				Map<String, Map<String, Object>> resultPool = this.load(f);
+				List<Map<String, Map<String, Object>>> resultPools = load(f,true);
 				
-				if(resultPool != null && resultPool.size() > 0)
-					return resultPool;
+				if(resultPools != null && resultPools.size() > 0)
+					return resultPools.get(0);
 			}
 			catch(Exception ex)
 			{
@@ -370,7 +374,7 @@ public class JobDataOperation implements Runnable {
 				if (setTrunkNull)
 				{
 					job.setJobResult(null);
-					export(resultPool,destfile);
+					export(resultPool,destfile,true,true);
 				}
 				else
 				{
@@ -382,7 +386,7 @@ public class JobDataOperation implements Runnable {
 						{
 							try
 							{
-								export(resultPool,destfile);
+								export(resultPool,destfile,true,true);
 							}
 							finally{
 								readLock.unlock();
@@ -427,27 +431,43 @@ public class JobDataOperation implements Runnable {
 	
 	/**
 	 * 内部协议导入文件生成对象
-	 * @param fileName
+	 * @param file
+	 * @param 文件是否有压缩
 	 * @return
 	 * @throws AnalysisException 
 	 */
-	public Map<String, Map<String, Object>> load(File file) throws AnalysisException
+	public static List<Map<String, Map<String, Object>>> load(File file,boolean useCompress) throws AnalysisException
 	{
 		BufferedReader breader = null;
-		InflaterInputStream inflaterInputStream = null;
-		Map<String, Map<String, Object>> resultPool = new HashMap<String,Map<String,Object>>();
+		List<Map<String,Map<String,Object>>> resultPools = new ArrayList<Map<String,Map<String,Object>>>();
+		
+		Map<String, Map<String, Object>> resultPool = null;
 		long beg = System.currentTimeMillis();
 		
 		try
-		{
-			inflaterInputStream = new InflaterInputStream(
-					new FileInputStream(file));
+		{	
 			
-			breader = new BufferedReader(new InputStreamReader(inflaterInputStream));
+			if(useCompress)
+				breader = new BufferedReader(new InputStreamReader(new InflaterInputStream(new FileInputStream(file))));
+			else
+				breader = new BufferedReader(new InputStreamReader(new FileInputStream(file)));
 			
 			String line;
 			while((line = breader.readLine()) != null)
 			{
+				if (line.equals(AnalysisConstants.EXPORT_DATA_SPLIT))
+				{
+					if(resultPool != null)
+						resultPools.add(resultPool);
+					
+					resultPool = new HashMap<String,Map<String,Object>>();
+					
+					continue;
+				}
+				
+				if (resultPool == null)
+					resultPool = new HashMap<String,Map<String,Object>>();
+				
 				String[] contents = StringUtils.splitByWholeSeparator(line, AnalysisConstants.EXPORT_RECORD_SPLIT);
 				
 				Map<String,Object> m = new HashMap<String,Object>();
@@ -467,10 +487,15 @@ public class JobDataOperation implements Runnable {
 				
 			}
 			
+			if (resultPool != null && resultPool.size() > 0)
+			{
+				resultPools.add(resultPool);
+			}
+			
 			if (logger.isWarnEnabled())
 				logger.warn("Load file "+ file.getName() +" Success , use : " + String.valueOf(System.currentTimeMillis() - beg));
 			
-			return resultPool;
+			return resultPools;
 		}
 		catch(Exception ex)
 		{
@@ -492,20 +517,41 @@ public class JobDataOperation implements Runnable {
 	
 	/**
 	 * 内部协议导出对象
-	 * @param resultPool
-	 * @param FileName
+	 * @param 结果对象
+	 * @param 文件名
+	 * @param 是否需要压缩
+	 * @param 是否需要覆盖原来的文件
 	 */
-	public void export(Map<String, Map<String, Object>> resultPool,String FileName)
+	public static void export(Map<String, Map<String, Object>> resultPool,
+			String FileName,boolean needCompress,boolean needOverwrite)
 	{
 		BufferedWriter bwriter = null;
 		
 		try{
-			new File(FileName).createNewFile();
+			if (needOverwrite)
+				new File(FileName).createNewFile();
+			else
+			{
+				File dest = new File(FileName);
+				if (!dest.exists() || (dest.exists() && dest.isDirectory()))
+					new File(FileName).createNewFile();
+			}
 			
-			Deflater def = new Deflater(Deflater.BEST_SPEED, false);
+			//这种模式下是否覆盖原文件参数无效，每次都会覆盖
+			if (needCompress)
+			{
+				Deflater def = new Deflater(Deflater.BEST_SPEED, false);
 			
-			bwriter = new BufferedWriter(new OutputStreamWriter(new DeflaterOutputStream(
+				bwriter = new BufferedWriter(new OutputStreamWriter(new DeflaterOutputStream(
 					new FileOutputStream(FileName), def)));
+			}
+			else		
+				bwriter = new BufferedWriter(new OutputStreamWriter(
+					new FileOutputStream(FileName,!needOverwrite)));
+		
+			//写个开头
+			bwriter.write(AnalysisConstants.EXPORT_DATA_SPLIT);
+			bwriter.write(ReportUtil.getSeparator());
 			
 			Iterator<String> keys = resultPool.keySet().iterator();
 			
@@ -553,6 +599,36 @@ public class JobDataOperation implements Runnable {
 			}
 			
 		}
+	}
+	
+	public static void main(String[] args) throws AnalysisException
+	{
+		Map<String, Map<String, Object>> resultPool = new HashMap<String, Map<String, Object>>();
+		
+		Map<String,Object> innPool = new HashMap<String,Object>();
+		innPool.put("key1", "value1");
+		innPool.put("key2", "value2");
+		innPool.put("key3", "value3");
+		innPool.put("key4", "value4");
+		
+		resultPool.put("entry1", innPool);
+		
+		JobDataOperation.export(resultPool, "resultPool.tmp",false,true);
+		JobDataOperation.export(resultPool, "resultPool.tmp",false,false);
+		
+		List<Map<String, Map<String, Object>>> resultPools = JobDataOperation.load(new File("resultPool.tmp"),false);
+		
+		Assert.assertEquals(2,resultPools.size());
+		Assert.assertEquals("value4", resultPools.get(0).get("entry1").get("key4"));
+		Assert.assertEquals("value4", resultPools.get(1).get("entry1").get("key4"));
+		
+		
+		JobDataOperation.export(resultPool, "resultPool.tmp",true,true);
+		resultPools = JobDataOperation.load(new File("resultPool.tmp"),true);
+		
+		Assert.assertEquals(1,resultPools.size());
+		Assert.assertEquals("value4", resultPools.get(0).get("entry1").get("key4"));
+		
 	}
 	
 

@@ -23,7 +23,7 @@ import com.taobao.top.analysis.util.ReportUtil;
  */
 public abstract class AbstractConfig implements IConfig{
 	
-	private final Log logger = LogFactory.getLog(AbstractConfig.class);
+	private static final Log logger = LogFactory.getLog(AbstractConfig.class);
 	
 	/**
 	 * 

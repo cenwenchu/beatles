@@ -89,6 +89,24 @@ public class MasterConfig extends AbstractConfig{
 	//配置方式（name:ip:port|weight的方式,weight默认是1可以不填写）：masterGroup=TOPAnalyzer:127.0.0.1:6800,TOPAnalyzer1:127.0.0.1:6801
 	private final static String MASTER_GROUP = "masterGroup";
 	
+	/**
+	 * 当往多个master发送结果时没有成功的时候，将数据保存在本地
+	 */
+	private final static String TEMP_STORE_DATA_DIR = "tempStoreDataDir";
+	
+	public String getTempStoreDataDir()
+	{
+		if(this.properties.containsKey(TEMP_STORE_DATA_DIR))
+			return (String)this.properties.get(TEMP_STORE_DATA_DIR);
+		else
+			return "temp";
+	}
+	
+	public void setTempStoreDataDir(String tempStoreDataDir)
+	{
+		this.properties.put(TEMP_STORE_DATA_DIR,tempStoreDataDir);
+	}
+	
 	public String getMasterGroup()
 	{
 		if(this.properties.containsKey(MASTER_GROUP))

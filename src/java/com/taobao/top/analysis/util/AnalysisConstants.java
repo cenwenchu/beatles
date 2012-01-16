@@ -62,12 +62,13 @@ public class AnalysisConstants {
 	public final static String EXPORT_RECORD_SPLIT = "<->";
 	public final static String EXPORT_COLUMN_SPLIT = "(!)";
 	public final static String EXPORT_DOUBLE_SPLIT = "d(!)";
+	public final static String EXPORT_DATA_SPLIT = "!--linesplit--linesplit--!";
 	
 	
 	//导出文件的后缀名	
 	public final static String INNER_DATAFILE_SUFFIX = ".idata";
 	public final static String IBCK_DATAFILE_SUFFIX = ".ibck";
-	
+	public final static String TEMP_MASTER_DATAFILE_SUFFIX = ".itemp";
 
 	
 	public final static String CHART_FILENAME = "topanalysis.html";

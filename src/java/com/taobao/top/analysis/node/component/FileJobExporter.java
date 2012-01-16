@@ -46,7 +46,7 @@ import com.taobao.top.analysis.util.ReportUtil;
  */
 public class FileJobExporter implements IJobExporter {
 
-	private final Log logger = LogFactory.getLog(FileJobExporter.class);
+	private static final Log logger = LogFactory.getLog(FileJobExporter.class);
 	/**
 	 * 用于输出报表文件的线程池
 	 */

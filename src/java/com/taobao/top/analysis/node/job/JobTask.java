@@ -67,6 +67,11 @@ public class JobTask implements Serializable{
 	 * 该task所属的job分配时的代数
 	 */
 	private int jobEpoch;
+	
+	/**
+	 * 这个任务最后合并的年代纪录，为了当这台服务器出现问题的时候可以接受slave容灾时发送过来的老的结果
+	 */
+	private int lastMergedEpoch;
 
 	public JobTask(JobConfig jobConfig)
 	{
@@ -81,6 +86,19 @@ public class JobTask implements Serializable{
 		recycleCounter= new AtomicInteger(0);
 	}
 	
+	
+	public int getLastMergedEpoch() {
+		return lastMergedEpoch;
+	}
+
+
+
+	public void setLastMergedEpoch(int lastMergedEpoch) {
+		this.lastMergedEpoch = lastMergedEpoch;
+	}
+
+
+
 	public int getJobEpoch() {
 		return jobEpoch;
 	}

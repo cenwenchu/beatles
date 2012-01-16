@@ -22,7 +22,7 @@ import com.taobao.top.analysis.node.event.SendResultsResponseEvent;
  *
  */
 public class MemMasterConnector extends AbstractMasterConnector implements Runnable {
-	private final Log logger = LogFactory.getLog(MemMasterConnector.class);
+	private static final Log logger = LogFactory.getLog(MemMasterConnector.class);
 	
 	MemTunnel tunnel;
 	boolean running;

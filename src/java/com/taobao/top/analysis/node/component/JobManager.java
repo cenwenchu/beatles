@@ -45,7 +45,7 @@ import com.taobao.top.analysis.util.NamedThreadFactory;
  */
 public class JobManager implements IJobManager {
 	
-	private final Log logger = LogFactory.getLog(JobManager.class);
+	private static final Log logger = LogFactory.getLog(JobManager.class);
 
 	private IJobBuilder jobBuilder;
 	private IJobExporter jobExporter;
@@ -247,6 +247,7 @@ public class JobManager implements IJobManager {
 			//以后要扩展成为如果发现当前的epoch < 结果的epoch，表明这台可能是从属的master，负责reduce，但是速度跟不上了
 			if (jobTaskResult.getJobEpoch()!= jobTaskPool.get(jobTaskResult.getTaskIds().get(0)).getJobEpoch())
 			{
+				
 				if (jobTaskResult.getJobEpoch() < jobTaskPool.get(jobTaskResult.getTaskIds().get(0)).getJobEpoch())
 				{
 					logger.error("old task result will be discard!");
@@ -289,6 +290,7 @@ public class JobManager implements IJobManager {
 				{
 					jobTask.setStatus(JobTaskStatus.DONE);
 					jobTask.setEndTime(System.currentTimeMillis());
+					jobTask.setLastMergedEpoch(job.getEpoch().get());
 					job.getCompletedTaskCount().incrementAndGet();
 				}
 			}	
