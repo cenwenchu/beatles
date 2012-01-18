@@ -50,6 +50,7 @@ public class JobDataOperation implements Runnable {
 	Job job;
 	String operation;
 	MasterConfig config;
+	String epoch;
 	
 	
 	public JobDataOperation(Job job,String operation,MasterConfig config)
@@ -57,6 +58,14 @@ public class JobDataOperation implements Runnable {
 		this.job = job;
 		this.operation = operation;
 		this.config = config;
+	}
+	
+	public JobDataOperation(Job job,String operation,MasterConfig config,String epoch)
+	{
+		this.job = job;
+		this.operation = operation;
+		this.config = config;
+		this.epoch = epoch;
 	}
 
 	@Override
@@ -127,7 +136,104 @@ public class JobDataOperation implements Runnable {
 			return;
 		}
 		
+		if (operation.equals(AnalysisConstants.JOBMANAGER_EVENT_LOAD_BACKUPDATA))
+		{
+			try 
+			{
+				if (logger.isInfoEnabled())
+					logger.info(job.getJobName() +  " start loadData ,epoch: " + epoch);
+				
+				loadBackupData(epoch);
+			} 
+			catch (AnalysisException e) 
+			{
+				logger.error(e,e);
+			}
+			
+			return;
+		}
+		
 	}
+	
+	void loadBackupData(String epoch) throws AnalysisException 
+	{
+		if (!StringUtils.isNumeric(epoch))
+		{
+			logger.error("epoch should be number! loadBackupData error! epoch : " + epoch);
+			return;
+		}
+		
+		Map<String, Map<String, Object>> resultPool = null;
+		
+		String destDir = getDestDir();	
+		
+		File dest = new File(destDir);
+		if (!dest.exists() || (dest.exists() && !dest.isDirectory()))
+		{
+			logger.error(destDir + " dir not exist! loadBackupData fail.");
+			return;
+		}
+		
+		File[] bckfiles = dest.listFiles(new AnalyzerFilenameFilter(AnalysisConstants.IBCK_DATAFILE_SUFFIX));
+		File backupData = null;
+		
+		for(File bf : bckfiles)
+		{
+			if (bf.getName().endsWith(new StringBuilder("-").append(epoch)
+					.append(AnalysisConstants.IBCK_DATAFILE_SUFFIX).toString()))
+			{
+				backupData = bf;
+				break;
+			}
+		}
+		
+		if (backupData == null)
+		{
+			logger.error(new StringBuilder("loadBackupData fail! jobName: ")
+								.append(job.getJobName()).append(" epoch:").append(epoch).append(" not exist!").toString());
+			return;
+		}
+		
+		List<Map<String, Map<String, Object>>> results = load(backupData,false);
+
+		if (results == null || (results != null && results.size() == 0))
+			return;
+		
+		resultPool = results.get(0);
+		
+		WriteLock writeLock = job.getTrunkLock().writeLock();
+		
+		try 
+		{
+			if (writeLock.tryLock(10, TimeUnit.MINUTES))
+			{
+				try
+				{
+					Map<String, Map<String, Object>> jobResult = job.getJobResult();
+					if (jobResult != null)
+						jobResult.clear();
+					jobResult = null;
+					
+					job.setJobResult(resultPool);
+					job.getEpoch().set(Integer.valueOf(epoch));
+					
+					logger.info("success load data to jobTrunk.");
+				}
+				finally
+				{
+					writeLock.unlock();
+				}
+			}
+			else
+			{
+				logger.error("loadData error, can't get writeLock! ");
+			}
+		} catch (InterruptedException e) {
+			//do nothing
+		}
+				
+	}
+	
 	
 	Map<String, Map<String, Object>> innerLoad() throws AnalysisException
 	{
@@ -360,7 +466,24 @@ public class JobDataOperation implements Runnable {
 					.append(ReportUtil.getIp())
 					.append(_fileSuffix).toString();
 				
-				//做一个备份
+				//根据job版本来保存文件，版本信息保存在文件名中最后一位
+				//先删除掉所有跨天创建的文件，保证不会把磁盘撑爆掉
+				int oldDataKeepMinutes = 30;
+				
+				if (config != null)
+					oldDataKeepMinutes = config.getOldDataKeepMinutes();
+				
+				long checkTimeLine = System.currentTimeMillis() - oldDataKeepMinutes * 60 * 1000;
+				
+				File tmpDir = new File(destDir);
+				File[] bckFiles = tmpDir.listFiles(new AnalyzerFilenameFilter(_bckSuffix));
+				
+				for(File f : bckFiles)
+				{
+					if (f.lastModified() < checkTimeLine)
+						f.delete();
+				}
+							
 				File f = new File(destfile);
 				if (f.exists() && f.isFile())
 				{
@@ -368,7 +491,7 @@ public class JobDataOperation implements Runnable {
 					if (bckFile.exists())
 						bckFile.delete();
 						
-					f.renameTo(new File(destfile.replace(_fileSuffix,_bckSuffix)));
+					f.renameTo(new File(destfile.replace(_fileSuffix,"-" + job.getEpoch() + _bckSuffix)));
 				}
 				
 				if (setTrunkNull)

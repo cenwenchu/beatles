@@ -357,5 +357,12 @@ public class FileJobExporter implements IJobExporter {
 		JobDataOperation jobDataOperation = new JobDataOperation(job,AnalysisConstants.JOBMANAGER_EVENT_LOADDATA_TO_TMP,this.config);
 		createReportFileThreadPool.submit(jobDataOperation);
 	}
+	
+	@Override
+	public void loadJobBackupData(Job job,String epoch)
+	{
+		JobDataOperation jobDataOperation = new JobDataOperation(job,AnalysisConstants.JOBMANAGER_EVENT_LOAD_BACKUPDATA,this.config,epoch);
+		createReportFileThreadPool.submit(jobDataOperation);
+	}
 
 }

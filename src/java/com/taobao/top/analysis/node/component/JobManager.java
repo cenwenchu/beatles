@@ -365,6 +365,24 @@ public class JobManager implements IJobManager {
 		}
 	}
 	
+	/**
+	 * 从某一个年代载入job的临时数据开始恢复
+	 * @param jobName
+	 * @param epoch
+	 */
+	@Override
+	public void loadJobBackupData(String jobName,String epoch)
+	{
+		if (jobs.containsKey(jobName))
+		{
+			jobExporter.loadJobBackupData(jobs.get(jobName),epoch);
+		}
+		else
+		{
+			logger.error("loadJobBackupData do nothing, jobName " +  jobName + " not exist!");
+		}
+	}
+	
 	@Override
 	public void loadJobDataToTmp(String jobName) {
 		if (jobs.containsKey(jobName))

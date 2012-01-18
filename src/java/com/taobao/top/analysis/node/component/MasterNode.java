@@ -174,6 +174,12 @@ public class MasterNode extends AbstractNode<MasterNodeEvent,MasterConfig> {
 				jobManager.loadJobDataToTmp(((JobManageEvent)event).getJobName());
 				if (logger.isInfoEnabled())
 					logger.info("Master process LOAD_DATA_TO_TMP Event");
+				
+			case LOAD_BACKUP_DATA:
+				jobManager.loadJobBackupData(((JobManageEvent)event).getJobName()
+						,(String)((JobManageEvent)event).getAttachment());
+				if (logger.isInfoEnabled())
+					logger.info("Master process LOAD_BACKUP_DATA Event");
 		
 			default:
 				throw new AnalysisException("Not support such Event : " + event.getEventCode().toString());

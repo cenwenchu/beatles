@@ -66,6 +66,13 @@ public interface IJobManager extends IComponent<MasterConfig>{
 	public void clearJobData(String jobName);
 	
 	/**
+	 * 从某一个年代载入job的临时数据开始恢复
+	 * @param jobName
+	 * @param epoch
+	 */
+	public void loadJobBackupData(String jobName,String epoch);
+	
+	/**
 	 * 设置masterNode来向上传递消息，由master向另一些部件发起消息或者处理
 	 * @param masterNode
 	 */

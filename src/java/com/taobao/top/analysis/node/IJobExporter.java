@@ -53,5 +53,12 @@ public interface IJobExporter extends IComponent<MasterConfig>{
 	 * @param job
 	 */
 	public void loadEntryDataToTmp(Job job);
+	
+	/**
+	 * 从某一个年代载入job的临时数据开始恢复
+	 * @param job
+	 * @param epoch
+	 */
+	public void loadJobBackupData(Job job,String epoch);
 
 }

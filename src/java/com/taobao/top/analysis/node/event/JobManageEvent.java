@@ -23,6 +23,19 @@ public class JobManageEvent extends MasterNodeEvent {
 	 */
 	String jobName;
 	
+	/**
+	 * 可以附加一些参数和内容
+	 */
+	Object attachment;
+	
+	public Object getAttachment() {
+		return attachment;
+	}
+
+	public void setAttachment(Object attachment) {
+		this.attachment = attachment;
+	}
+
 	public String getJobName() {
 		return jobName;
 	}

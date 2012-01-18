@@ -94,6 +94,24 @@ public class MasterConfig extends AbstractConfig{
 	 */
 	private final static String TEMP_STORE_DATA_DIR = "tempStoreDataDir";
 	
+	/**
+	 * 对于分析过程中的临时文件需要保存多久，用于做数据恢复的临时文件
+	 */
+	private final static String OLDDATA_KEEP_MINUTES = "oldDataKeepMinutes";
+	
+	public int getOldDataKeepMinutes()
+	{
+		if(this.properties.containsKey(OLDDATA_KEEP_MINUTES))
+			return Integer.valueOf(this.properties.get(OLDDATA_KEEP_MINUTES));
+		else
+			return 30;
+	}
+	
+	public void setOldDataKeepMinutes(String oldDataKeepMinutes)
+	{
+		this.properties.put(OLDDATA_KEEP_MINUTES,oldDataKeepMinutes);
+	}
+	
 	public String getTempStoreDataDir()
 	{
 		if(this.properties.containsKey(TEMP_STORE_DATA_DIR))
