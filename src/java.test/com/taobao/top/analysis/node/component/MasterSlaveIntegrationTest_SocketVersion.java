@@ -13,6 +13,8 @@ import com.taobao.top.analysis.config.SlaveConfig;
 import com.taobao.top.analysis.exception.AnalysisException;
 import com.taobao.top.analysis.node.connect.SocketMasterConnector;
 import com.taobao.top.analysis.node.connect.SocketSlaveConnector;
+import com.taobao.top.analysis.node.event.SlaveEventCode;
+import com.taobao.top.analysis.node.event.SlaveNodeEvent;
 import com.taobao.top.analysis.node.io.FileInputAdaptor;
 import com.taobao.top.analysis.node.io.FileOutputAdaptor;
 import com.taobao.top.analysis.node.io.HttpInputAdaptor;
@@ -57,7 +59,7 @@ public class MasterSlaveIntegrationTest_SocketVersion {
 		return masterNode;
 	}
 	
-	public static SlaveNode buildSlave(String configfile)
+	public static SlaveNode buildSlave(String configfile,boolean needStart)
 	{
 		SlaveNode slaveNode = new SlaveNode();
 		JobResultMerger jobResultMerger2 = new JobResultMerger();
@@ -86,25 +88,33 @@ public class MasterSlaveIntegrationTest_SocketVersion {
 		statisticsEngine.addInputAdaptor(fileInputAdaptor);
 		statisticsEngine.addInputAdaptor(httpInputAdaptor);
 		statisticsEngine.addOutputAdaptor(fileOutAdaptor);
-		slaveNode.startNode();
+		
+		if (needStart)
+			slaveNode.startNode();
 		
 		return slaveNode;
 	}
 	
 	@Test
-	@Ignore
 	public void test() throws AnalysisException, InterruptedException
 	{
 		//build MasterNode1
 		MasterNode masterNode = buildMaster("master-config-ms.properties");
 		MasterNode masterNode1 = buildMaster("master-config-ms1.properties");
 		MasterNode masterNode2 = buildMaster("master-config-ms2.properties");
-		
-		Thread.sleep(1000);
-		
+			
 		
 		//build SlaveNode
-		SlaveNode slaveNode = buildSlave("slave-config.properties");
+		SlaveNode slaveNode = buildSlave("slave-config.properties",false);
+		SlaveNodeEvent event = new SlaveNodeEvent();
+		event.setEventCode(SlaveEventCode.SUSPEND);
+		slaveNode.addEvent(event);
+		slaveNode.startNode();
+		
+		Thread.sleep(5000);
+		
+		event.setEventCode(SlaveEventCode.AWAKE);
+		slaveNode.addEvent(event);
 		
 		
 		Thread.sleep(35 * 1000);
@@ -119,6 +129,32 @@ public class MasterSlaveIntegrationTest_SocketVersion {
 	}
 	
 	@Test
+	@Ignore
+	public void test1() throws AnalysisException, InterruptedException
+	{
+		//build MasterNode1
+		MasterNode masterNode = buildMaster("master-config-ms.properties");
+		MasterNode masterNode1 = buildMaster("master-config-ms1.properties");
+		MasterNode masterNode2 = buildMaster("master-config-ms2.properties");
+			
+		Thread.sleep(1000);
+		
+		//build SlaveNode
+		SlaveNode slaveNode = buildSlave("slave-config.properties",true);
+		
+		Thread.sleep(35 * 1000);
+		
+		masterNode.stopNode();
+		masterNode1.stopNode();
+		masterNode2.stopNode();
+		slaveNode.stopNode();
+		
+		Thread.sleep(3000);
+		
+	}
+	
+	@Test
+	@Ignore
 	public void testFailCover() throws AnalysisException, InterruptedException
 	{
 		//build MasterNode1
@@ -129,7 +165,7 @@ public class MasterSlaveIntegrationTest_SocketVersion {
 		
 		
 		//build SlaveNode
-		SlaveNode slaveNode = buildSlave("slave-config.properties");
+		SlaveNode slaveNode = buildSlave("slave-config.properties",true);
 		
 		
 		Thread.sleep(35 * 1000);

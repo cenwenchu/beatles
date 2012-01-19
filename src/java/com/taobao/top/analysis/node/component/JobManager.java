@@ -134,34 +134,49 @@ public class JobManager implements IJobManager {
 	public void releaseResource() {
 		
 		//导出所有结果，暂时不导出中间data，后面看是否需要
-		for(Job j : jobs.values())
-		{
-			if (!j.isExported().get())
+		if (jobs != null)
+			for(Job j : jobs.values())
 			{
-				jobExporter.exportReport(j,false);
-				logger.info("releaseResouce now, export job : " + j.getJobName());
+				if (!j.isExported().get())
+				{
+					jobExporter.exportReport(j,false);
+					logger.info("releaseResouce now, export job : " + j.getJobName());
+				}
 			}
-		}
 		
 		try
 		{
-			eventProcessThreadPool.shutdown();
+			if (eventProcessThreadPool != null)
+				eventProcessThreadPool.shutdown();
 			
-			masterDataRecoverWorker.stopWorker();
+			if (masterDataRecoverWorker != null)
+				masterDataRecoverWorker.stopWorker();
 		}
 		finally
 		{
+			if (jobs != null)
+				jobs.clear();
+			
+			if (jobTaskPool != null)
+				jobTaskPool.clear();
+			
+			if (statusPool != null)
+				statusPool.clear();
+			
+			if (jobTaskResultsQueuePool != null)
+				jobTaskResultsQueuePool.clear();
+			
+			if (branchResultQueuePool != null)
+				branchResultQueuePool.clear();	
 		
-			jobs.clear();
-			jobTaskPool.clear();
-			statusPool.clear();
-			jobTaskResultsQueuePool.clear();
-			branchResultQueuePool.clear();	
-		
-		
-			jobBuilder.releaseResource();
-			jobExporter.releaseResource();
-			jobResultMerger.releaseResource();
+			if (jobBuilder != null)
+				jobBuilder.releaseResource();
+			
+			if (jobExporter != null)
+				jobExporter.releaseResource();
+			
+			if (jobResultMerger != null)
+				jobResultMerger.releaseResource();
 			
 			logger.info("jobManager releaseResource end");
 			

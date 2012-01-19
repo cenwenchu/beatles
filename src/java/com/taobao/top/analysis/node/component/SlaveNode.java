@@ -121,13 +121,19 @@ public class SlaveNode extends AbstractNode<SlaveNodeEvent,SlaveConfig>{
 		
 		try
 		{
-			analysisWorkerThreadPool.shutdown();
+			if (analysisWorkerThreadPool != null)
+				analysisWorkerThreadPool.shutdown();
 		}
 		finally
 		{
-			slaveConnector.releaseResource();
-			statisticsEngine.releaseResource();
-			jobResultMerger.releaseResource();
+			if (slaveConnector != null)
+				slaveConnector.releaseResource();
+			
+			if (statisticsEngine != null)
+				statisticsEngine.releaseResource();
+			
+			if (jobResultMerger != null)
+				jobResultMerger.releaseResource();
 		}
 		
 		if (logger.isInfoEnabled())
@@ -397,7 +403,16 @@ public class SlaveNode extends AbstractNode<SlaveNodeEvent,SlaveConfig>{
 
 	@Override
 	public void processEvent(SlaveNodeEvent event) {
-		// TODO Auto-generated method stub
+		switch(event.getEventCode())
+		{
+			case SUSPEND:
+				this.suspendNode();
+			break;
+			
+			case AWAKE:
+				this.awaitNode();
+			break;
+		}
 		
 	}
 	

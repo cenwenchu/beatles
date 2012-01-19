@@ -73,8 +73,11 @@ public class MasterNode extends AbstractNode<MasterNodeEvent,MasterConfig> {
 
 	@Override
 	public void releaseResource() {
-		jobManager.releaseResource();
-		masterConnector.releaseResource();
+		if (jobManager != null)
+			jobManager.releaseResource();
+		
+		if (masterConnector != null)
+			masterConnector.releaseResource();
 		
 		if (logger.isInfoEnabled())
 			logger.info("Master releaseResource complete.");
@@ -174,13 +177,23 @@ public class MasterNode extends AbstractNode<MasterNodeEvent,MasterConfig> {
 				jobManager.loadJobDataToTmp(((JobManageEvent)event).getJobName());
 				if (logger.isInfoEnabled())
 					logger.info("Master process LOAD_DATA_TO_TMP Event");
+				break;
 				
 			case LOAD_BACKUP_DATA:
 				jobManager.loadJobBackupData(((JobManageEvent)event).getJobName()
 						,(String)((JobManageEvent)event).getAttachment());
 				if (logger.isInfoEnabled())
 					logger.info("Master process LOAD_BACKUP_DATA Event");
-		
+				break;
+				
+			case SUSPEND:
+				this.suspendNode();
+				break;
+				
+			case AWAKE:
+				this.awaitNode();
+				break;
+				
 			default:
 				throw new AnalysisException("Not support such Event : " + event.getEventCode().toString());
 		}

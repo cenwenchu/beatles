@@ -99,6 +99,24 @@ public class MasterConfig extends AbstractConfig{
 	 */
 	private final static String OLDDATA_KEEP_MINUTES = "oldDataKeepMinutes";
 	
+	/**
+	 * 用于区分多组的master群
+	 */
+	private final static String MASTER_GROUP_ID = "masterGroupId";
+	
+	public String getMasterGroupId()
+	{
+		if(this.properties.containsKey(MASTER_GROUP_ID))
+			return this.properties.get(MASTER_GROUP_ID);
+		else
+			return "_default_group_";
+	}
+	
+	public void setMasterGroupId(String masterGroupId)
+	{
+		this.properties.put(MASTER_GROUP_ID,masterGroupId);
+	}
+	
 	public int getOldDataKeepMinutes()
 	{
 		if(this.properties.containsKey(OLDDATA_KEEP_MINUTES))

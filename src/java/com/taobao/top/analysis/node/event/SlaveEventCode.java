@@ -13,7 +13,9 @@ package com.taobao.top.analysis.node.event;
 public enum SlaveEventCode {
 	
 	GET_TASK_RESP("getTask"),
-	SEND_RESULT_RESP("sendResult");	
+	SEND_RESULT_RESP("sendResult"),
+	SUSPEND("suspend"),
+	AWAKE("awake");	
 	
 	String v;
 	

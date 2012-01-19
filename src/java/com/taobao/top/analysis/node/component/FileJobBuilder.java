@@ -72,6 +72,7 @@ public class FileJobBuilder implements IJobBuilder{
 	 */
 	private String jobSource;
 	
+	
 	@Override
 	public boolean isNeedRebuild() {
 		return needRebuild;
@@ -812,13 +813,11 @@ public class FileJobBuilder implements IJobBuilder{
 
 	@Override
 	public void init() {
-		// TODO Auto-generated method stub
 		
 	}
 
 	@Override
 	public void releaseResource() {
-		// TODO Auto-generated method stub
 		
 	}
 

@@ -19,7 +19,9 @@ public enum MasterEventCode {
 	LOAD_DATA("loadData"),
 	LOAD_BACKUP_DATA("loadBackupData"),
 	LOAD_DATA_TO_TMP("loadDataToTmp"),
-	CLEAR_DATA("clearData");
+	CLEAR_DATA("clearData"),
+	SUSPEND("suspend"),
+	AWAKE("awake");
 	
 	
 	String v;

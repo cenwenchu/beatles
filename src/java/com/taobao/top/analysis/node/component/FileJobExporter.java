@@ -54,7 +54,7 @@ public class FileJobExporter implements IJobExporter {
 	private MasterConfig config;
 	private int maxCreateReportWorker = 8;
 	private long lastRuntime=(System.currentTimeMillis() + 8 * 60 * 60 * 1000) / 86400000;
-	
+
 	
 	public int getMaxCreateReportWorker() {
 		return maxCreateReportWorker;
@@ -90,12 +90,15 @@ public class FileJobExporter implements IJobExporter {
 				maxCreateReportWorker, 0,
 				TimeUnit.SECONDS, new LinkedBlockingQueue<Runnable>(),
 				new NamedThreadFactory("createReportFile_worker"));
+		
 	}
 
 	
 	@Override
 	public void releaseResource() {
-		createReportFileThreadPool.shutdown();
+		if (createReportFileThreadPool != null)
+			createReportFileThreadPool.shutdown();
+		
 	}
 
 	@Override

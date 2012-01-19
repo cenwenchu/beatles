@@ -78,7 +78,8 @@ public class JobResultMerger implements IJobResultMerger {
 	
 	@Override
 	public void releaseResource() {
-		mergeJobResultThreadPool.shutdown();
+		if (mergeJobResultThreadPool != null)
+			mergeJobResultThreadPool.shutdown();
 	}
 
 	

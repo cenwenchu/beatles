@@ -51,7 +51,7 @@ public class SocketSlaveConnector extends AbstractSlaveConnector {
 	ChannelFactory factory;
 	ChannelFuture future;
 	//默认的channel
-	Channel leaderChannel;
+	String leaderChannel;
 	ChannelDownstreamHandler downstreamHandler;
 	ChannelUpstreamHandler upstreamHandler;
 	Map<String, MasterNodeEvent> responseQueue = new ConcurrentHashMap<String, MasterNodeEvent>();
@@ -84,18 +84,19 @@ public class SocketSlaveConnector extends AbstractSlaveConnector {
 		bootstrap.setOption("tcpNoDelay", true);
 		bootstrap.setOption("keepAlive", true);
 
-		connectServer();
+		initChannelPool();
 
 	}
 
-	public void connectServer() throws AnalysisException {
+	public void initChannelPool() throws AnalysisException {
 		if (channels != null) {
 			releaseResource();
 		}
 		
 		channels = new HashMap<String,Channel>();
 		
-		leaderChannel = getChannel(config.getMasterAddress(), config.getMasterPort());
+		leaderChannel = new StringBuilder().append(config.getMasterAddress())
+					.append(":").append(config.getMasterPort()).toString();
 	}
 	
 	public Channel getChannel(String address) throws AnalysisException
@@ -146,12 +147,6 @@ public class SocketSlaveConnector extends AbstractSlaveConnector {
 		
 		return channel;
 	}
-	
-	public Channel getChannel(String ip,int port) throws AnalysisException
-	{
-		String address = new StringBuilder().append(ip).append(":").append(port).toString();
-		return getChannel(address);
-	}
 
 	@Override
 	public void releaseResource() {
@@ -191,7 +186,9 @@ public class SocketSlaveConnector extends AbstractSlaveConnector {
 			responseQueue.put(requestEvent.getSequence(), requestEvent);
 			slaveEventTimeQueue.add(requestEvent);
 			
-			ChannelFuture channelFuture = leaderChannel.write(requestEvent);
+			Channel channel = getChannel(leaderChannel);
+			
+			ChannelFuture channelFuture = channel.write(requestEvent);
 
 			channelFuture.await(10, TimeUnit.SECONDS);
 

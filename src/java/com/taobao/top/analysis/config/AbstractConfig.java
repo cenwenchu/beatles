@@ -36,6 +36,24 @@ public abstract class AbstractConfig implements IConfig{
 	Map<String,String> properties = new HashMap<String,String>();
 	
 	/**
+	 * 是否使用zookeeper作为集群的配置中心，默认关闭，使用本地文件
+	 */
+	public static final String USE_ZOOKEEPER = "useZookeeper";
+	
+	public boolean isUseZookeeper()
+	{
+		if(this.properties.containsKey(USE_ZOOKEEPER))
+			return Boolean.valueOf(this.properties.get(USE_ZOOKEEPER));
+		else
+			return false;
+	}
+	
+	public void setUseZookeeper(String useZookeeper)
+	{
+		this.properties.put(USE_ZOOKEEPER,useZookeeper);
+	}
+	
+	/**
 	 * 从配置中根据名称获得属性内容
 	 * @param propName
 	 */
