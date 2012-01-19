@@ -99,6 +99,7 @@ public class MasterSlaveIntegrationTest_SocketVersion {
 	}
 	
 	@Test
+	@Ignore
 	public void test() throws AnalysisException, InterruptedException
 	{
 		//build MasterNode1
@@ -132,7 +133,6 @@ public class MasterSlaveIntegrationTest_SocketVersion {
 	}
 	
 	@Test
-	@Ignore
 	public void test1() throws AnalysisException, InterruptedException
 	{
 		//build MasterNode1
@@ -144,6 +144,7 @@ public class MasterSlaveIntegrationTest_SocketVersion {
 		
 		//build SlaveNode
 		SlaveNode slaveNode = buildSlave("slave-config.properties",true);
+		SlaveNode slaveNode1 = buildSlave("slave-config1.properties",true);
 		
 		Thread.sleep(35 * 1000);
 		
@@ -151,6 +152,7 @@ public class MasterSlaveIntegrationTest_SocketVersion {
 		masterNode1.stopNode();
 		masterNode2.stopNode();
 		slaveNode.stopNode();
+		slaveNode1.stopNode();
 		
 		Thread.sleep(3000);
 		
