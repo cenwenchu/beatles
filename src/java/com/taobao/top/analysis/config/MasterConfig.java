@@ -3,6 +3,8 @@
  */
 package com.taobao.top.analysis.config;
 
+import com.taobao.top.analysis.util.ReportUtil;
+
 
 /**
  * 服务端配置类
@@ -100,21 +102,21 @@ public class MasterConfig extends AbstractConfig{
 	private final static String OLDDATA_KEEP_MINUTES = "oldDataKeepMinutes";
 	
 	/**
-	 * 用于区分多组的master群
+	 * 用于区分多个分析集群，一个分析集群可以由多个master和slave组成
 	 */
-	private final static String MASTER_GROUP_ID = "masterGroupId";
+	private final static String GROUP_ID = "groupId";
 	
-	public String getMasterGroupId()
+	public String getGroupId()
 	{
-		if(this.properties.containsKey(MASTER_GROUP_ID))
-			return this.properties.get(MASTER_GROUP_ID);
+		if(this.properties.containsKey(GROUP_ID))
+			return this.properties.get(GROUP_ID);
 		else
 			return "_default_group_";
 	}
 	
-	public void setMasterGroupId(String masterGroupId)
+	public void setGroupId(String GroupId)
 	{
-		this.properties.put(MASTER_GROUP_ID,masterGroupId);
+		this.properties.put(GROUP_ID,GroupId);
 	}
 	
 	public int getOldDataKeepMinutes()
@@ -170,7 +172,7 @@ public class MasterConfig extends AbstractConfig{
 		if(this.properties.containsKey(MASTER_NAME))
 			return (String)this.properties.get(MASTER_NAME);
 		else
-			return null;
+			return "_Default_Master_" + ReportUtil.getIp();
 	}
 
 	public void setMasterName(String masterName) {

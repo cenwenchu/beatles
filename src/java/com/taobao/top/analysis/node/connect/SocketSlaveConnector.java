@@ -297,4 +297,9 @@ public class SocketSlaveConnector extends AbstractSlaveConnector {
 		}
 	}
 
+	@Override
+	public void changeMaster(String master) {
+		this.leaderChannel = master;
+	}
+
 }

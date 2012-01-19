@@ -32,5 +32,11 @@ public interface ISlaveConnector extends IComponent<SlaveConfig>{
 	 * @return
 	 */
 	public String sendJobTaskResults(SendResultsRequestEvent jobResponseEvent,String master);
+	
+	/**
+	 * 运行期可以切换主master
+	 * @param master
+	 */
+	public void changeMaster(String master);
 
 }

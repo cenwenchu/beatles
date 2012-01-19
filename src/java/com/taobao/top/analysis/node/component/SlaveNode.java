@@ -357,13 +357,14 @@ public class SlaveNode extends AbstractNode<SlaveNodeEvent,SlaveConfig>{
 		try
 		{
 			StringBuilder tempFile = new StringBuilder();
+			tempFile.append(config.getSlaveName()).append(File.separator);
 			tempFile.append(config.getTempStoreDataDir());
 			
-			File dest =  new File(config.getTempStoreDataDir());
+			File dest =  new File(tempFile.toString());
 			
 			if (!dest.exists() || (dest.exists() && !dest.isDirectory()))
 			{
-				new File(config.getTempStoreDataDir()).mkdirs();
+				new File(tempFile.toString()).mkdirs();
 			}
 			
 			if (!config.getTempStoreDataDir().endsWith(File.separator))
@@ -407,11 +408,15 @@ public class SlaveNode extends AbstractNode<SlaveNodeEvent,SlaveConfig>{
 		{
 			case SUSPEND:
 				this.suspendNode();
-			break;
+				break;
 			
 			case AWAKE:
 				this.awaitNode();
-			break;
+				break;
+			
+			case CHANGE_MASTER:
+				slaveConnector.changeMaster((String)event.getAttachment());
+				break;
 		}
 		
 	}

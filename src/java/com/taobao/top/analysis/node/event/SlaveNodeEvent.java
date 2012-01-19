@@ -24,6 +24,17 @@ public class SlaveNodeEvent implements INodeEvent {
 	String sequence;
 	
 	protected transient Object channel;
+	
+	Object attachment;
+	
+
+	public Object getAttachment() {
+		return attachment;
+	}
+
+	public void setAttachment(Object attachment) {
+		this.attachment = attachment;
+	}
 
 	public String getSequence() {
 		return sequence;

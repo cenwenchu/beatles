@@ -102,4 +102,11 @@ public class MemSlaveConnector extends AbstractSlaveConnector {
 		this.tunnel = tunnel;
 	}
 
+
+	@Override
+	public void changeMaster(String master) {
+		// TODO Auto-generated method stub
+		
+	}
+
 }

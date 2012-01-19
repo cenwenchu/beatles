@@ -3,6 +3,8 @@
  */
 package com.taobao.top.analysis.config;
 
+import com.taobao.top.analysis.util.ReportUtil;
+
 
 /**
  * Slave配置类
@@ -16,6 +18,11 @@ public class SlaveConfig extends AbstractConfig {
 	 * 
 	 */
 	private static final long serialVersionUID = -2947907535268615055L;
+	
+	/**
+	 * Slave的名称
+	 */
+	private final static String SLAVE_NAME = "slaveName";
 	
 	/**
 	 * mater的地址
@@ -66,6 +73,37 @@ public class SlaveConfig extends AbstractConfig {
 	 * 当往多个master发送结果时没有成功的时候，将数据保存在本地
 	 */
 	private final static String TEMP_STORE_DATA_DIR = "tempStoreDataDir";
+	
+	/**
+	 * 用于区分多个分析集群，一个分析集群可以由多个master和slave组成
+	 */
+	private final static String GROUP_ID = "groupId";
+	
+	public String getGroupId()
+	{
+		if(this.properties.containsKey(GROUP_ID))
+			return this.properties.get(GROUP_ID);
+		else
+			return "_default_group_";
+	}
+	
+	public void setGroupId(String GroupId)
+	{
+		this.properties.put(GROUP_ID,GroupId);
+	}
+	
+	public String getSlaveName()
+	{
+		if(this.properties.containsKey(SLAVE_NAME))
+			return (String)this.properties.get(SLAVE_NAME);
+		else
+			return "_Default_Slave_" + ReportUtil.getIp();
+	}
+	
+	public void setSlaveName(String slaveName)
+	{
+		this.properties.put(SLAVE_NAME,slaveName);
+	}
 	
 	public String getTempStoreDataDir()
 	{

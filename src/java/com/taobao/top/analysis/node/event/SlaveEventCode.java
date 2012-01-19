@@ -15,7 +15,8 @@ public enum SlaveEventCode {
 	GET_TASK_RESP("getTask"),
 	SEND_RESULT_RESP("sendResult"),
 	SUSPEND("suspend"),
-	AWAKE("awake");	
+	AWAKE("awake"),
+	CHANGE_MASTER("changeMaster");	
 	
 	String v;
 	

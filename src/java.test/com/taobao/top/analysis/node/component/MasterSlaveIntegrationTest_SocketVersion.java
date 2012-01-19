@@ -3,6 +3,9 @@
  */
 package com.taobao.top.analysis.node.component;
 
+import java.io.File;
+import java.io.IOException;
+
 import org.jboss.netty.handler.codec.serialization.ObjectDecoder;
 import org.jboss.netty.handler.codec.serialization.ObjectEncoder;
 import org.junit.Ignore;
@@ -111,7 +114,7 @@ public class MasterSlaveIntegrationTest_SocketVersion {
 		slaveNode.addEvent(event);
 		slaveNode.startNode();
 		
-		Thread.sleep(5000);
+		Thread.sleep(3000);
 		
 		event.setEventCode(SlaveEventCode.AWAKE);
 		slaveNode.addEvent(event);
@@ -172,6 +175,8 @@ public class MasterSlaveIntegrationTest_SocketVersion {
 		
 		masterNode.stopNode();
 		masterNode1.stopNode();
+		
+		File tmpFiles = new File("slave1/temp");
 		
 		
 		MasterNode masterNode2 = buildMaster("master-config-ms2.properties");
