@@ -7,6 +7,7 @@ package com.taobao.top.analysis.node.component;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -369,9 +370,16 @@ public class SlaveNode extends AbstractNode<SlaveNodeEvent,SlaveConfig>{
 			
 			if (!config.getTempStoreDataDir().endsWith(File.separator))
 				tempFile.append(File.separator);
+			
+			Calendar calendar = Calendar.getInstance();
+			String currentTime = new StringBuilder()
+					.append(calendar.get(Calendar.YEAR)).append("-")
+					.append(calendar.get(Calendar.MONTH) + 1).append("-")
+					.append(calendar.get(Calendar.DAY_OF_MONTH)).toString();
 				
 			tempFile.append(master).append(AnalysisConstants.SPLIT_KEY)
-				.append(jobName).append(AnalysisConstants.TEMP_MASTER_DATAFILE_SUFFIX);
+				.append(jobName).append(AnalysisConstants.SPLIT_KEY)
+					.append(currentTime).append(AnalysisConstants.TEMP_MASTER_DATAFILE_SUFFIX);
 			
 			dest = new File(tempFile.toString());
 			
