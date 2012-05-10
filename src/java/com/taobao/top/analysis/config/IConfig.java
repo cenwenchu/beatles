@@ -26,4 +26,30 @@ public interface IConfig extends java.io.Serializable{
 	 * @param propName
 	 */
 	public String get(String propName);
+	
+	/**
+	 * 判断是否需要从外部重新加载配置
+	 * 此处暂实现判断配置文件的变更
+	 * @return
+	 */
+	public boolean isNeedReload();
+	
+	/**
+	 * 重新载入配置文件
+	 */
+	public void reload();
+	
+	/**
+	 * 将config中需要序列化的内容序列化成为字符串
+	 * @return
+	 */
+	public String marshal();
+	
+	/**
+	 * 从content中反解出内容设置到config中
+	 * @param content
+	 * @return
+	 */
+	public void unmarshal(String content);
+	
 }

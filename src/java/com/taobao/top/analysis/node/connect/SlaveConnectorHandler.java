@@ -15,8 +15,9 @@ import org.jboss.netty.channel.ExceptionEvent;
 import org.jboss.netty.channel.MessageEvent;
 import org.jboss.netty.channel.SimpleChannelUpstreamHandler;
 
-import com.taobao.top.analysis.node.connect.SocketSlaveConnector.SlaveEventTimeOutQueue;
+import com.taobao.top.analysis.node.component.SlaveNode;
 import com.taobao.top.analysis.node.event.MasterNodeEvent;
+import com.taobao.top.analysis.node.event.SlaveEventCode;
 import com.taobao.top.analysis.node.event.SlaveNodeEvent;
 
 
@@ -31,14 +32,16 @@ public class SlaveConnectorHandler extends SimpleChannelUpstreamHandler {
 	private static final Log logger = LogFactory.getLog(SlaveConnectorHandler.class);
 	
 	Map<String,MasterNodeEvent> responseQueue;
-	SlaveEventTimeOutQueue slaveEventTimeQueue;
+//	SlaveEventTimeOutQueue slaveEventTimeQueue;
+	private SlaveNode slaveNode;
 	volatile Channel channel;
 	
-	public SlaveConnectorHandler(Map<String,MasterNodeEvent> responseQueue,SlaveEventTimeOutQueue slaveEventTimeQueue)
+	public SlaveConnectorHandler(Map<String,MasterNodeEvent> responseQueue, SlaveNode slaveNode)
 	{
 		super();
 		this.responseQueue = responseQueue;
-		this.slaveEventTimeQueue = slaveEventTimeQueue;
+//		this.slaveEventTimeQueue = slaveEventTimeQueue;
+		this.slaveNode = slaveNode;
 	}
 	
 	@Override
@@ -52,7 +55,12 @@ public class SlaveConnectorHandler extends SimpleChannelUpstreamHandler {
 			throws Exception {
 		if (event instanceof ChannelStateEvent) 
 		{
-			logger.info(event.toString());
+		    StringBuffer sb = new StringBuffer(event.toString());
+		    sb.append(",pipelines");
+		    for(int i=0; i<ctx.getPipeline().getNames().size(); i++) {
+		        sb.append(ctx.getPipeline().getNames().get(i));
+		    }
+			logger.info(sb.toString());
 		}
 		
 		super.handleUpstream(ctx, event);
@@ -65,13 +73,16 @@ public class SlaveConnectorHandler extends SimpleChannelUpstreamHandler {
 		
 		if (slaveEvent != null)
 		{
+		    if(SlaveEventCode.GET_TASK_RESP.equals(slaveEvent.getEventCode())) {
+		        slaveNode.addEvent(slaveEvent);
+		    }
 			if (responseQueue.containsKey(slaveEvent.getSequence()))
 			{
 				responseQueue.get(slaveEvent.getSequence()).setResponse(slaveEvent);
 				responseQueue.get(slaveEvent.getSequence()).getResultReadyFlag().countDown();
 				
-				if(!slaveEventTimeQueue.remove(responseQueue.get(slaveEvent.getSequence())))
-					logger.error("event not in timeout queue, please check code,maybe it be wrong!");
+//				if(!slaveEventTimeQueue.remove(responseQueue.get(slaveEvent.getSequence())))
+//					logger.error("event not in timeout queue, please check code,maybe it be wrong!");
 				
 				responseQueue.remove(slaveEvent.getSequence());
 			}
@@ -83,9 +94,13 @@ public class SlaveConnectorHandler extends SimpleChannelUpstreamHandler {
 	@Override
 	public void exceptionCaught(ChannelHandlerContext ctx, ExceptionEvent e)
 			throws Exception {
-		logger.warn("Unexpected exception from downstream.",
+		logger.error("Unexpected exception from downstream.",
 				                 e.getCause());
-		e.getChannel().close();
+		logger.error(ctx.getAttachment());
+		if(e.getChannel().isOpen()) {
+		    logger.error("close channel");
+		    e.getChannel().close();
+		}
 	}
 
 }

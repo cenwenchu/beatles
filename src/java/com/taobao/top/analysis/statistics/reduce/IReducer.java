@@ -12,6 +12,26 @@ import com.taobao.top.analysis.statistics.data.ReportEntry;
  * @param <T>
  */
 public interface IReducer extends Cloneable,Serializable {
+	
+	public enum ReduceType
+	{
+		DEEP_MERGE("deep"),
+		SHALLOW_MERGE("shallow");
+		
+		String v;
+		
+		ReduceType(String value)
+		{
+			this.v = value;
+		}
+		
+		@Override
+		public String toString() {
+			return v;
+		}
+	}
+	
+	
 	/**
 	 * 聚合
 	 * @param entry
@@ -19,7 +39,7 @@ public interface IReducer extends Cloneable,Serializable {
 	 * @param value
 	 * @param result
 	 */
-	public void reducer(ReportEntry entry,String key,Object value,Map<String, Object> result);
+	public void reducer(ReportEntry entry,String key,Object value,Map<String, Object> result,ReduceType rs);
 	
 
 }

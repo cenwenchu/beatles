@@ -69,12 +69,12 @@ public class JobBuilderTest {
 		Assert.assertTrue(jobs.containsKey("job2"));
 		jobs.clear();
 		
-		jobs = mixJobBuilder.rebuild();
+		jobs = mixJobBuilder.rebuild(jobs);
 		
 		Assert.assertNull(jobs);
 		
 		mixJobBuilder.setNeedRebuild(true);
-		jobs = mixJobBuilder.rebuild();
+		jobs = mixJobBuilder.rebuild(jobs);
 		
 		Assert.assertEquals(2, jobs.size());
 		

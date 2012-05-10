@@ -3,6 +3,12 @@
  */
 package com.taobao.top.analysis.config;
 
+import java.util.HashMap;
+import java.util.Map;
+
+import org.apache.commons.lang.StringUtils;
+
+import com.taobao.top.analysis.util.AnalyzerUtil;
 import com.taobao.top.analysis.util.ReportUtil;
 
 
@@ -106,6 +112,29 @@ public class MasterConfig extends AbstractConfig{
 	 */
 	private final static String GROUP_ID = "groupId";
 	
+	/**
+	 * 用于配置指定的报表分发到指定Master上面
+	 */
+	private final static String REPORT_TO_MASTER = "report2Master";
+	
+	/**
+	 * 标识是否有zookeeper作为部分配置存储中心
+	 */
+	private final static String ZK_SERVER = "zkServer";
+	
+	public String getZkServer()
+	{
+		if(this.properties.containsKey(ZK_SERVER))
+			return this.properties.get(ZK_SERVER);
+		else
+			return null;
+	}
+	
+	public void setZkServer(String zkServer)
+	{
+		this.properties.put(ZK_SERVER,zkServer);
+	}
+	
 	public String getGroupId()
 	{
 		if(this.properties.containsKey(GROUP_ID))
@@ -124,7 +153,7 @@ public class MasterConfig extends AbstractConfig{
 		if(this.properties.containsKey(OLDDATA_KEEP_MINUTES))
 			return Integer.valueOf(this.properties.get(OLDDATA_KEEP_MINUTES));
 		else
-			return 30;
+			return 120;
 	}
 	
 	public void setOldDataKeepMinutes(String oldDataKeepMinutes)
@@ -294,4 +323,41 @@ public class MasterConfig extends AbstractConfig{
 		this.properties.put(ASYN_LOAD_DISK_FILE_PRECENT,asynLoadDiskFilePrecent);
 	}
 
+	public void setReportToMaster(String report2Master) {
+	    this.properties.put(REPORT_TO_MASTER, report2Master);
+	}
+	
+	public Map<String, String> getReportToMaster() {
+	    if(this.properties.containsKey(REPORT_TO_MASTER))
+	        return AnalyzerUtil.convertStringToMap(this.properties.get(REPORT_TO_MASTER), ",", "|");
+	    else
+	        return new HashMap<String, String>();
+	}
+
+	@Override
+	public String marshal() {
+		return new StringBuilder().append("timestamp=").append(System.currentTimeMillis()).append(",")
+			    .append("groupId=").append(this.getGroupId()).append(",")
+				.append("masterName=").append(this.getMasterName()).append(",")
+				.append("masterPort=").append(this.getMasterPort()).append(",")
+				.append("jobsSource=").append(this.getJobsSource()).append(",")
+				.append("masterGroup=").append(this.getMasterGroup()).toString();
+	}
+
+	@Override
+	public void unmarshal(String content) {
+		if (StringUtils.isEmpty(content))
+			return;
+		
+		String[] ct = content.split(",");
+		
+		if (ct.length >= 6)
+		{
+			this.setGroupId(ct[1].substring(ct[1].indexOf("=")+1));
+			this.setMasterName(ct[2].substring(ct[2].indexOf("=")+1));
+			this.setMasterPort(ct[3].substring(ct[3].indexOf("=")+1));
+			this.setJobsSource(ct[4].substring(ct[4].indexOf("=")+1));
+			this.setMasterGroup(ct[5].substring(ct[5].indexOf("=")+1));
+		}
+	}
 }

@@ -10,8 +10,9 @@ import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.zookeeper.ZooKeeper;
+
 import com.taobao.top.analysis.config.IConfig;
-import com.taobao.top.analysis.exception.AnalysisException;
 import com.taobao.top.analysis.node.INode;
 import com.taobao.top.analysis.node.event.INodeEvent;
 
@@ -47,6 +48,13 @@ public abstract class AbstractNode<E extends INodeEvent,C extends IConfig> imple
 	 * 用于暂停节点运作的锁
 	 */
 	private Semaphore pauseSemaphore;
+	
+	ZooKeeper zk = null;
+	
+	/**
+	 * 节点启动的时间
+	 */
+	protected long nodeStartTimeStamp;
 	
 	public AbstractNode()
 	{
@@ -90,6 +98,7 @@ public abstract class AbstractNode<E extends INodeEvent,C extends IConfig> imple
 	{
 		innerThread = new Thread(this);
 		innerThread.start();
+		nodeStartTimeStamp = System.currentTimeMillis();
 	}
 	
 	/**
@@ -133,9 +142,10 @@ public abstract class AbstractNode<E extends INodeEvent,C extends IConfig> imple
 				}
 			}
 		}
-		catch(AnalysisException ex)
+		catch(Throwable ex)
 		{
 			logger.error(ex,ex);
+			System.exit(-1);
 		}
 		finally
 		{

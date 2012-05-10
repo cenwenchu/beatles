@@ -4,6 +4,7 @@
 package com.taobao.top.analysis.node.connect;
 
 import com.taobao.top.analysis.config.SlaveConfig;
+import com.taobao.top.analysis.node.component.SlaveNode;
 
 
 /**
@@ -16,6 +17,8 @@ public abstract class AbstractSlaveConnector implements ISlaveConnector {
 
 	SlaveConfig config;
 	
+	SlaveNode slaveNode; 
+	
 	@Override
 	public SlaveConfig getConfig() {
 		return config;
@@ -26,5 +29,21 @@ public abstract class AbstractSlaveConnector implements ISlaveConnector {
 	public void setConfig(SlaveConfig config) {
 		this.config = config;
 	}
+
+
+    /**
+     * @return the slaveNode
+     */
+    public SlaveNode getSlaveNode() {
+        return slaveNode;
+    }
+
+
+    /**
+     * @param slaveNode the slaveNode to set
+     */
+    public void setSlaveNode(SlaveNode slaveNode) {
+        this.slaveNode = slaveNode;
+    }
 
 }

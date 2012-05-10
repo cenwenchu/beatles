@@ -4,6 +4,7 @@ import java.util.Calendar;
 import java.util.Date;
 
 import com.taobao.top.analysis.node.job.JobTask;
+import com.taobao.top.analysis.statistics.data.Alias;
 import com.taobao.top.analysis.statistics.data.ReportEntry;
 
 /**
@@ -26,7 +27,6 @@ public class TimeMapper extends TimeKeyMapper {
 	@Override
 	protected Object generateValue(ReportEntry entry,
 			Object[] contents, JobTask jobtask) {
-
 
 		Calendar calendar = Calendar.getInstance();
 		

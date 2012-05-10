@@ -10,6 +10,7 @@ import java.util.Map;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
+import com.taobao.top.analysis.config.MasterConfig;
 import com.taobao.top.analysis.node.job.Job;
 import com.taobao.top.analysis.node.operation.JobDataOperation;
 import com.taobao.top.analysis.node.operation.MergeJobOperation;
@@ -29,13 +30,15 @@ public class MasterDataRecoverWorker extends Thread {
 	Map<String,Job> jobs;
 	String masterName;
 	boolean isRunnable = true;
+	private MasterConfig config;
 	
-	public MasterDataRecoverWorker(String masterName,String tempStoreDataDir,Map<String,Job> jobs)
+	public MasterDataRecoverWorker(String masterName,String tempStoreDataDir,Map<String,Job> jobs, MasterConfig config)
 	{
 		super("MasterDataRecoverWorker");
 		this.tempStoreDataDir = tempStoreDataDir;
 		this.jobs = jobs;
 		this.masterName = masterName;
+		this.config = config;
 	}
 
 	@Override
@@ -69,10 +72,10 @@ public class MasterDataRecoverWorker extends Thread {
 					
 					Job job = jobs.get(jobName);
 					
-					List<Map<String, Map<String, Object>>> mergeResults = JobDataOperation.load(f, false);
+					List<Map<String, Map<String, Object>>> mergeResults = JobDataOperation.load(f, false,job,false);
 					
 					//如果合并成功，删除临时文件
-					if (MergeJobOperation.mergeToTrunk(job, mergeResults))
+					if (MergeJobOperation.mergeToTrunk(job, mergeResults, config))
 					{
 						f.delete();
 					}

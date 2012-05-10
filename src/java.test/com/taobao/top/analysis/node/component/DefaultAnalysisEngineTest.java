@@ -67,7 +67,7 @@ public class DefaultAnalysisEngineTest {
 				taskResults.add(defaultAnalysisEngine.doAnalysis(jobtask));
 			}
 			
-			JobTaskResult jobTaskResult = jobResultMerger.merge(tasks.get(0), taskResults,true);
+			JobTaskResult jobTaskResult = jobResultMerger.merge(tasks.get(0), taskResults,true,true);
 			
 			defaultAnalysisEngine.doExport(tasks.get(0), jobTaskResult);
 		}

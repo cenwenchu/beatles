@@ -5,6 +5,9 @@ package com.taobao.top.analysis.node.io;
 
 
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
 import com.taobao.top.analysis.node.IJobExporter;
 import com.taobao.top.analysis.node.job.JobTask;
 import com.taobao.top.analysis.node.job.JobTaskResult;
@@ -19,7 +22,7 @@ import com.taobao.top.analysis.node.job.JobTaskResult;
  */
 public class FileOutputAdaptor implements IOutputAdaptor {
 	
-	//private static final Log logger = LogFactory.getLog(FileOutputAdaptor.class);
+	private static final Log logger = LogFactory.getLog(FileOutputAdaptor.class);
 	
 	IJobExporter jobExporter; 
 
@@ -35,7 +38,11 @@ public class FileOutputAdaptor implements IOutputAdaptor {
 
 	@Override
 	public void sendResultToOutput(JobTask jobTask,JobTaskResult jobTaskResult) {
-		jobExporter.exportReport(jobTask,jobTaskResult, false);
+	    if(jobExporter != null) {
+	        jobExporter.exportReport(jobTask,jobTaskResult, false);
+	    } else {
+	        logger.error("jobExporter is null, please have a check");
+	    }
 	}
 
 	

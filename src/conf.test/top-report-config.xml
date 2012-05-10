@@ -67,7 +67,14 @@
 		key可以被没有定义key的内部entry继承，外部ReportEntry无法继承
 	 -->
 	<reports>
-		<report id="apiReport" file="apiReport" key="apiName">
+		<report id="apiUVReport" file="apiUVReport">
+			<entryList>
+			    <entry name="服务名称" key="apiName" value="plain($apiName$)" condition="$errorCode$=0"/>  
+			    <entry name="独立IP数" key="apiName" value="dcount($remoteIp$)"  condition="$errorCode$=0" additions="maxKeys=1000000,errorRate=0.0001"/>
+			</entryList>
+		</report>
+	
+		<!-- report id="apiReport" file="apiReport" key="apiName">
 			<entryList>
 			    <entry name="服务名称" value="plain($apiName$)" /> 
 				<entry id="apiTotalCount"/>
@@ -152,7 +159,7 @@
 				<entry name="时间段内访问平台平均耗时(ms)" value="average($platformConsumeTime$)"  
 						mapClass="com.taobao.top.analysis.statistics.map.TimeKeyMapper" valuefilter="&gt;=0&amp;isnumber&amp;round:3"/>
 			</entryList>
-		</report>
+		</report-->
 			
 		<!-- 以上的所有报表都是全量报表，也就是按照指定时间增量统计合并，也就是job会被执行很多轮，每一轮的结果会合并到主干，例如一天的访问量，
 			但牵涉到如果统计后结果基数还是非常大的情况的时候，例如用户ip维度的统计，一种方式就是直接让slave每次都输出task，另一种就是job一轮所有
@@ -160,7 +167,7 @@
 			需要注意的是当前程序里面固化写死了时间段字段必须放在第一位，例如key="timestamp,remoteIp,apiName"，timestamp这个分片参数必须放在第一位，后续可以改为可定义
 		 -->
 			
-		<report id="ipAPIReportPeriod" key="timestamp,remoteIp,apiName" file="ipAPIReportPeriod" period="true">
+		<!--report id="ipAPIReportPeriod" key="timestamp,remoteIp,apiName" file="ipAPIReportPeriod" period="true">
 			<entryList>
 				<entry name="远端ip"  value="plain($remoteIp$)"
 					mapClass="com.taobao.top.analysis.statistics.map.TimeKeyMapper" mapParams="minute:5" />
@@ -171,7 +178,7 @@
 				<entry name="时间段"  value="plain($timestamp$)"
 					mapClass="com.taobao.top.analysis.statistics.map.TimeMapper" mapParams="minute:5"/>
 			</entryList>
-		</report>
+		</report-->
 		
 	</reports>
 

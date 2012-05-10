@@ -33,6 +33,7 @@ import org.apache.commons.logging.LogFactory;
 import com.taobao.top.analysis.config.MasterConfig;
 import com.taobao.top.analysis.exception.AnalysisException;
 import com.taobao.top.analysis.node.job.Job;
+import com.taobao.top.analysis.statistics.data.DistinctCountEntryValue;
 import com.taobao.top.analysis.util.AnalysisConstants;
 import com.taobao.top.analysis.util.AnalyzerFilenameFilter;
 import com.taobao.top.analysis.util.ReportUtil;
@@ -50,8 +51,7 @@ public class JobDataOperation implements Runnable {
 	Job job;
 	String operation;
 	MasterConfig config;
-	String epoch;
-	
+	String bckPrefix;
 	
 	public JobDataOperation(Job job,String operation,MasterConfig config)
 	{
@@ -60,42 +60,48 @@ public class JobDataOperation implements Runnable {
 		this.config = config;
 	}
 	
-	public JobDataOperation(Job job,String operation,MasterConfig config,String epoch)
+	public JobDataOperation(Job job,String operation,MasterConfig config,String bckPrefix)
 	{
 		this.job = job;
 		this.operation = operation;
 		this.config = config;
-		this.epoch = epoch;
+		this.bckPrefix = bckPrefix;
 	}
-
+	
 	@Override
 	public void run() 
 	{
 		//先设置主干为空，然后再导出，不影响后续的合并处理，适用于磁盘换内存模式的导出
 		if (operation.equals(AnalysisConstants.JOBMANAGER_EVENT_SETNULL_EXPORTDATA))
 		{
-			if (logger.isInfoEnabled())
-				logger.info(job.getJobName() +  " start clear trunk data and exportData now...");
+			if (logger.isWarnEnabled())
+				logger.warn(job.getJobName() +  " start clear trunk data and exportData now...");
 				
 			exportData(true);
 			
+			if (logger.isWarnEnabled())
+                logger.warn(job.getJobName() +  " end clear trunk data and exportData ");
 			return;
 		}
 		
 		if(operation.equals(AnalysisConstants.JOBMANAGER_EVENT_EXPORTDATA))
 		{
-			if (logger.isInfoEnabled())
-				logger.info(job.getJobName() +  " start exportData now...");
+			if (logger.isWarnEnabled())
+				logger.warn(job.getJobName() +  " start exportData now...");
 				
 			exportData(false);
+			job.setLastExportTime(System.currentTimeMillis());
+			
+			if (logger.isWarnEnabled())
+                logger.warn(job.getJobName() +  " end exportData ");
 			
 			return;
 		}
 		
 		if (operation.equals(AnalysisConstants.JOBMANAGER_EVENT_DEL_DATAFILE))
 		{
-			if (logger.isInfoEnabled())
-				logger.info(job.getJobName() +  " delete exportData now...");
+			if (logger.isWarnEnabled())
+				logger.warn(job.getJobName() +  " delete exportData now...");
 				
 			deleteData();
 			
@@ -106,14 +112,17 @@ public class JobDataOperation implements Runnable {
 		{
 			try 
 			{
-				if (logger.isInfoEnabled())
-					logger.info(job.getJobName() +  " start loadData now...");
+				if (logger.isWarnEnabled())
+					logger.warn(job.getJobName() +  " start loadData now...");
 				
-				loadData();
+				loadData(job, config);
+				
+				if (logger.isWarnEnabled())
+                    logger.warn(job.getJobName() +  " end loadData");
 			} 
 			catch (AnalysisException e) 
 			{
-				logger.error(e,e);
+				logger.error("loadData error.",e);
 			}
 			
 			return;
@@ -123,15 +132,21 @@ public class JobDataOperation implements Runnable {
 		{
 			try 
 			{
-				if (logger.isInfoEnabled())
-					logger.info(job.getJobName() +  " start loadDataToTmp now...");
+				if (logger.isWarnEnabled())
+					logger.warn(job.getJobName() +  " start loadDataToTmp now...");
 				
-				loadDataToTmp();
+				JobDataOperation.loadDataToTmp(job, config);
+				
+				if (logger.isWarnEnabled())
+                    logger.warn(job.getJobName() +  " end loadDataToTmp");
 			} 
 			catch (AnalysisException e) 
 			{
-				logger.error(e,e);
+				logger.error("loadDataToTmp error.",e);
 			}
+            catch (InterruptedException e) {
+                logger.error("loadDataToTmp error.",e);
+            }
 			
 			return;
 		}
@@ -140,14 +155,37 @@ public class JobDataOperation implements Runnable {
 		{
 			try 
 			{
-				if (logger.isInfoEnabled())
-					logger.info(job.getJobName() +  " start loadData ,epoch: " + epoch);
+				if (logger.isWarnEnabled())
+					logger.warn(job.getJobName() +  " start loadData ,bckPrefix: " + bckPrefix);
 				
-				loadBackupData(epoch);
+				loadBackupData(bckPrefix);
+				
+				if (logger.isWarnEnabled())
+                    logger.warn(job.getJobName() +  " end loadData ,bckPrefix: " + bckPrefix);
 			} 
 			catch (AnalysisException e) 
 			{
-				logger.error(e,e);
+				logger.error("load backupdata error.",e);
+			}
+			
+			return;
+		}
+		
+		if (operation.equals(AnalysisConstants.JOBMANAGER_EVENT_GET_SOURCETIMESTAMP))
+		{
+			try 
+			{
+				if (logger.isWarnEnabled())
+					logger.warn(job.getJobName() +  " start get sourceTimeStamp.");
+				
+				JobDataOperation.getSourceTimeStamp(job, config);
+				
+				if (logger.isWarnEnabled())
+                    logger.warn(job.getJobName() +  " end get sourceTimeStamp.");
+			} 
+			catch (AnalysisException e) 
+			{
+				logger.error("getSourceTimeStamp error.",e);
 			}
 			
 			return;
@@ -155,17 +193,22 @@ public class JobDataOperation implements Runnable {
 		
 	}
 	
-	void loadBackupData(String epoch) throws AnalysisException 
+	public static void getSourceTimeStamp(Job job, MasterConfig config) throws AnalysisException
 	{
-		if (!StringUtils.isNumeric(epoch))
+		innerLoad(true, job, config);
+	}
+	
+	void loadBackupData(String bckPrefix) throws AnalysisException 
+	{
+		if (StringUtils.isEmpty(bckPrefix))
 		{
-			logger.error("epoch should be number! loadBackupData error! epoch : " + epoch);
+			logger.error("epoch should not be empty! loadBackupData error! bckPrefix : " + bckPrefix);
 			return;
 		}
 		
 		Map<String, Map<String, Object>> resultPool = null;
 		
-		String destDir = getDestDir();	
+		String destDir = getDestDir(job, config);	
 		
 		File dest = new File(destDir);
 		if (!dest.exists() || (dest.exists() && !dest.isDirectory()))
@@ -179,7 +222,7 @@ public class JobDataOperation implements Runnable {
 		
 		for(File bf : bckfiles)
 		{
-			if (bf.getName().endsWith(new StringBuilder("-").append(epoch)
+			if (bf.getName().endsWith(new StringBuilder("-").append(bckPrefix)
 					.append(AnalysisConstants.IBCK_DATAFILE_SUFFIX).toString()))
 			{
 				backupData = bf;
@@ -190,16 +233,16 @@ public class JobDataOperation implements Runnable {
 		if (backupData == null)
 		{
 			logger.error(new StringBuilder("loadBackupData fail! jobName: ")
-								.append(job.getJobName()).append(" epoch:").append(epoch).append(" not exist!").toString());
+								.append(job.getJobName()).append(" bckPrefix:").append(bckPrefix).append(" not exist!").toString());
 			return;
 		}
 		
-		List<Map<String, Map<String, Object>>> results = load(backupData,false);
+		List<Map<String, Map<String, Object>>> results = load(backupData,false,job,false);
 
 		if (results == null || (results != null && results.size() == 0))
 			return;
 		
-		resultPool = results.get(0);
+		resultPool = results.get(results.size() - 1);
 		
 		WriteLock writeLock = job.getTrunkLock().writeLock();
 		
@@ -215,9 +258,9 @@ public class JobDataOperation implements Runnable {
 					jobResult = null;
 					
 					job.setJobResult(resultPool);
-					job.getEpoch().set(Integer.valueOf(epoch));
+					job.getEpoch().set(Integer.valueOf(1));
 					
-					logger.info("success load data to jobTrunk.");
+					logger.warn("success load data to jobTrunk.");
 				}
 				finally
 				{
@@ -235,9 +278,9 @@ public class JobDataOperation implements Runnable {
 	}
 	
 	
-	Map<String, Map<String, Object>> innerLoad() throws AnalysisException
+	static Map<String, Map<String, Object>> innerLoad(boolean onlyLoadSourceTimestamp, Job job, MasterConfig config) throws AnalysisException
 	{
-		String destDir = getDestDir();	
+		String destDir = getDestDir(job, config);	
 		
 		File dest = new File(destDir);
 		if (!dest.exists() || (dest.exists() && !dest.isDirectory()))
@@ -268,12 +311,12 @@ public class JobDataOperation implements Runnable {
 			}
 		}
 
-		return load(totalFiles);
+		return load(totalFiles,onlyLoadSourceTimestamp, job);
 	}
 	
 	void deleteData()
 	{
-		String destDir = getDestDir();	
+		String destDir = getDestDir(job, config);	
 		
 		File dest = new File(destDir);
 		if (!dest.exists() || (dest.exists() && !dest.isDirectory()))
@@ -323,30 +366,28 @@ public class JobDataOperation implements Runnable {
 		}
 	}
 	
-	void loadDataToTmp() throws AnalysisException
-	{
-		job.getLoadLock().lock();
-		
-		try
-		{
-			Map<String, Map<String, Object>> resultPool = innerLoad();	
-			
-			if (resultPool == null)
-				return;
-			
-			job.setDiskResult(resultPool);
-			
-			logger.info("success load data to jobTmpTrunk.");
-		}
-		finally
-		{
-			job.getLoadLock().unlock();
-		}
-	}
+	public static void loadDataToTmp(Job job, MasterConfig config) throws AnalysisException, InterruptedException
+ {
+        job.getLoadLock().lock();
+
+        try {
+            Map<String, Map<String, Object>> resultPool = innerLoad(false, job, config);
+
+            if (resultPool == null)
+                return;
+
+            job.setDiskResult(resultPool);
+
+            logger.warn("success load data to jobTmpTrunk.");
+        }
+        finally {
+            job.getLoadLock().unlock();
+        }
+    }
 	
-	void loadData() throws AnalysisException 
+	public static void loadData(Job job, MasterConfig config) throws AnalysisException 
 	{
-		Map<String, Map<String, Object>> resultPool = innerLoad();	
+		Map<String, Map<String, Object>> resultPool = innerLoad(false, job, config);	
 		
 		if (resultPool == null)
 			return;
@@ -367,7 +408,7 @@ public class JobDataOperation implements Runnable {
 					
 					job.setJobResult(resultPool);
 					
-					logger.info("success load data to jobTrunk.");
+					logger.warn("success load data to jobTrunk.job" + job.getJobName() + " resultPool:" + resultPool.size());
 				}
 				finally
 				{
@@ -390,7 +431,7 @@ public class JobDataOperation implements Runnable {
 	 * @return
 	 * @throws AnalysisException 
 	 */
-	private Map<String, Map<String, Object>> load(File[] totalFiles) throws AnalysisException
+	private static Map<String, Map<String, Object>> load(File[] totalFiles,boolean onlyLoadSourceTimestamp, Job job) throws AnalysisException
 	{
 		boolean error=false;
 		
@@ -410,10 +451,10 @@ public class JobDataOperation implements Runnable {
 			
 			try
 			{
-				List<Map<String, Map<String, Object>>> resultPools = load(f,true);
+				List<Map<String, Map<String, Object>>> resultPools = load(f,true,job,onlyLoadSourceTimestamp);
 				
 				if(resultPools != null && resultPools.size() > 0)
-					return resultPools.get(0);
+					return resultPools.get(resultPools.size() - 1);
 			}
 			catch(Exception ex)
 			{
@@ -438,7 +479,7 @@ public class JobDataOperation implements Runnable {
 			String destfile=null;
 			try 
 			{
-				String destDir = getDestDir();
+				String destDir = getDestDir(job, config);
 						
 				File dest = new File(destDir);
 				if (!dest.exists() || (dest.exists() && !dest.isDirectory()))
@@ -468,21 +509,32 @@ public class JobDataOperation implements Runnable {
 				
 				//根据job版本来保存文件，版本信息保存在文件名中最后一位
 				//先删除掉所有跨天创建的文件，保证不会把磁盘撑爆掉
-				int oldDataKeepMinutes = 30;
-				
-				if (config != null)
-					oldDataKeepMinutes = config.getOldDataKeepMinutes();
-				
-				long checkTimeLine = System.currentTimeMillis() - oldDataKeepMinutes * 60 * 1000;
-				
-				File tmpDir = new File(destDir);
-				File[] bckFiles = tmpDir.listFiles(new AnalyzerFilenameFilter(_bckSuffix));
-				
-				for(File f : bckFiles)
+				try
 				{
-					if (f.lastModified() < checkTimeLine)
-						f.delete();
+					int oldDataKeepMinutes = 120;
+					
+					if (config != null)
+						oldDataKeepMinutes = config.getOldDataKeepMinutes();
+					
+					long checkTimeLine = System.currentTimeMillis() - oldDataKeepMinutes * 60 * 1000;
+					
+					File tmpDir = new File(destDir);
+					File[] bckFiles = tmpDir.listFiles(new AnalyzerFilenameFilter(_bckSuffix));
+					
+					for(File f : bckFiles)
+					{
+						if (f.lastModified() < checkTimeLine)
+							f.delete();
+					}
 				}
+				catch(Exception ex)
+				{
+					logger.error("delete old data file error!",ex);
+				}
+				
+				//fix by fangweng 2012 增加分析器恢复能力，当前每10分钟备份一个
+				_bckSuffix = new StringBuilder("-").append(calendar.get(Calendar.HOUR_OF_DAY)).append("-")
+						.append(calendar.get(Calendar.MINUTE)/10).append(_bckSuffix).toString();
 							
 				File f = new File(destfile);
 				if (f.exists() && f.isFile())
@@ -491,12 +543,15 @@ public class JobDataOperation implements Runnable {
 					if (bckFile.exists())
 						bckFile.delete();
 						
-					f.renameTo(new File(destfile.replace(_fileSuffix,"-" + job.getEpoch() + _bckSuffix)));
+					f.renameTo(new File(destfile.replace(_fileSuffix,_bckSuffix)));
 				}
 				
 				if (setTrunkNull)
 				{
-					job.setJobResult(null);
+					//需要支持如果结果里面包含distinct count 的情况，这种情况，部分数据不导出到磁盘（distinct部分）
+					Map<String, Map<String, Object>> newTrunk = cloneResultFromTrunk(resultPool);
+					
+					job.setJobResult(newTrunk);
 					export(resultPool,destfile,true,true);
 				}
 				else
@@ -527,7 +582,7 @@ public class JobDataOperation implements Runnable {
 						//do nothing
 					}
 				}
-					
+				job.getTrunkExported().compareAndSet(false, true);
 			}
 			catch (Throwable ex) 
 			{
@@ -536,7 +591,53 @@ public class JobDataOperation implements Runnable {
 		}
 	}
 	
-	public String getDestDir()
+	
+	/**
+	 * 将主干上属于distinct count部分数据保留下来不输出，其他内容都输出且清空
+	 * @return
+	 */
+	public Map<String, Map<String, Object>> cloneResultFromTrunk(Map<String, Map<String, Object>> trunk)
+	{
+		Map<String, Map<String, Object>> r = new HashMap<String,Map<String,Object>>();
+		
+		Iterator<String> keys = trunk.keySet().iterator();
+		
+		while(keys.hasNext())
+		{
+			String key = keys.next();
+			
+			Map<String,Object> imap = trunk.get(key);
+			
+			Iterator<String> ikeys = imap.keySet().iterator();
+			
+			while(ikeys.hasNext())
+			{
+				String ikey = ikeys.next();
+				
+				if (imap.get(ikey) instanceof DistinctCountEntryValue)
+				{
+					if (r.get(key) == null)
+					{
+						r.put(key, new HashMap<String,Object>());
+					}
+					
+					r.get(key).put(ikey, imap.get(ikey));
+					
+					ikeys.remove();
+				}
+			}
+			
+			if (trunk.get(key).size() == 0)
+				keys.remove();
+		}
+		
+		if (r.size() == 0)
+			return null; 
+		else	
+			return r;
+	}
+	
+	public static String getDestDir(Job job, MasterConfig config)
 	{
 		String output = job.getJobConfig().getOutput();
 		
@@ -559,7 +660,7 @@ public class JobDataOperation implements Runnable {
 	 * @return
 	 * @throws AnalysisException 
 	 */
-	public static List<Map<String, Map<String, Object>>> load(File file,boolean useCompress) throws AnalysisException
+	public static List<Map<String, Map<String, Object>>> load(File file,boolean useCompress,Job job,boolean onlyLoadSourceTimestamp) throws AnalysisException
 	{
 		BufferedReader breader = null;
 		List<Map<String,Map<String,Object>>> resultPools = new ArrayList<Map<String,Map<String,Object>>>();
@@ -576,8 +677,28 @@ public class JobDataOperation implements Runnable {
 				breader = new BufferedReader(new InputStreamReader(new FileInputStream(file)));
 			
 			String line;
+			boolean isFirstLine = true;
 			while((line = breader.readLine()) != null)
 			{
+				//fix by fangweng 2012 增加分析器恢复能力
+				if (isFirstLine)
+				{
+					try
+					{
+						long jobSourceTimeStamp = Long.parseLong(line);
+						job.setJobSourceTimeStamp(jobSourceTimeStamp);
+						
+						if (onlyLoadSourceTimestamp)
+							return resultPools;
+					}
+					catch(Exception ex)
+					{
+						// ignore 
+					}
+					
+					isFirstLine = false;
+				}
+				
 				if (line.equals(AnalysisConstants.EXPORT_DATA_SPLIT))
 				{
 					if(resultPool != null)
@@ -648,6 +769,8 @@ public class JobDataOperation implements Runnable {
 	public static void export(Map<String, Map<String, Object>> resultPool,
 			String FileName,boolean needCompress,boolean needOverwrite)
 	{
+	    if(resultPool == null)
+	        return;
 		BufferedWriter bwriter = null;
 		
 		try{
@@ -671,6 +794,10 @@ public class JobDataOperation implements Runnable {
 			else		
 				bwriter = new BufferedWriter(new OutputStreamWriter(
 					new FileOutputStream(FileName,!needOverwrite)));
+			
+			//fix by fangweng 2012 增加分析器恢复能力
+			bwriter.write(String.valueOf(System.currentTimeMillis()));
+			bwriter.write(ReportUtil.getSeparator());
 		
 			//写个开头
 			bwriter.write(AnalysisConstants.EXPORT_DATA_SPLIT);
@@ -727,6 +854,7 @@ public class JobDataOperation implements Runnable {
 	public static void main(String[] args) throws AnalysisException
 	{
 		Map<String, Map<String, Object>> resultPool = new HashMap<String, Map<String, Object>>();
+		Job job = new Job();
 		
 		Map<String,Object> innPool = new HashMap<String,Object>();
 		innPool.put("key1", "value1");
@@ -739,7 +867,7 @@ public class JobDataOperation implements Runnable {
 		JobDataOperation.export(resultPool, "resultPool.tmp",false,true);
 		JobDataOperation.export(resultPool, "resultPool.tmp",false,false);
 		
-		List<Map<String, Map<String, Object>>> resultPools = JobDataOperation.load(new File("resultPool.tmp"),false);
+		List<Map<String, Map<String, Object>>> resultPools = JobDataOperation.load(new File("resultPool.tmp"),false,job,false);
 		
 		Assert.assertEquals(2,resultPools.size());
 		Assert.assertEquals("value4", resultPools.get(0).get("entry1").get("key4"));
@@ -747,7 +875,7 @@ public class JobDataOperation implements Runnable {
 		
 		
 		JobDataOperation.export(resultPool, "resultPool.tmp",true,true);
-		resultPools = JobDataOperation.load(new File("resultPool.tmp"),true);
+		resultPools = JobDataOperation.load(new File("resultPool.tmp"),true,job,false);
 		
 		Assert.assertEquals(1,resultPools.size());
 		Assert.assertEquals("value4", resultPools.get(0).get("entry1").get("key4"));

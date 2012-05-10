@@ -26,7 +26,8 @@ import com.taobao.top.analysis.node.job.JobTask;
 import com.taobao.top.analysis.node.job.JobTaskExecuteInfo;
 import com.taobao.top.analysis.node.job.JobTaskResult;
 import com.taobao.top.analysis.statistics.data.ReportEntry;
-import com.taobao.top.analysis.util.ReportUtil;
+import com.taobao.top.analysis.util.AnalysisConstants;
+import com.taobao.top.analysis.statistics.reduce.IReducer.ReduceType;
 import com.taobao.top.analysis.util.Threshold;
 
 /**
@@ -159,7 +160,6 @@ public class StatisticsEngine implements IStatisticsEngine{
 		jobTaskResult.setJobEpoch(jobtask.getJobEpoch());
 		
 		JobTaskExecuteInfo taskExecuteInfo = new JobTaskExecuteInfo();
-		jobTaskResult.addTaskExecuteInfo(taskExecuteInfo);
 		
 		Map<String, ReportEntry> entryPool = jobtask.getStatisticsRule().getEntryPool();
 		
@@ -192,7 +192,7 @@ public class StatisticsEngine implements IStatisticsEngine{
 					
 					size += record.length();
 					
-					String[] contents = StringUtils.splitByWholeSeparator(record, splitRegex);
+					String[] contents = StringUtils.splitByWholeSeparatorPreserveAllTokens(record, splitRegex);
 					Iterator<String> keys = entryPool.keySet().iterator();
 					while (keys.hasNext()) 
 					{
@@ -207,16 +207,17 @@ public class StatisticsEngine implements IStatisticsEngine{
 						} 
 						catch (Throwable e) 
 						{
-							if(!failure) 
-								exceptionLine++;
-							
-							failure=true;
-							
-							if (!threshold.sholdBlock())
-								logger.error(new StringBuilder().append("Entry :")
-									.append(entry.getId()).append("\r\n record: ")
-									.append(record).toString(), e);
-						}
+                            if (!failure)
+                                exceptionLine++;
+
+                            failure = true;
+
+                             if (!threshold.sholdBlock())
+                            logger.error(
+                                new StringBuilder().append("Entry :").append(entry.getId()).append(", job : ")
+                                    .append(jobtask.getJobName()).append(", entry:").append(entry.getName())
+                                    .append("\r\n record: ").append(record).toString(), e);
+                        }
 					}
 
 					if(!failure) 
@@ -259,7 +260,9 @@ public class StatisticsEngine implements IStatisticsEngine{
 			taskExecuteInfo.setErrorLine(exceptionLine);
 			taskExecuteInfo.setJobDataSize(size*2);
 			taskExecuteInfo.setTotalLine(normalLine+exceptionLine+emptyLine);
-			taskExecuteInfo.setWorkerIp(ReportUtil.getIp());
+			taskExecuteInfo.setTaskId(jobtask.getTaskId());
+			
+			jobTaskResult.addTaskExecuteInfo(taskExecuteInfo);
 			
 			if (logger.isWarnEnabled())
 				logger.warn(new StringBuilder("jobtask ").append(jobtask.getTaskId())
@@ -277,14 +280,14 @@ public class StatisticsEngine implements IStatisticsEngine{
 	public void processSingleLine(ReportEntry entry,String[] contents,JobTask jobtask,JobTaskResult jobTaskResult){
 		Map<String, Map<String, Object>> entryResult = jobTaskResult.getResults();
 		String key = entry.getMapClass().mapperKey(entry,contents, jobtask);
-		if(key != null){
+		if(key != null && !AnalysisConstants.IGNORE_PROCESS.equals(key)){
 			Object value = entry.getMapClass().mapperValue(entry, contents, jobtask);
 			Map<String,Object> result = entryResult.get(entry.getId());
 			if(result == null){
 				result = new HashMap<String, Object>();
 				jobTaskResult.getResults().put(entry.getId(), result);
 			}
-			entry.getReduceClass().reducer(entry,key,value,result);
+			entry.getReduceClass().reducer(entry,key,value,result,ReduceType.SHALLOW_MERGE);
 		}
 		
 	}

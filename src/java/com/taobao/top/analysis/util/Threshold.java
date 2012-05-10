@@ -3,6 +3,7 @@
  */
 package com.taobao.top.analysis.util;
 
+import java.io.Serializable;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
@@ -12,9 +13,13 @@ import java.util.concurrent.atomic.AtomicLong;
  * 2011-11-25
  *
  */
-public class Threshold {
+public class Threshold implements Serializable{
 	
-	private AtomicLong lastTimeStamp;
+	/**
+     * 
+     */
+    private static final long serialVersionUID = -8426057843371774390L;
+    private AtomicLong lastTimeStamp;
 	private long frequency;
 	
 	public Threshold(long frequency)

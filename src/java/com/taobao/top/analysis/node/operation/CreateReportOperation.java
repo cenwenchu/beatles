@@ -14,6 +14,7 @@ import java.util.concurrent.CountDownLatch;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
+import com.taobao.top.analysis.statistics.data.DistinctCountEntryValue;
 import com.taobao.top.analysis.statistics.data.Report;
 import com.taobao.top.analysis.statistics.data.ReportEntry;
 import com.taobao.top.analysis.statistics.data.impl.SimpleFilter;
@@ -158,10 +159,18 @@ public class CreateReportOperation implements Runnable {
 								
 								if (value != null)
 								{
-									if (value.toString().indexOf(",") != -1)
-										bout.write("\"" + value.toString() + "\"");
+									//support distinct count
+									if (value instanceof DistinctCountEntryValue)
+									{
+										bout.write(String.valueOf(((DistinctCountEntryValue)value).getCount().get()));
+									}
 									else
-										bout.write(value.toString());
+									{
+										if (value.toString().indexOf(",") != -1)
+											bout.write("\"" + value.toString() + "\"");
+										else
+											bout.write(value.toString());
+									}
 									
 								}
 								else

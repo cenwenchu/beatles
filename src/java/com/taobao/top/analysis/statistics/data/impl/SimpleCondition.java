@@ -85,6 +85,8 @@ public class SimpleCondition implements ICondition {
 
 				if (!key.equals(AnalysisConstants.RECORD_LENGTH))
 				{
+				    if(!(key instanceof Integer))
+				        conditionKStack.add(Integer.valueOf(String.valueOf(key)));
 					conditionKStack.add(key);
 					
 					if (operate.equals(AnalysisConstants.CONDITION_EQUAL_STR)
@@ -169,6 +171,9 @@ public class SimpleCondition implements ICondition {
 	private static boolean checkKeyCondition(byte operator, int conditionKey,
 			Object conditionValue, String[] contents) {
 		boolean result = false;
+		
+		if(conditionKey > contents.length || (conditionKey >= 1 && StringUtils.isBlank(contents[conditionKey - 1]) || conditionValue == null ))
+		    return result;
 
 		if (operator == AnalysisConstants.CONDITION_EQUAL) {
 			if (conditionKey > 0)

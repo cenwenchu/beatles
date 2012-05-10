@@ -8,12 +8,16 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Properties;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import javax.xml.namespace.QName;
 import javax.xml.stream.XMLEventReader;
@@ -33,9 +37,12 @@ import com.taobao.top.analysis.config.MasterConfig;
 import com.taobao.top.analysis.exception.AnalysisException;
 import com.taobao.top.analysis.node.IJobBuilder;
 import com.taobao.top.analysis.node.job.Job;
+import com.taobao.top.analysis.node.job.JobResource;
 import com.taobao.top.analysis.node.job.JobTask;
+import com.taobao.top.analysis.node.operation.JobDataOperation;
 import com.taobao.top.analysis.statistics.data.Alias;
 import com.taobao.top.analysis.statistics.data.InnerKey;
+import com.taobao.top.analysis.statistics.data.ObjectColumn;
 import com.taobao.top.analysis.statistics.data.Report;
 import com.taobao.top.analysis.statistics.data.ReportEntry;
 import com.taobao.top.analysis.statistics.data.Rule;
@@ -47,6 +54,8 @@ import com.taobao.top.analysis.statistics.map.IMapper;
 import com.taobao.top.analysis.statistics.reduce.DefaultReducer;
 import com.taobao.top.analysis.statistics.reduce.IReducer;
 import com.taobao.top.analysis.statistics.reduce.group.GroupFunctionFactory;
+import com.taobao.top.analysis.util.AnalyzerFilenameFilter;
+import com.taobao.top.analysis.util.AnalyzerUtil;
 import com.taobao.top.analysis.util.ReportUtil;
 
 /**
@@ -62,7 +71,7 @@ public class FileJobBuilder implements IJobBuilder{
 	
 	private static final Log logger = LogFactory.getLog(FileJobBuilder.class);
 	private MasterConfig config;
-	private boolean needRebuild = false;
+	private AtomicBoolean needRebuild = new AtomicBoolean(false);
 	
 	private IMapper defaultMapper = new DefaultMapper();
 	private IReducer defaultReducer = new DefaultReducer();
@@ -70,17 +79,26 @@ public class FileJobBuilder implements IJobBuilder{
 	/**
 	 * 可用于rebuild，缓存上次的编译文件路径
 	 */
-	private String jobSource;
+	private String jobResource;
 	
+	/**
+	 * 将读取的job规则配置进行缓存
+	 */
+	private Map<String, JobResource> jobConfigs;
+	
+	/**
+	 * jobs.properties上次修改时间
+	 */
+	private long lastFileModify;
 	
 	@Override
 	public boolean isNeedRebuild() {
-		return needRebuild;
+		return needRebuild.get();
 	}
 
 	@Override
 	public void setNeedRebuild(boolean needRebuild) {
-		this.needRebuild = needRebuild;
+		this.needRebuild.compareAndSet(false, needRebuild);
 	}
 	
 	@Override
@@ -113,7 +131,7 @@ public class FileJobBuilder implements IJobBuilder{
 		if (logger.isInfoEnabled())
 			logger.info("start build job from :" + config);
 		
-		jobSource = config;
+		jobResource = config;
 		
 		Map<String,Job> jobs = new HashMap<String,Job>();
 		
@@ -131,30 +149,49 @@ public class FileJobBuilder implements IJobBuilder{
 			if (js != null)
 			{
 				String[] instances = StringUtils.split(js,",");
+				Set<String> allMasters = new HashSet<String>();
 				
 				for(String j : instances)
 				{
-					Job job = new Job();
-					Rule rule = new Rule();
-					JobConfig jobconfig = new JobConfig();
-					job.setStatisticsRule(rule);
-					job.setJobConfig(jobconfig);
-					job.setJobName(j);
-					
-					getConfigFromProps(j,jobconfig,prop);
-					
-					if (jobconfig.getReportConfigs() == null 
-							|| (jobconfig.getReportConfigs() != null && jobconfig.getReportConfigs().length == 0))
-					{
-						throw new AnalysisException("job Config files should not be null!");
-					}
-						
-					for(String conf : jobconfig.getReportConfigs() )
-						buildReportModule(conf, rule);
-					
-					buildTasks(job);
-					jobs.put(job.getJobName(), job);
-				}
+                    try {
+                        Job job = new Job();
+                        Rule rule = new Rule();
+                        JobConfig jobconfig = new JobConfig();
+                        job.setStatisticsRule(rule);
+                        job.setJobConfig(jobconfig);
+                        job.setJobName(j);
+
+                        getConfigFromProps(j, jobconfig, prop);
+
+                        if (jobconfig.getReportConfigs() == null
+                                || (jobconfig.getReportConfigs() != null && jobconfig.getReportConfigs().length == 0)) {
+                            throw new AnalysisException("job Config files should not be null!");
+                        }
+
+                        buildRule(jobconfig.getReportConfigs(), rule);
+                        
+                        //增加一个获得当前临时文件数据源游标的操作
+//                        JobDataOperation jobDataOperation = new JobDataOperation(job,
+//                        		AnalysisConstants.JOBMANAGER_EVENT_LOADDATA,this.config);
+//                        jobDataOperation.run();
+                        JobDataOperation.getSourceTimeStamp(job, this.config);
+//                        JobDataOperation.loadData(job, this.config);
+                        
+                        buildTasks(job);
+                        jobs.put(job.getJobName(), job);
+                        this.jobConfigs.put(job.getJobName(),
+                            new JobResource(job.getJobName(), jobconfig.getReportConfigs()));
+                        if (job.getJobConfig().getSaveTmpResultToFile() == null && this.config != null)
+                            job.getJobConfig().setSaveTmpResultToFile(
+                                String.valueOf(this.config.getSaveTmpResultToFile()));
+                        if (job.getJobConfig().getAsynLoadDiskFilePrecent() < 0 && this.config != null)
+                            job.getJobConfig().setAsynLoadDiskFilePrecent(
+                                String.valueOf(this.config.getAsynLoadDiskFilePrecent()));
+                    }
+                    catch (Throwable e) {
+                        logger.error("build job error : " + j, e);
+                    }
+                }
 				
 				//编译好rule后针对当前是否有mastergroup来做多master的report分配
 				if (this.config != null && StringUtils.isNotEmpty(this.config.getMasterGroup()))
@@ -180,6 +217,12 @@ public class FileJobBuilder implements IJobBuilder{
 						//考虑原来就是比较平均分配的，然后将新来业务平均分配也是一样的
 						Map<String, String> report2Master = ReportUtil.SimpleAllocationAlgorithm(masters, reports, "|");
 						
+						//此处将report2Master传入方法中进行修改，并非好的代码处理方式
+						AnalyzerUtil.loadReportToMaster(masters, reports, report2Master, j);
+						if(this.config.getReportToMaster() != null && this.config.getReportToMaster().size() > 0) {
+						    report2Master.putAll(this.config.getReportToMaster());
+						}
+						
 						for(Entry<String,String> rm : report2Master.entrySet())
 							if (rule.getReport2Master().get(rm.getKey()) == null)
 								rule.getReport2Master().put(rm.getKey(), rm.getValue());
@@ -196,11 +239,21 @@ public class FileJobBuilder implements IJobBuilder{
 							
 							logger.warn(report2Master.toString());
 						}
+						AnalyzerUtil.exportReportToMaster(report2Master, j);
+						allMasters.addAll(report2Master.values());
 					}
 					
+				} else {
+				    if(this.config != null)
+				        allMasters.add(ReportUtil.getIp() + ":" + this.config.getMasterPort());
 				}
+				for(Job j : jobs.values()) {
+                    j.getStatisticsRule().setMasters(allMasters);
+                }
 				
 			}
+			lastFileModify = (new File(this.jobResource.substring(jobResource
+	            .indexOf("file:") + "file:".length()))).lastModified();
 		}
 		catch(IOException ex)
 		{
@@ -218,7 +271,8 @@ public class FileJobBuilder implements IJobBuilder{
 				}
 			}
 		}
-		
+		if (logger.isInfoEnabled())
+            logger.info("build job complete from :" + config);
 		return jobs;
 	}
 	
@@ -244,6 +298,38 @@ public class FileJobBuilder implements IJobBuilder{
 	
 	/**
 	 * 编译分析规则模型
+	 * @param configs
+	 * @param rule
+	 * @throws IOException 
+	 * @throws AnalysisException 
+	 */
+    private void buildRule(String[] configs, Rule rule) throws AnalysisException, IOException {
+        if (configs != null) {
+            for (String config : configs) {
+                if (config.startsWith("dir:")) {
+                    File[] files =
+                            new File(config.substring(config.indexOf("dir:") + "dir:".length()))
+                                .listFiles(new AnalyzerFilenameFilter(".xml"));
+                    if(files == null) {
+                        logger.error("please have a check at " + config);
+                    }
+                    for (File file : files) {
+                        this.buildReportModule(new StringBuilder("file:").append(file.getAbsolutePath()).toString(),
+                            rule);
+                    }
+                    rule.setVersion(Calendar.getInstance().getTimeInMillis());
+                }
+                else {
+                    this.buildReportModule(config, rule);
+                    rule.setVersion(Calendar.getInstance().getTimeInMillis());
+                }
+
+            }
+        }
+    }
+	
+	/**
+	 * 编译分析规则模型
 	 * 
 	 * @param 配置文件
 	 * @param entry定义池
@@ -256,6 +342,9 @@ public class FileJobBuilder implements IJobBuilder{
 	 */
 	public void buildReportModule(String configFile, Rule rule)
 			throws AnalysisException, IOException {
+	    if(logger.isInfoEnabled()) {
+	        logger.info("start build rule in " + configFile);
+	    }
 		InputStream in = null;
 		XMLEventReader r = null;
 		Report report = null;
@@ -535,9 +624,9 @@ public class FileJobBuilder implements IJobBuilder{
 			}
 
 		} 
-		catch(XMLStreamException ex)
+		catch(Throwable ex)
 		{
-			logger.error(ex,ex);
+			logger.error("the error config file is " + configFile,ex);
 		}
 		finally {
 			if (r != null)
@@ -553,6 +642,9 @@ public class FileJobBuilder implements IJobBuilder{
 			r = null;
 			in = null;
 		}
+		if(logger.isInfoEnabled()) {
+            logger.info("complete build rule in " + configFile);
+        }
 	}
 	
 	/**
@@ -716,6 +808,11 @@ public class FileJobBuilder implements IJobBuilder{
 		}else{
 			entry.setReduceClass(defaultReducer);
 		}
+		
+        // 添加period字段
+        if (start.getAttributeByName(new QName("", "period")) != null) {
+            entry.setPeriod(Boolean.valueOf(start.getAttributeByName(new QName("", "period")).getValue()));
+        }
 
 		if (start.getAttributeByName(new QName("", "mapParams")) != null) {
 			entry.setMapParams(start.getAttributeByName(
@@ -726,15 +823,24 @@ public class FileJobBuilder implements IJobBuilder{
 			entry.setReduceParams(start.getAttributeByName(
 					new QName("", "reduceParams")).getValue());
 		}
+		
+		if (start.getAttributeByName(new QName("", "additions")) != null) {
+			entry.setAdditions(start.getAttributeByName(
+					new QName("", "additions")).getValue());
+		}
 
 		if (start.getAttributeByName(new QName("", "key")) != null) {
 			
 			String[] ks = start.getAttributeByName(new QName("", "key")).getValue().split(",");
+			List<ObjectColumn> subKeys = new ArrayList<ObjectColumn>();
 			
-			int[] keys = ReportUtil.transformVars(ks, aliasPool);
+			int[] keys = ReportUtil.transformVars(ks, aliasPool,subKeys);
 
 			// 用alias替换部分key
 			entry.setKeys(keys);
+			
+			if (subKeys.size() > 0)
+				entry.setSubKeys(subKeys);
 		}
 		else
 		{
@@ -742,14 +848,18 @@ public class FileJobBuilder implements IJobBuilder{
 			if (!isPublic && report != null && report.getKey() != null)
 			{
 				String[] ks = report.getKey().split(",");
+				List<ObjectColumn> subKeys = new ArrayList<ObjectColumn>();
 				
-				int[] keys = ReportUtil.transformVars(ks, aliasPool);
+				int[] keys = ReportUtil.transformVars(ks, aliasPool,subKeys);
 
 				// 用alias替换部分key
 				entry.setKeys(keys);
+				
+				if (subKeys.size() > 0)
+					entry.setSubKeys(subKeys);
 			}
 			else
-				throw new AnalysisException("entry key should not be null! entry name :" + entry.getName());
+				throw new AnalysisException("entry key should not be null! entry name :" + entry.getName() + ", report:" + report.getFile());
 		}
 		
 
@@ -813,23 +923,55 @@ public class FileJobBuilder implements IJobBuilder{
 
 	@Override
 	public void init() {
-		
+	    this.jobConfigs = new HashMap<String, JobResource>();
 	}
 
 	@Override
 	public void releaseResource() {
-		
+		this.jobConfigs.clear();
+		this.jobConfigs = null;
 	}
 
 	@Override
-	public Map<String,Job> rebuild() throws AnalysisException {
-		if (this.needRebuild && jobSource != null)
+	public Map<String,Job> rebuild(Map<String,Job> jobs) throws AnalysisException {
+		if (this.needRebuild.getAndSet(false))
 		{
-			this.needRebuild = false;
-			return build(this.jobSource);
+		    Map<String,Job> result = build();
+		    if(jobs != null) {
+		        for(Entry<String, Job> entry : result.entrySet()) {
+		            if(jobs.containsKey(entry.getKey())) {
+//		                entry.getValue().getEpoch().set(jobs.get(entry.getKey()).getEpoch().incrementAndGet());
+//		                entry.getValue().setJobSourceTimeStamp(jobs.get(entry.getKey()).getJobSourceTimeStamp());
+//		                entry.getValue().setLastExportTime(jobs.get(entry.getKey()).getLastExportTime());
+//		                entry.getValue().setJobResult(jobs.get(entry.getKey()).getJobResult());
+		                jobs.get(entry.getKey()).rebuild(1, entry.getValue(), null);
+		            } else {
+		                jobs.put(entry.getKey(), entry.getValue());
+		                jobs.get(entry.getKey()).rebuild(2, entry.getValue(), null);
+		            }
+		        }
+		        for(Entry<String, Job> entry : jobs.entrySet()) {
+		            if(!result.containsKey(entry.getKey())) {
+		                entry.getValue().rebuild(-1, entry.getValue(), null);
+		            }
+		        }
+		    }
+		    return jobs;
 		}
 		else
 			return null;
+	}
+	
+	private String generateJobInputAddition(String input,Job job)
+	{
+		StringBuilder result = new StringBuilder(input);
+		if (input != null && input.startsWith("http"))
+		{
+			result.append("&jobSourceTimeStamp=").append(job.getJobSourceTimeStamp())
+				.append("&epoch=").append(job.getEpoch());
+		}
+		
+		return result.toString();
 	}
 
 	@Override
@@ -850,6 +992,11 @@ public class FileJobBuilder implements IJobBuilder{
 			jobTask.setStatisticsRule(job.getStatisticsRule());
 			jobTask.setTaskId(job.getJobName() + "-" + job.getTaskCount());
 			jobTask.setJobName(job.getJobName());
+			jobTask.setUrl(jobTask.getInput());
+			jobTask.setJobSourceTimeStamp(job.getJobSourceTimeStamp());
+			
+			jobTask.setInput(generateJobInputAddition(jobTask.getInput(),job));
+			
 			job.addTaskCount();
 			job.getJobTasks().add(jobTask);
 		}
@@ -871,7 +1018,9 @@ public class FileJobBuilder implements IJobBuilder{
 					jobTask.setStatisticsRule(job.getStatisticsRule());
 					jobTask.setTaskId(job.getJobName() + "-" + job.getTaskCount());
 					jobTask.setJobName(job.getJobName());
-					jobTask.setInput(jobConfig.getInput().replace(key, ps));
+					jobTask.setUrl(jobConfig.getInput().replace(key, ps));
+					jobTask.setJobSourceTimeStamp(job.getJobSourceTimeStamp());
+					jobTask.setInput(generateJobInputAddition(jobConfig.getInput().replace(key, ps),job));
 					job.addTaskCount();
 					job.getJobTasks().add(jobTask);
 				}
@@ -886,7 +1035,7 @@ public class FileJobBuilder implements IJobBuilder{
 					jobTask.setStatisticsRule(job.getStatisticsRule());
 					jobTask.setTaskId(job.getJobName() + "-" + job.getTaskCount());
 					jobTask.setJobName(job.getJobName());
-					jobTask.setInput(input);
+					jobTask.setInput(generateJobInputAddition(input,job));
 					job.addTaskCount();
 					job.getJobTasks().add(jobTask);
 				}
@@ -894,5 +1043,31 @@ public class FileJobBuilder implements IJobBuilder{
 			}
 		}	
 	}
+
+	/*
+	 * (non-Javadoc)
+	 * @see com.taobao.top.analysis.node.IJobBuilder#getJobResource()
+	 */
+    public String getJobResource() {
+        return jobResource;
+    }
+
+    /* (non-Javadoc)
+     * @see com.taobao.top.analysis.node.IJobBuilder#isModified()
+     */
+    @Override
+    public boolean isModified() {
+        if(this.jobResource == null)
+            return false;
+        File file = new File(this.jobResource.substring(jobResource
+            .indexOf("file:") + "file:".length()));
+        if(file.lastModified() > lastFileModify)
+            return true;
+        for(String job : jobConfigs.keySet()) {
+            if(jobConfigs.get(job).isModify())
+                return true;
+        }
+        return false;
+    }
 
 }

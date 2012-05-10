@@ -5,11 +5,14 @@ package com.taobao.top.analysis.statistics.data;
 
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import com.taobao.top.analysis.statistics.map.IMapper;
 import com.taobao.top.analysis.statistics.reduce.IReducer;
 import com.taobao.top.analysis.statistics.reduce.group.GroupFunction;
+import com.taobao.top.analysis.util.AnalysisConstants;
 
 /**
  * SimpleMapReduce Entry
@@ -43,6 +46,11 @@ public class ReportEntry implements Serializable, Cloneable {
 	
 	private int[] keys;
 	
+	/**
+	 * 用于存储一些key为对象的情况，例如某一列是json对象
+	 */
+	private List<ObjectColumn> subKeys;
+	
 	private ICalculator calculator;
 	
 	private ICondition condition;
@@ -63,11 +71,47 @@ public class ReportEntry implements Serializable, Cloneable {
 	 */
 	private String reduceParams;
 	
+	private Map<String,Object> additions;
+	
+	private boolean period;
+	
 	/**
 	 * 该entry所属的report
 	 */
 	private List<String> reports = new ArrayList<String>();	
 	
+	
+	public Map<String,Object> getAdditions() {
+		return additions;
+	}
+	public void setAdditions(String additions) {
+		
+		if (additions != null)
+		{
+			this.additions = new HashMap<String,Object>();
+			
+			String[] as = additions.split(",");
+			
+			for(String a : as)
+			{
+				String[] kv = a.split("=");
+				
+				if (kv.length == 2)
+				{
+					//性能考虑，这里写的比较恶劣一点，直接转换
+					if (kv[0].equals(AnalysisConstants.ANALYSIS_BLOOM_MAXKEYS))
+						this.additions.put(kv[0], Integer.parseInt(kv[1]));
+					else
+						if (kv[0].equals(AnalysisConstants.ANALYSIS_BLOOM_ERRORRATE))
+							this.additions.put(kv[0], Float.parseFloat(kv[1]));
+						else
+							this.additions.put(kv[0], kv[1]);
+				}
+			}
+			
+		}
+			
+	}
 	public List<String> getReports() {
 		return reports;
 	}
@@ -98,6 +142,9 @@ public class ReportEntry implements Serializable, Cloneable {
 	}
 	public void setMapClass(IMapper mapClass) {
 		this.mapClass = mapClass;
+		if(mapClass instanceof com.taobao.top.analysis.statistics.map.TimeKeyMapper) {
+		    this.period = true;
+		}
 	}
 	public IReducer getReduceClass() {
 		return reduceClass;
@@ -141,6 +188,12 @@ public class ReportEntry implements Serializable, Cloneable {
 	public void setKeys(int[] keys) {
 		this.keys = keys;
 	}
+	public List<ObjectColumn> getSubKeys() {
+		return subKeys;
+	}
+	public void setSubKeys(List<ObjectColumn> subKeys) {
+		this.subKeys = subKeys;
+	}
 	public GroupFunction getGroupFunction() {
 		return groupFunction;
 	}
@@ -151,6 +204,18 @@ public class ReportEntry implements Serializable, Cloneable {
 	public ReportEntry clone() throws CloneNotSupportedException {
 		return (ReportEntry) super.clone();
 	}
+    /**
+     * @return the period
+     */
+    public boolean isPeriod() {
+        return period;
+    }
+    /**
+     * @param period the period to set
+     */
+    public void setPeriod(boolean period) {
+        this.period = period;
+    }
 	
 	
 	

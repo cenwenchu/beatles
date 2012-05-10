@@ -1,17 +1,21 @@
 package com.taobao.top.analysis.node.job;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import com.taobao.top.analysis.config.JobConfig;
+import com.taobao.top.analysis.node.component.JobManager;
 import com.taobao.top.analysis.statistics.data.Rule;
 import com.taobao.top.analysis.util.Threshold;
 
@@ -47,7 +51,7 @@ public class Job {
 	//job的创建时间
 	long startTime;
 	//防止大量写日志的阀
-	Threshold threshold;
+	transient Threshold threshold;
 	//主干读写锁，控制并发
 	ReentrantReadWriteLock trunkLock;
 	//载入的锁，防止重复载入
@@ -61,6 +65,8 @@ public class Job {
 	AtomicBoolean merged;
 	//是否导出完毕，可以被重置任务
 	AtomicBoolean exported;
+	//是否由于超过2倍的任务时间导致需要重置任务
+	AtomicBoolean jobTimeOut;
 	
 	//最后一次导出临时文件的时间，用于在非磁盘换空间的模式下，固定一段时间导出作为容灾，时间间隔参考masterconfig 的exportInterval
 	long lastExportTime;
@@ -71,6 +77,21 @@ public class Job {
 	//用于协同多个master的情况
 	private ReentrantLock waitlock;
 	private Condition waitToJobReset;
+	
+	/**
+	 * job用于执行merge的时间，只纪录主干merge的时间
+	 */
+	private AtomicLong jobMergeTime;
+	
+	/**
+	 * job分支合并的次数
+	 */
+	private AtomicInteger jobMergeBranchCount;
+	
+	/**
+	 * job导出所用的时间
+	 */
+	private long jobExportTime;
 	
 	
 	/**
@@ -89,6 +110,36 @@ public class Job {
 	 */
 	private AtomicInteger epoch;
 	
+	/**
+	 * 用于系统恢复的时候从临时备份数据中读取临时数据在日志获取端的游标，以时间戳作为游标
+	 * 简单来说就是每一个master备份出去的临时文件包含当前分析的数据内容和这些数据对应到数据源（日志产生方）的日志拖拉绝对游标
+	 * 这个参数将会配合epoch一起加入到job的task的input中作为参数传递，epoch＝1的时候才会判断是否要根据这个参数重置游标
+	 */
+	private long jobSourceTimeStamp = 0;
+	
+	/**
+	 * 任务重构标志位
+	 * 0：默认不重构
+	 * 1：重构
+	 * -1：删除
+	 */
+	private transient int rebuildTag = 0;
+	
+	/**
+	 * 重构任务，默认为空
+	 */
+	private transient Job rebuildJob = null;
+	
+	/**
+	 * 是否已经export主干到文件标记
+	 */
+	private transient AtomicBoolean trunkExported;
+	
+	/**
+	 * 是否已经merge磁盘文件
+	 */
+	private transient boolean diskResultMerged;
+	
 	public Job()
 	{
 		jobTasks = new ArrayList<JobTask>();
@@ -101,7 +152,9 @@ public class Job {
 		lastExportTime = 0;
 		reportPeriodFlag = -1;
 		epoch = new AtomicInteger(0);
-		reset();
+		trunkExported = new AtomicBoolean(false);
+		diskResultMerged = false;
+//		reset(null);
 	}
 	
 	public void notifySomeWaitResetJob()
@@ -158,19 +211,42 @@ public class Job {
 		}
 			
 	}
+	
+	public long getJobSourceTimeStamp() {
+		return jobSourceTimeStamp;
+	}
 
+	public void setJobSourceTimeStamp(long jobSourceTimeStamp) {
+		this.jobSourceTimeStamp = jobSourceTimeStamp;
+		for(JobTask task : jobTasks)
+        {
+            task.setJobSourceTimeStamp(jobSourceTimeStamp);
+        }
+	}
+
+	public AtomicBoolean getJobTimeOut() {
+		return jobTimeOut;
+	}
+
+	public void setJobTimeOut(AtomicBoolean jobTimeOut) {
+		this.jobTimeOut = jobTimeOut;
+	}
 
 	public AtomicInteger getEpoch() {
 		return epoch;
 	}
 
-
-
 	public void setEpoch(AtomicInteger epoch) {
 		this.epoch = epoch;
 	}
 
+	public AtomicLong getJobMergeTime() {
+		return jobMergeTime;
+	}
 
+	public AtomicInteger getJobMergeBranchCount() {
+		return jobMergeBranchCount;
+	}
 
 	public ReentrantLock getLoadLock() {
 		return loadLock;
@@ -198,25 +274,42 @@ public class Job {
 	
 	public boolean needExport()
 	{
-		return !exported.get() && merged.get() && mergedTaskCount.get() == taskCount;
+		return !exported.get() && merged.get() && (mergedTaskCount.get() == taskCount || jobTimeOut.get());
 	}
-
-	public boolean needReset()
+	
+	public void checkJobTimeOut()
 	{
 		long consume = System.currentTimeMillis() - startTime;
-				
-		if ((exported.get() && (consume >= jobConfig.getJobResetTime() * 1000))
-				||(consume > jobConfig.getJobResetTime() * 1000 * 2))
-			return true;
 		
 		if (mergedTaskCount.get() < taskCount && consume > jobConfig.getJobResetTime() * 1000)
 			if (logger.isWarnEnabled() && !threshold.sholdBlock())
 				logger.warn("job : " + jobName + " can't complete in time!");
 		
+		if (consume > jobConfig.getJobResetTime() * 1000 * 2)
+			this.jobTimeOut.set(true);
+		
+	}
+
+	public boolean needReset()
+	{
+		long consume = System.currentTimeMillis() - startTime;
+		
+		if(logger.isInfoEnabled() && !threshold.sholdBlock() && (consume >= jobConfig.getJobResetTime() * 1000)) {
+		    logger.info("job:" + jobName + "," + exported.get());
+		}
+				
+		if (exported.get() && (consume >= jobConfig.getJobResetTime() * 1000))
+			return true;
+		
 		return false;
 	}
 	
-	public void reset()
+	
+	public long getStartTime() {
+		return startTime;
+	}
+
+	public void reset(JobManager jobManager)
 	{
 		epoch.incrementAndGet();
 		
@@ -227,6 +320,7 @@ public class Job {
 			task.setStartTime(0);
 			task.getRecycleCounter().set(0);
 			task.setJobEpoch(epoch.get());
+			task.resetInput();
 		}
 			
 		taskCount = jobTasks.size();
@@ -239,9 +333,18 @@ public class Job {
 		merging = new AtomicBoolean(false);
 		exporting = new AtomicBoolean(false);
 		exported = new AtomicBoolean(false);
+		jobTimeOut = new AtomicBoolean(false);
+		trunkExported = new AtomicBoolean(false);
+		diskResultMerged = false;
+		jobMergeTime = new AtomicLong(0);
+		jobExportTime = 0;
+		jobMergeBranchCount = new AtomicInteger(0);
 		diskResult = null;
 		
 		notifySomeWaitResetJob();
+		
+		if(jobManager != null)
+		    jobManager.getUndoTaskQueue().addAll(jobTasks);
 		
 	}
 	
@@ -255,6 +358,14 @@ public class Job {
 		this.needLoadResultFile = needLoadResultFile;
 	}
 
+
+	public long getJobExportTime() {
+		return jobExportTime;
+	}
+
+	public void setJobExportTime(long jobExportTime) {
+		this.jobExportTime = jobExportTime;
+	}
 
 	public Map<String, Map<String, Object>> getJobResult() {
 		return jobResult;
@@ -377,4 +488,131 @@ public class Job {
 	}
 	
 
+	/**
+	 * 这里的逻辑是第一次调用该方法，置标记位
+	 * 第二次调用，真正rebuild
+	 * 标记重构，保证在任务执行结束后再重构，无缝重载
+	 * 采用这种逻辑的目的是入口统一
+	 * 此处代码可用其他结构实现，可以从设计模式及性能上面考虑
+	 * @param job
+	 */
+    public void rebuild(int rebuildTag, Job job, JobManager jobManager) {
+        if (job != null)
+            this.rebuildJob = job;
+        //第一次进入置标记位
+        if (this.rebuildTag == 0 || this.rebuildJob == null || jobManager == null) {
+            this.rebuildTag = rebuildTag;
+            return;
+        }
+        
+        //第二次进入删除job
+        if (this.rebuildTag == -1) {
+            logger.error("delete job:" + this.jobName);
+            for (JobTask jobTask : this.jobTasks) {
+                jobManager.getJobTaskPool().remove(jobTask.getTaskId());
+                jobManager.getStatusPool().remove(jobTask.getTaskId());
+            }
+            jobManager.getBranchResultQueuePool().remove(job.getJobName());
+            jobManager.getJobTaskResultsQueuePool().remove(job.getJobName());
+            this.rebuildTag = rebuildTag;
+            this.rebuildJob = null;
+            return;
+        }
+        //第二次进入添加job
+        if(this.rebuildTag == 2) {
+            logger.error("add job:" + this.jobName);
+            for (JobTask jobTask : this.jobTasks) {
+                jobManager.getJobTaskPool().put(jobTask.getTaskId(), jobTask);
+                jobManager.getStatusPool().put(jobTask.getTaskId(), jobTask.getStatus());
+            }
+            if(jobManager.getBranchResultQueuePool().get(this.jobName) == null)
+                jobManager.getBranchResultQueuePool().put(this.jobName, new LinkedBlockingQueue<JobMergedResult>());
+            if(jobManager.getJobTaskResultsQueuePool().get(this.jobName) == null)
+                jobManager.getJobTaskResultsQueuePool().put(this.jobName, new LinkedBlockingQueue<JobTaskResult>());
+            this.rebuildTag = rebuildTag;
+            this.rebuildJob = null;
+            this.reset(jobManager);
+            return;
+        }
+
+        //第二次进入修改job
+        this.jobConfig = rebuildJob.getJobConfig();
+        this.statisticsRule = rebuildJob.statisticsRule;
+        int o = this.taskCount;
+        this.taskCount = rebuildJob.taskCount;
+        int i = 0, j = 0;
+        for (JobTask jobTask : this.jobTasks) {
+            Iterator<JobTask> iter = rebuildJob.jobTasks.iterator();
+            while (iter.hasNext()) {
+                JobTask task = iter.next();
+                if (jobTask.getUrl() != null && jobTask.getUrl().equals(task.getUrl())) {
+                    jobTask.rebuild(task);
+                    iter.remove();
+                    i++;
+                }
+            }
+        }
+        Iterator<JobTask> iter = this.jobTasks.iterator();
+        while (iter.hasNext()) {
+            JobTask jobTask = iter.next();
+            if (jobTask.getRebuildStatus() != 1) {
+                iter.remove();
+                jobManager.getJobTaskPool().remove(jobTask.getTaskId());
+                jobManager.getStatusPool().remove(jobTask.getTaskId());
+                j++;
+            }
+        }
+        for (JobTask jobTask : rebuildJob.getJobTasks()) {
+            this.jobTasks.add(jobTask);
+        }
+        this.jobTasks.addAll(rebuildJob.getJobTasks());
+        for (JobTask jobTask : this.jobTasks) {
+            jobTask.setRebuildStatus(0);
+            jobManager.getJobTaskPool().put(jobTask.getTaskId(), jobTask);
+            jobManager.getStatusPool().put(jobTask.getTaskId(), jobTask.getStatus());
+        }
+        logger.error(jobName + " oldJob:" + o + ",newJob:" + this.taskCount + ",update:" + i + ",delete:" + j + ",add:"
+                + job.getJobTasks().size());
+        if(jobManager.getBranchResultQueuePool().get(this.jobName) == null)
+            jobManager.getBranchResultQueuePool().put(this.jobName, new LinkedBlockingQueue<JobMergedResult>());
+        if(jobManager.getJobTaskResultsQueuePool().get(this.jobName) == null)
+            jobManager.getJobTaskResultsQueuePool().put(this.jobName, new LinkedBlockingQueue<JobTaskResult>());
+        this.rebuildTag = rebuildTag;
+        this.rebuildJob = null;
+    }
+
+    /**
+     * @return the rebuildTag
+     */
+    public int getRebuildTag() {
+        return rebuildTag;
+    }
+
+    /**
+     * @return the trunkExported
+     */
+    public AtomicBoolean getTrunkExported() {
+        return trunkExported;
+    }
+
+    /**
+     * @return the diskResultMerged
+     */
+    public boolean isDiskResultMerged() {
+        return diskResultMerged;
+    }
+
+    /**
+     * @param diskResultMerged the diskResultMerged to set
+     */
+    public void setDiskResultMerged(boolean diskResultMerged) {
+        this.diskResultMerged = diskResultMerged;
+    }
+
+    /**
+     * @param rebuildTag the rebuildTag to set
+     */
+    public void setRebuildTag(int rebuildTag) {
+        this.rebuildTag = rebuildTag;
+    }
 }

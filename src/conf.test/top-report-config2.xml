@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<top_reports>
+	<!-- 全局条件自动会应用到所有的entity中，
+		具体condition的定义和使用方式参看后面entity中condition的定义 -->
+	<!-- 下面范例表示说给后面所有的处理增加一个条件就是每一条分析日志长度都大于等于6,小于11,否则不做任何统计分析 -->
+   
+    <!-- 全局条件自动会应用到所有的entity中，
+		具体valuefilter的定义和使用方式参看后面entity中valuefilter的定义
+    <global-valuefilter value=""/>
+    <global-mapClass value=""/>
+    -->
+    
+    <!--inner-key key="6" file="file:/Users/apple/Documents/workspace/top-analysis/src/conf.test/apiInnerKey.ik"/-->
+    
+
+	<!-- 别名，用于定义分析文件中的列，
+		防止因为列的移位导致整个报表都需要修改，多个别名可以对应一个列,key代表列数值 -->
+    <aliases>
+    	<alias name="appkey" key="1"/>
+    	<alias name="apiName" key="2"/>
+    	<alias name="nick" key="3"/>
+    	<alias name="remoteIp" key="4"/>
+    	<alias name="serviceParams" key="5"/>
+    	<alias name="errorCode" key="6"/>
+    	<alias name="timestamp" key="7"/>
+    </aliases>
+    
+    <!-- 统计列的定义:
+    	id是唯一索引，
+    	name表示在报表中显示的名称，
+    	key可以是alias也可以直接定义列号（不推荐）主要表示对那一列或者几列作为主键进行统计例如key=apiname表示对apiName作分类统计，
+    		相同的apiname的纪录作为一组作后面value的运算，key有保留字GLOBAL_KEY代表对所有记录作总计统计
+    	value表示计算方式当前支持：min,max,average,count,sum,plain。分别代表统计最小值，最大值，平均值，计数,总和。plain表示直接显示，一般用于主键列的显示
+    		同时min,max,average,sum,plain支持表达式，用$$围起来的代表列，entry()表示对统计后的entry作再次计算得到新的entry的结果。
+    	condition表示key的过滤条件，支持对列的过滤条件，支持大于，小于，不等于,大于等于,小于等于的表达式（大于小于需要转义），
+    		同时可以多个条件串联用&amp;串联。注意，表达式中不支持有空格。
+    	valuefilter表示value的过滤条件，支持计算出来的结果过滤，有大于，小于，不等于,大于等于,小于等于，是否是数字（isnumber）,大于小于需要转义，
+    		同时可以多个条件串联用&amp;串联。注意，表达式中不支持有空格。
+    	支持自定义map和reduce函数：范例如下：
+    		mapClass="com.taobao.top.analysis.map.TimeMap" mapParams="xxx=xxx"
+			reduceClass="com.taobao.top.analysis.reduce.TimeReduce" reduceParams="xxx=xxx"
+    	 -->
+	
+	<!-- 
+		报表定义：
+		id为报表主键，除了数字也可以用英文字符串
+		file为报表保存的名称，不建议使用中文
+		entryList描述了报表包含的所有的entry，可以引用上面定义的全局性的entry，也可以内部定义私有的entry。
+		key可以被没有定义key的内部entry继承，外部ReportEntry无法继承
+	 -->
+	<reports>
+		
+		<report id="appPriceReport" file="appPriceReport">
+			<entryList>
+			    <entry name="应用ID" key="appkey" value="plain($appkey$)"/>  
+			    <entry name="平均价格" key="appkey" value="average($serviceParams.price$)"/>
+			    <entry name="最低价格" key="appkey" value="min($serviceParams.price$)"/>
+			    <entry name="最高价格" key="appkey" value="max($serviceParams.price$)"/>
+			</entryList>
+		</report>
+		
+		<report id="appCidReport" file="appCidReport">
+			<entryList>
+			    <entry name="应用ID" key="appkey,serviceParams.cid" value="plain($appkey$)"/>  
+			    <entry name="Cid" key="appkey,serviceParams.cid" value="plain($serviceParams.cid$)"/>  
+			    <entry name="总数" key="appkey,serviceParams.cid" value="count()"/>
+			</entryList>
+		</report>
+		
+	</reports>
+
+	
+</top_reports>

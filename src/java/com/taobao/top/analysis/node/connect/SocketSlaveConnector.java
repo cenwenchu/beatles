@@ -25,6 +25,10 @@ import org.jboss.netty.channel.ChannelPipelineFactory;
 import org.jboss.netty.channel.ChannelUpstreamHandler;
 import org.jboss.netty.channel.Channels;
 import org.jboss.netty.channel.socket.nio.NioClientSocketChannelFactory;
+import org.jboss.netty.handler.codec.serialization.ClassResolvers;
+import org.jboss.netty.handler.codec.serialization.ObjectDecoder;
+import org.jboss.netty.handler.codec.serialization.ObjectEncoder;
+import org.jboss.netty.handler.logging.LoggingHandler;
 
 import com.taobao.top.analysis.exception.AnalysisException;
 import com.taobao.top.analysis.node.event.GetTaskRequestEvent;
@@ -33,12 +37,12 @@ import com.taobao.top.analysis.node.event.MasterNodeEvent;
 import com.taobao.top.analysis.node.event.SendResultsRequestEvent;
 import com.taobao.top.analysis.node.event.SendResultsResponseEvent;
 import com.taobao.top.analysis.node.job.JobTask;
-import com.taobao.top.analysis.util.TimeOutQueue;
 
 /**
  * Socket版本的客户端通信组件
  * 
  * @author fangweng
+ * @author yunzhan.jtq
  * @email: fangweng@taobao.com 2011-12-2 下午5:26:51
  * 
  */
@@ -48,45 +52,48 @@ public class SocketSlaveConnector extends AbstractSlaveConnector {
 			.getLog(SocketSlaveConnector.class);
 
 	ClientBootstrap bootstrap;
-	ChannelFactory factory;
+	private static final ChannelFactory factory = new NioClientSocketChannelFactory(Executors.newCachedThreadPool(), Executors.newCachedThreadPool());
 	ChannelFuture future;
 	//默认的channel
 	String leaderChannel;
 	ChannelDownstreamHandler downstreamHandler;
 	ChannelUpstreamHandler upstreamHandler;
 	Map<String, MasterNodeEvent> responseQueue = new ConcurrentHashMap<String, MasterNodeEvent>();
-	SlaveEventTimeOutQueue slaveEventTimeQueue;
+//	SlaveEventTimeOutQueue slaveEventTimeQueue;
 	
 	//支持多个master来分担合并压力
 	Map<String,Channel> channels;
 	//用于创建管道时候控制并发
 	ReentrantLock channelLock;
-
+	
 	@Override
-	public void init() throws AnalysisException {
-		slaveEventTimeQueue = new SlaveEventTimeOutQueue();
-		channelLock = new ReentrantLock();
+    public void init() throws AnalysisException {
+//        slaveEventTimeQueue = new SlaveEventTimeOutQueue();
+        channelLock = new ReentrantLock();
 
-		factory = new NioClientSocketChannelFactory(
-				Executors.newCachedThreadPool(),
-				Executors.newCachedThreadPool());
+        bootstrap = new ClientBootstrap(factory);
 
-		bootstrap = new ClientBootstrap(factory);
+        bootstrap.setPipelineFactory(new ChannelPipelineFactory() {
+            public ChannelPipeline getPipeline() {
+                ChannelPipeline pipe =
+                        Channels.pipeline(new ObjectEncoder(8192 * 4), new ObjectDecoder(Integer.MAX_VALUE,
+                            ClassResolvers.weakCachingConcurrentResolver(this.getClass().getClassLoader())),
+                            new SlaveConnectorHandler(responseQueue, slaveNode));
+                pipe.addLast("log", new LoggingHandler());
+                return pipe;
+            }
+        });
 
-		bootstrap.setPipelineFactory(new ChannelPipelineFactory() {
-			public ChannelPipeline getPipeline() {
-				return Channels.pipeline(downstreamHandler, upstreamHandler,
-						new SlaveConnectorHandler(responseQueue,
-								slaveEventTimeQueue));
-			}
-		});
+        bootstrap.setOption("tcpNoDelay", true);
+        bootstrap.setOption("keepAlive", true);
+        bootstrap.setOption("connectTimeoutMillis", 10000);
 
-		bootstrap.setOption("tcpNoDelay", true);
-		bootstrap.setOption("keepAlive", true);
+        initChannelPool();
+        if (logger.isInfoEnabled()) {
+            logger.info("init slave, trying to connect " + leaderChannel);
+        }
 
-		initChannelPool();
-
-	}
+    }
 
 	public void initChannelPool() throws AnalysisException {
 		if (channels != null) {
@@ -103,8 +110,10 @@ public class SocketSlaveConnector extends AbstractSlaveConnector {
 	{
 		Channel channel = channels.get(address);
 		
-		if (channel != null)
+		//目前简单实现连接失败重连，后续可考虑在此处实现连接失败的策略
+		if (channel != null && (channel.isConnected() || channel.isOpen())) {
 			return channel;
+		}
 		
 		String[] _addr = StringUtils.split(address,":");
 		boolean isLock = false;
@@ -118,10 +127,13 @@ public class SocketSlaveConnector extends AbstractSlaveConnector {
 				//double check
 				channel = channels.get(address);
 				
-				if (channel != null)
+				if (channel != null && (channel.isConnected() || channel.isOpen()))
 					return channel;
 				
+				logger.info("trying to open new channel");
+				
 				future = bootstrap.connect(new InetSocketAddress(_addr[0],Integer.valueOf(_addr[1])));
+				logger.info("open channel to " + address );
 	
 				future.awaitUninterruptibly();
 				if (!future.isSuccess()) {
@@ -151,18 +163,28 @@ public class SocketSlaveConnector extends AbstractSlaveConnector {
 	@Override
 	public void releaseResource() {
 		try {
-			if (slaveEventTimeQueue != null)
-				slaveEventTimeQueue.release();
+		    long timestamp = System.currentTimeMillis();
+		    while(!responseQueue.isEmpty() && (System.currentTimeMillis() - timestamp < 60000)) {
+		        if(logger.isInfoEnabled()) {
+		            logger.info("responseQueue has " + responseQueue.size() + " to receive");
+		        }
+		        Thread.sleep(1000);
+		    }
+//			if (slaveEventTimeQueue != null)
+//				slaveEventTimeQueue.release();
 
 			for(Channel channel : channels.values())
 			{
 				try
 				{
-					channel.getCloseFuture().awaitUninterruptibly();
+					channel.getCloseFuture().cancel();
+					channel.getCloseFuture().await(3000);
 				}
 				catch(Exception ex)
 				{
 					logger.error(ex);
+				} finally {
+				    channel.close();
 				}
 			}
 					
@@ -177,34 +199,39 @@ public class SocketSlaveConnector extends AbstractSlaveConnector {
 
 	@Override
 	public JobTask[] getJobTasks(GetTaskRequestEvent requestEvent) {
-
 		JobTask[] tasks = null;
 
 		try {
 			final GetTaskRequestEvent event = requestEvent;
 			// 简单的用这种模式模拟阻塞请求
+			if(logger.isInfoEnabled())
+			    logger.info("trying to get tasks from master " + requestEvent.getRequestJobCount());
 			responseQueue.put(requestEvent.getSequence(), requestEvent);
-			slaveEventTimeQueue.add(requestEvent);
+//			slaveEventTimeQueue.add(requestEvent);
 			
 			Channel channel = getChannel(leaderChannel);
 			
+			requestEvent.setChannel(channel);
+			
 			ChannelFuture channelFuture = channel.write(requestEvent);
 
-			channelFuture.await(10, TimeUnit.SECONDS);
+			// why ??, 这里不必等待
+			//channelFuture.await(10, TimeUnit.SECONDS);
 
 			channelFuture.addListener(new ChannelFutureListener() {
 				public void operationComplete(ChannelFuture future) {
 					if (!future.isSuccess()) {
 						responseQueue.remove(event.getSequence());
-						slaveEventTimeQueue.remove(event);
+//						slaveEventTimeQueue.remove(event);
 						
-						logger.error("Slavesocket write error.",
+						logger.error("Slavesocket write error when trying to get tasks from master.",
 								future.getCause());
 						future.getChannel().close();
 					}
 				}
 			});
-
+			
+			// 在SlaveConnectorHandler. messageReceived中会countDown
 			requestEvent.getResultReadyFlag().await(
 					config.getMaxClientEventWaitTime(), TimeUnit.SECONDS);
 
@@ -223,51 +250,57 @@ public class SocketSlaveConnector extends AbstractSlaveConnector {
 
 		return tasks;
 	}
-
+	
 	@Override
-	public String sendJobTaskResults(SendResultsRequestEvent jobResponseEvent,String master) {
+	public String sendJobTaskResults(final SendResultsRequestEvent jobResponseEvent, final String master) {
+	    try 
+        {
+            final SendResultsRequestEvent event = jobResponseEvent;
+            
+            // 简单的用这种模式模拟阻塞请求
+            responseQueue.put(jobResponseEvent.getSequence(), jobResponseEvent);
+//            slaveEventTimeQueue.add(jobResponseEvent);
+            
+            Channel channel = getChannel(master);
+            jobResponseEvent.setChannel(channel);
+            final long start = System.currentTimeMillis();
+            ChannelFuture channelFuture = channel.write(jobResponseEvent);
+//            channelFuture.await(10, TimeUnit.SECONDS);
 
-		try 
-		{
-			final SendResultsRequestEvent event = jobResponseEvent;
-			
-			// 简单的用这种模式模拟阻塞请求
-			responseQueue.put(jobResponseEvent.getSequence(), jobResponseEvent);
-			slaveEventTimeQueue.add(jobResponseEvent);
-			
-			Channel channel = getChannel(master);
-			
-			ChannelFuture channelFuture = channel.write(jobResponseEvent);
-			channelFuture.await(10, TimeUnit.SECONDS);
+            channelFuture.addListener(new ChannelFutureListener() {
+                public void operationComplete(ChannelFuture future) {
+                    if (!future.isSuccess()) {
+                        responseQueue.remove(event.getSequence());
+//                        slaveEventTimeQueue.remove(event);
+                        
+                        logger.error("Slavesocket write error when send task result to master. tasks:"
+                                + event.getJobTaskResult().toString() + ",use:" + (System.currentTimeMillis() - start),
+                            future.getCause());
+                        future.getChannel().close();
+                    } else {
+                        if (logger.isWarnEnabled()) {
+                            logger.warn("send task success" + jobResponseEvent.getJobTaskResult().toString()
+                                    + " result to master " + master + ",use:" + (System.currentTimeMillis() - start));
+                        }
+                    }
+                }
+            });
 
-			channelFuture.addListener(new ChannelFutureListener() {
-				public void operationComplete(ChannelFuture future) {
-					if (!future.isSuccess()) {
-						responseQueue.remove(event.getSequence());
-						slaveEventTimeQueue.remove(event);
-						
-						logger.error("Slavesocket write error.",
-								future.getCause());
-						future.getChannel().close();
-					}
-				}
-			});
+            jobResponseEvent.getResultReadyFlag().await(
+                    config.getMaxClientEventWaitTime(), TimeUnit.SECONDS);
 
-			jobResponseEvent.getResultReadyFlag().await(
-					config.getMaxClientEventWaitTime(), TimeUnit.SECONDS);
+            SendResultsResponseEvent responseEvent = (SendResultsResponseEvent) jobResponseEvent
+                    .getResponse();
 
-			SendResultsResponseEvent responseEvent = (SendResultsResponseEvent) jobResponseEvent
-					.getResponse();
-
-			if (responseEvent != null) {
-				return responseEvent.getResponse();
-			}
-		} catch (Exception ex) {
-			logger.error("sendJobTaskResults error,master address : " + master,ex);
-		}
-
-		return null;
+            if (responseEvent != null) {
+                return responseEvent.getResponse();
+            }
+        } catch (Exception ex) {
+            logger.error("sendJobTaskResults error,master address : " + master,ex);
+        }
+        return null;
 	}
+	
 
 	public ChannelDownstreamHandler getDownstreamHandler() {
 		return downstreamHandler;
@@ -285,6 +318,7 @@ public class SocketSlaveConnector extends AbstractSlaveConnector {
 		this.upstreamHandler = upstreamHandler;
 	}
 
+	/*
 	class SlaveEventTimeOutQueue extends TimeOutQueue<MasterNodeEvent> {
 		@Override
 		public void timeOutAction(MasterNodeEvent event) {
@@ -292,14 +326,18 @@ public class SocketSlaveConnector extends AbstractSlaveConnector {
 			{
 				responseQueue.remove(event.getSequence());
 				
-				logger.warn("SlaveEventTimeOutQueue remove event : " + event.getSequence());
+				logger.info("SlaveEventTimeOutQueue remove event : " + event.getSequence());
+				
+				//在发送超时后，关闭当前通道
+				if(event.getChannel() != null)
+				    ((Channel)event.getChannel()).close();
 			}
 		}
 	}
+	*/
 
 	@Override
 	public void changeMaster(String master) {
 		this.leaderChannel = master;
 	}
-
 }

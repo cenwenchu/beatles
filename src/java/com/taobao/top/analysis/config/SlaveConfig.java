@@ -3,6 +3,8 @@
  */
 package com.taobao.top.analysis.config;
 
+import org.apache.commons.lang.StringUtils;
+
 import com.taobao.top.analysis.util.ReportUtil;
 
 
@@ -79,6 +81,24 @@ public class SlaveConfig extends AbstractConfig {
 	 */
 	private final static String GROUP_ID = "groupId";
 	
+	/**
+	 * 标识是否有zookeeper作为部分配置存储中心
+	 */
+	private final static String ZK_SERVER = "zkServer";
+	
+	public String getZkServer()
+	{
+		if(this.properties.containsKey(ZK_SERVER))
+			return this.properties.get(ZK_SERVER);
+		else
+			return null;
+	}
+	
+	public void setZkServer(String zkServer)
+	{
+		this.properties.put(ZK_SERVER,zkServer);
+	}
+	
 	public String getGroupId()
 	{
 		if(this.properties.containsKey(GROUP_ID))
@@ -122,7 +142,7 @@ public class SlaveConfig extends AbstractConfig {
 		if(this.properties.containsKey(MAX_CLIENT_EVENT_WAIT_TIME))
 			return Integer.parseInt((String)this.properties.get(MAX_CLIENT_EVENT_WAIT_TIME));
 		else
-			return 10;
+			return 30;
 	}
 
 	public void setMaxClientEventWaitTime(String maxClientEventWaitTime) {
@@ -184,14 +204,14 @@ public class SlaveConfig extends AbstractConfig {
 		this.properties.put(JOB_NAME,jobName);
 	}
 
-	public int getGetJobInterval() {
+	public int getJobInterval() {
 		if(this.properties.containsKey(GET_JOB_INTERVAL))
 			return Integer.parseInt((String)this.properties.get(GET_JOB_INTERVAL)) * 1000;
 		else
 			return 3000;
 	}
 
-	public void setGetJobInterval(String getJobInterval) {
+	public void setJobInterval(String getJobInterval) {
 		this.properties.put(GET_JOB_INTERVAL,getJobInterval);
 	}
 
@@ -215,6 +235,33 @@ public class SlaveConfig extends AbstractConfig {
 
 	public void setMaxTransJobCount(String maxTransJobCount) {
 		this.properties.put(MAX_TRANSJOB_COUNT,maxTransJobCount);
+	}
+
+	@Override
+	public String marshal() {
+		return new StringBuilder().append("timestamp=").append(System.currentTimeMillis()).append(",")
+			    .append("groupId=").append(this.getGroupId()).append(",")
+				.append("masterAddress=").append(this.getMasterAddress()).append(",")
+				.append("masterPort=").append(this.getMasterPort()).append(",")
+				.append("jobInterval=").append(this.getJobInterval()).append(",")
+				.append("maxTransJobCount=").append(this.getMaxTransJobCount()).toString();
+	}
+
+	@Override
+	public void unmarshal(String content) {
+		if (StringUtils.isEmpty(content))
+			return;
+		
+		String[] ct = content.split(",");
+		
+		if (ct.length >= 6)
+		{
+			this.setGroupId(ct[1].substring(ct[1].indexOf("=")+1));
+			this.setMasterAddress(ct[2].substring(ct[2].indexOf("=")+1));
+			this.setMasterPort(ct[3].substring(ct[3].indexOf("=")+1));
+			this.setJobInterval(ct[4].substring(ct[4].indexOf("=")+1));
+			this.setMaxTransJobCount(ct[5].substring(ct[5].indexOf("=")+1));
+		}
 	}
 
 }

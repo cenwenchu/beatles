@@ -7,6 +7,7 @@ import java.util.Map;
 import com.taobao.top.analysis.exception.AnalysisException;
 import com.taobao.top.analysis.statistics.data.Alias;
 import com.taobao.top.analysis.statistics.data.ICalculator;
+import com.taobao.top.analysis.statistics.data.ObjectColumn;
 import com.taobao.top.analysis.util.AnalysisConstants;
 import com.taobao.top.analysis.util.ReportUtil;
 
@@ -66,7 +67,15 @@ public class SimpleCalculator implements ICalculator {
 								&& aliasPool.get(temp) != null) {
 							bindingStack.add(aliasPool.get(temp).getKey());
 						} else
-							bindingStack.add(temp);
+							if (aliasPool != null && aliasPool.size() > 0
+									&& temp.indexOf(".") > 0 
+									&& aliasPool.get(temp.substring(0, temp.indexOf("."))) != null)
+							{
+								bindingStack.add(new ObjectColumn(aliasPool.get(temp.substring(0, temp.indexOf("."))).getKey(),
+									temp.substring(temp.indexOf(".")+1)));
+							}
+							else
+								bindingStack.add(Integer.valueOf(temp));
 
 						continue;
 					}
@@ -126,17 +135,33 @@ public class SimpleCalculator implements ICalculator {
 			if (bindingStack.size() > 1) {
 				if (bindingStack.get(0) instanceof String && ((String)bindingStack.get(0)).startsWith("#"))
 					left = Double.valueOf(((String)bindingStack.get(0)).substring(1));
-				else {
-					if ((Integer)bindingStack.get(0) - 1 >= contents.length)
-						return result;
-					Object o = contents[(Integer)bindingStack.get(0) - 1];
-					if(o instanceof Number){
-						left = ((Number) o).doubleValue();
-					}else{
-						left = Double.valueOf(o.toString());
+				else 
+					if (bindingStack.get(0) instanceof ObjectColumn)
+					{
+						if (((ObjectColumn)bindingStack.get(0)).getcIndex() - 1 >= contents.length)
+							return result;
+						Object o = contents[((ObjectColumn)bindingStack.get(0)).getcIndex() - 1];
+						
+						o = ReportUtil.getValueFromJosnObj(o.toString(),((ObjectColumn)bindingStack.get(0)).getSubKeyName());
+						
+						if(o instanceof Number){
+							left = ((Number) o).doubleValue();
+						}else{
+							left = Double.valueOf(o.toString());
+						}
 					}
-					
-				}
+					else
+					{
+						if ((Integer)bindingStack.get(0) - 1 >= contents.length)
+							return result;
+						Object o = contents[(Integer)bindingStack.get(0) - 1];
+						if(o instanceof Number){
+							left = ((Number) o).doubleValue();
+						}else{
+							left = Double.valueOf(o.toString());
+						}
+						
+					}
 
 				double right = 0;
 
@@ -146,16 +171,34 @@ public class SimpleCalculator implements ICalculator {
 					if (bindingStack.get(i + 1) instanceof String && ((String)bindingStack.get(i + 1)).startsWith("#"))
 						right = Double.valueOf(((String)bindingStack.get(i + 1))
 								.substring(1));
-					else {
-						if ((Integer)bindingStack.get(i + 1) - 1 >= contents.length)
-							return result;
-						Object o = contents[(Integer)bindingStack.get(i + 1) - 1];
-						if(o instanceof Number){
-							right = ((Number) o).doubleValue();
-						}else{
-							right = Double.valueOf(o.toString());
+					else 
+						if (bindingStack.get(i + 1) instanceof ObjectColumn)
+						{
+							
+							if (((ObjectColumn)bindingStack.get(i+1)).getcIndex() - 1 >= contents.length)
+								return result;
+							
+							Object o = contents[((ObjectColumn)bindingStack.get(i+1)).getcIndex() - 1];
+							
+							o = ReportUtil.getValueFromJosnObj(o.toString(),((ObjectColumn)bindingStack.get(i+1)).getSubKeyName());
+							
+							if(o instanceof Number){
+								right = ((Number) o).doubleValue();
+							}else{
+								right = Double.valueOf(o.toString());
+							}
 						}
-					}
+						else
+						{
+							if ((Integer)bindingStack.get(i + 1) - 1 >= contents.length)
+								return result;
+							Object o = contents[(Integer)bindingStack.get(i + 1) - 1];
+							if(o instanceof Number){
+								right = ((Number) o).doubleValue();
+							}else{
+								right = Double.valueOf(o.toString());
+							}
+						}
 
 					if (operatorStack.get(i) == AnalysisConstants.OPERATE_PLUS)
 					{
@@ -187,12 +230,23 @@ public class SimpleCalculator implements ICalculator {
 			} else {
 				if (bindingStack.get(0) instanceof String && ((String)bindingStack.get(0)).startsWith("#"))
 					result = Double.valueOf(((String)bindingStack.get(0)).substring(1));
-				else {
-					if ((Integer)bindingStack.get(0) - 1 >= contents.length)
-						return result;
-
-					result = contents[(Integer)bindingStack.get(0) - 1];
-				}
+				else 
+					if (bindingStack.get(0) instanceof ObjectColumn)
+					{
+						if (((ObjectColumn)bindingStack.get(0)).getcIndex() - 1 >= contents.length)
+							return result;
+	
+						result = contents[((ObjectColumn)bindingStack.get(0)).getcIndex() - 1];
+											
+						result = ReportUtil.getValueFromJosnObj(result.toString(),((ObjectColumn)bindingStack.get(0)).getSubKeyName());
+					}
+					else
+					{
+						if ((Integer)bindingStack.get(0) - 1 >= contents.length)
+							return result;
+	
+						result = contents[(Integer)bindingStack.get(0) - 1];
+					}
 
 			}
 

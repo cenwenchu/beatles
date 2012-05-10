@@ -46,7 +46,7 @@ public interface IJobBuilder extends IComponent<MasterConfig>{
 	 * @return
 	 * @throws AnalysisException
 	 */
-	public Map<String,Job> rebuild() throws AnalysisException;
+	public Map<String,Job> rebuild(Map<String,Job> jobs) throws AnalysisException;
 	
 	/**
 	 * 判断是否需要重新载入
@@ -59,5 +59,18 @@ public interface IJobBuilder extends IComponent<MasterConfig>{
 	 * @param needRebuild
 	 */
 	public void setNeedRebuild(boolean needRebuild);
+	
+	/**
+	 * 获取jobs配置文件的名称
+	 * @return
+	 */
+	public String getJobResource();
+	
+	/**
+	 * 判断是否修改
+	 * 用于判断是否任务需要重新build
+	 * @return
+	 */
+	public boolean isModified();
 
 }

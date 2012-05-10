@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeMap;
 
 /**
@@ -58,6 +59,11 @@ public class Rule implements Serializable {
 	
 	//用于将某些字段替换成短标识放入到key中，节省计算的内存
 	private List<InnerKey> innerKeyPool;
+	
+	/**
+     * 目前集群中所有的master
+     */
+    private Set<String> masters;
 
 	public Rule() {
 		entryPool = new HashMap<String, ReportEntry>();
@@ -154,5 +160,19 @@ public class Rule implements Serializable {
 	public void setVersion(long version) {
 		this.version = version;
 	}
+
+    /**
+     * @return the masters
+     */
+    public Set<String> getMasters() {
+        return masters;
+    }
+
+    /**
+     * @param masters the masters to set
+     */
+    public void setMasters(Set<String> masters) {
+        this.masters = masters;
+    }
 
 }

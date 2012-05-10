@@ -6,24 +6,30 @@ package com.taobao.top.analysis.node.component;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
 import com.taobao.top.analysis.config.MasterConfig;
 import com.taobao.top.analysis.exception.AnalysisException;
 import com.taobao.top.analysis.node.IJobBuilder;
 import com.taobao.top.analysis.node.job.Job;
+import com.taobao.top.analysis.util.AnalyzerUtil;
 
 /**
  * 支持多个扩展的JobBuilder,默认集成了本地文件的builder
+ * 此处有陷阱，支持多种类型的jobBuilder切换时注意
  * @author fangweng
  * @Email fangweng@taobao.com
  * 2011-11-28
  *
  */
 public class MixJobBuilder implements IJobBuilder {
+    private static final Log log = LogFactory.getLog(MixJobBuilder.class);
 
 	Map<String,IJobBuilder> jobBuilders;
 	private MasterConfig config;
 	private IJobBuilder jobBuilder;
-	private String jobSource;
+	private String jobResource;
 	
 	@Override
 	public boolean isNeedRebuild() {
@@ -74,27 +80,32 @@ public class MixJobBuilder implements IJobBuilder {
 			AnalysisException {
 				
 		String protocol = "file";
-		String conf = config;
-		jobSource = config;
+//		String conf = config;
+		jobResource = config;
 		jobBuilder = jobBuilders.get(protocol);
 		
 		if (config.indexOf(":") > 0)
 		{
 			protocol = config.substring(0,config.indexOf(":"));
-			conf = config.substring(config.indexOf(":")+1);
+//			conf = config.substring(config.indexOf(":")+1);
 			
 			if (jobBuilders.containsKey(protocol))
 				jobBuilder = jobBuilders.get(protocol);		
 		}
 		
-		return jobBuilder.build(conf);
+		return jobBuilder.build(config);
 	}
 
 	@Override
 	public void init() {
 		jobBuilders = new HashMap<String,IJobBuilder>();
-		jobBuilders.put("file", new FileJobBuilder());
+		FileJobBuilder fileJobBuilder = new FileJobBuilder();
+		fileJobBuilder.init();
+		jobBuilders.put("file", fileJobBuilder);
 		jobBuilders.get("file").setConfig(config);
+		if(log.isInfoEnabled()) {
+		    log.info("mixJobBuilder init complete.");
+		}
 	}
 
 	@Override
@@ -103,11 +114,11 @@ public class MixJobBuilder implements IJobBuilder {
 	}
 
 	@Override
-	public Map<String,Job> rebuild() throws AnalysisException {
-		if (this.isNeedRebuild() && jobSource != null)
+	public Map<String,Job> rebuild(Map<String,Job> jobs) throws AnalysisException {
+	    //此处有陷阱，支持多种类型的jobBuilder切换时注意
+		if (this.isNeedRebuild())
 		{
-			this.setNeedRebuild(false);
-			return build(this.jobSource);
+		    return jobBuilder.rebuild(jobs);
 		}
 		else
 			return null;
@@ -118,5 +129,26 @@ public class MixJobBuilder implements IJobBuilder {
 		// TODO Auto-generated method stub
 		
 	}
+
+    /* (non-Javadoc)
+     * @see com.taobao.top.analysis.node.IJobBuilder#isModified()
+     */
+    @Override
+    public boolean isModified() {
+        //此处有陷阱，支持多种类型的jobBuilder切换时注意
+        if(!AnalyzerUtil.covertNullToEmpty(config.getJobsSource()).equals(AnalyzerUtil.covertNullToEmpty(this.jobResource)))
+            return true;
+        if(this.jobBuilders.get("file").isModified())
+            return true;
+        return false;
+    }
+
+    /* (non-Javadoc)
+     * @see com.taobao.top.analysis.node.IJobBuilder#getJobResource()
+     */
+    @Override
+    public String getJobResource() {
+        return jobResource;
+    }
 
 }

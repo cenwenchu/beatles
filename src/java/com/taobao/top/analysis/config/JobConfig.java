@@ -75,12 +75,21 @@ public class JobConfig extends AbstractConfig {
 	 */
 	private final static String REPORT_PERIOD_DEFINE = "reportPeriodDefine";
 	
+	// mod by fangweng 2011 performance
+    //数据量较小的情况下请勿使用！！！
+    //导出后清除对应的map内的数据，下次合并过程中再尝试从磁盘载入，通过配置开关判断是否实施
+    private final static String SAVE_TMP_RESULT_TO_FILE = "saveTmpResultToFile";
+    
+    //mod by fangweng 2011 performance
+    //配合磁盘换内存的方式，判断什么时候可以异步载入文件
+    private final static String ASYN_LOAD_DISK_FILE_PRECENT = "asynLoadDiskFilePrecent";
+	
 	public int getJobResetTime()
 	{
 		if(this.properties.containsKey(JOB_RESET_TIME))
 			return Integer.parseInt((String)this.properties.get(JOB_RESET_TIME));
 		else
-			return 10 * 60;
+			return 3 * 60;
 	}
 	
 	public void setJobResetTime(String jobResetTime)
@@ -155,8 +164,11 @@ public class JobConfig extends AbstractConfig {
 
 	public String getSplitRegex() {
 		
-		if (this.properties.containsKey(SPLITREGEX))
+		if (this.properties.containsKey(SPLITREGEX)) {
+		    if("space".equals(this.properties.get(SPLITREGEX)))
+		        return " ";
 			return (String)this.properties.get(SPLITREGEX);
+		}
 		else
 			return ",";
 	}
@@ -186,7 +198,7 @@ public class JobConfig extends AbstractConfig {
 		if (this.properties.containsKey(OUTPUT_ENCODING))
 			return (String)this.properties.get(OUTPUT_ENCODING);
 		else
-			return "UTF-8";
+			return "GBK";
 	}
 
 
@@ -216,7 +228,40 @@ public class JobConfig extends AbstractConfig {
 
 	public void setOutputParams(String outputParams) {
 		this.properties.put(OUTPUT_PARAMS,outputParams);
-	}	
+	}
 	
+	public Boolean getSaveTmpResultToFile() {
+        if(this.properties.containsKey(SAVE_TMP_RESULT_TO_FILE))
+            return Boolean.parseBoolean((String)this.properties.get(SAVE_TMP_RESULT_TO_FILE));
+        else
+            return null;
+    }
+
+    public void setSaveTmpResultToFile(String saveTmpResultToFile) {
+        this.properties.put(SAVE_TMP_RESULT_TO_FILE,saveTmpResultToFile);
+    }
+
+    public Integer getAsynLoadDiskFilePrecent() {
+        if(this.properties.containsKey(ASYN_LOAD_DISK_FILE_PRECENT))
+            return Integer.parseInt((String)this.properties.get(ASYN_LOAD_DISK_FILE_PRECENT));
+        else
+            return -1;
+    }
+
+    public void setAsynLoadDiskFilePrecent(String asynLoadDiskFilePrecent) {
+        this.properties.put(ASYN_LOAD_DISK_FILE_PRECENT,asynLoadDiskFilePrecent);
+    }
+
+	@Override
+	public String marshal() {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public void unmarshal(String content) {
+		// TODO Auto-generated method stub
+		
+	}
 
 }

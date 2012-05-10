@@ -29,5 +29,7 @@ public interface IMasterConnector extends IComponent<MasterConfig>{
 	 * @param 返回结果
 	 */
 	public void echoSendJobTaskResults(SendResultsResponseEvent event);
+	
+	public void openServer();
 
 }

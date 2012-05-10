@@ -72,7 +72,25 @@ public class JobTask implements Serializable{
 	 * 这个任务最后合并的年代纪录，为了当这台服务器出现问题的时候可以接受slave容灾时发送过来的老的结果
 	 */
 	private int lastMergedEpoch;
-
+	
+	/**
+	 * 对于http请求
+	 */
+	private String url;
+	
+	/**
+     * 用于系统恢复的时候从临时备份数据中读取临时数据在日志获取端的游标，以时间戳作为游标
+     * 简单来说就是每一个master备份出去的临时文件包含当前分析的数据内容和这些数据对应到数据源（日志产生方）的日志拖拉绝对游标
+     * 这个参数将会配合epoch一起加入到job的task的input中作为参数传递，epoch＝1的时候才会判断是否要根据这个参数重置游标
+     */
+    private long jobSourceTimeStamp = 0;
+    
+    /**
+     * 重构状态，默认为0；
+     * 若重构时需要修改该task，则置为1；
+     */
+    private int rebuildStatus = 0;
+	
 	public JobTask(JobConfig jobConfig)
 	{
 		input = jobConfig.getInput();
@@ -201,5 +219,76 @@ public class JobTask implements Serializable{
 	public void setTaskRecycleTime(int taskRecycleTime) {
 		this.taskRecycleTime = taskRecycleTime;
 	}
+
+
+    /**
+     * @return the url
+     */
+    public String getUrl() {
+        return url;
+    }
+
+
+    /**
+     * @param url the url to set
+     */
+    public void setUrl(String url) {
+        this.url = url;
+    }
+    
+    public void resetInput() {
+        if(url != null && url.startsWith("http")) {
+            StringBuilder result = new StringBuilder(url);
+            result.append("&jobSourceTimeStamp=").append(this.getJobSourceTimeStamp())
+            .append("&epoch=").append(this.jobEpoch);
+            this.input = result.toString();
+        }
+    }
+
+
+    /**
+     * @return the jobSourceTimeStamp
+     */
+    public long getJobSourceTimeStamp() {
+        return jobSourceTimeStamp;
+    }
+
+
+    /**
+     * @param jobSourceTimeStamp the jobSourceTimeStamp to set
+     */
+    public void setJobSourceTimeStamp(long jobSourceTimeStamp) {
+        this.jobSourceTimeStamp = jobSourceTimeStamp;
+    }
+    
+    /**
+     * 
+     * @param jobTask
+     */
+    public void rebuild(JobTask jobTask) {
+        this.statisticsRule = jobTask.statisticsRule;
+        this.inputEncoding = jobTask.inputEncoding;
+        this.output = jobTask.output;
+        this.outputEncoding = jobTask.outputEncoding;
+        this.splitRegex = jobTask.splitRegex;
+        this.taskRecycleTime = jobTask.taskRecycleTime;
+        this.rebuildStatus = 1;
+    }
+
+
+    /**
+     * @return the rebuildStatus
+     */
+    public int getRebuildStatus() {
+        return rebuildStatus;
+    }
+
+
+    /**
+     * @param rebuildStatus the rebuildStatus to set
+     */
+    public void setRebuildStatus(int rebuildStatus) {
+        this.rebuildStatus = rebuildStatus;
+    }
 
 }

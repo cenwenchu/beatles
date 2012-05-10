@@ -31,10 +31,13 @@ import org.apache.commons.logging.LogFactory;
 
 import com.taobao.top.analysis.exception.AnalysisException;
 import com.taobao.top.analysis.statistics.data.Alias;
+import com.taobao.top.analysis.statistics.data.ObjectColumn;
 import com.taobao.top.analysis.statistics.data.Report;
 import com.taobao.top.analysis.statistics.data.ReportEntry;
 import com.taobao.top.analysis.statistics.data.ReportOrderComparator;
 import com.taobao.top.analysis.statistics.data.impl.SimpleCalculator;
+import com.taobao.top.analysis.statistics.reduce.IReducer.ReduceType;
+import com.taobao.top.analysis.statistics.reduce.group.AvgFunction;
 
 /**
  * 报表工具类
@@ -44,7 +47,11 @@ import com.taobao.top.analysis.statistics.data.impl.SimpleCalculator;
  */
 public class ReportUtil {
 	private static final Log logger = LogFactory.getLog(ReportUtil.class);
+	private static final Log clusterLogger = LogFactory.getLog("cluster");
 	private static Map<Object, Object> localCache = new ConcurrentHashMap<Object, Object>();
+	public final static String RETURN = "\r\n";
+	public final static String MASTER_LOG = "master";
+	public final static String SLAVE_LOG = "slave";
 
 	private static String ip;
 
@@ -64,6 +71,11 @@ public class ReportUtil {
 
 	public static String getSeparator() {
 		return separator;
+	}
+	
+	public static void clusterLog(String log)
+	{
+		clusterLogger.info(log + RETURN);
 	}
 
 	public static InputStream getInputStreamFromFile(String file)
@@ -301,6 +313,41 @@ public class ReportUtil {
 		cal.setTimeInMillis(time);
 		return df.format(cal.getTime());
 	}
+	
+	/**
+	 * 简单的从column 的json对象中获得对应属性的结果
+	 * @param column
+	 * @param subKeyName
+	 */
+	public static String getValueFromJosnObj(String column, String subKeyName)
+	{
+		String k = new StringBuilder("\"").append(subKeyName).append("\":").toString();
+		
+		if (column.indexOf(k) <= 0)
+			return null;
+		
+		String v = column.substring(column.indexOf(k) + k.length());
+		
+		if (v.indexOf(",") > 0)
+		{
+			v = v.substring(0,v.indexOf(","));
+		}
+		
+		if (v.indexOf("[") >= 0)
+			v = v.substring(v.indexOf("[")+1);
+		
+		if (v.indexOf("]") > 0)
+			v = v.substring(0,v.indexOf("]"));
+		
+		if (v.indexOf("\"") >= 0)
+			v = v.substring(v.indexOf("\"")+1);
+		
+		if (v.endsWith("\""))
+			v = v.substring(0,v.length()-1);
+		
+		return v;
+		
+	}
 
 	/**
 	 * 根据别名定义来转换报表模型中定义的key，直接转换为实际的列号
@@ -309,7 +356,7 @@ public class ReportUtil {
 	 * @param aliasPool
 	 */
 	public static int[] transformVars(String[] keys,
-			Map<String, Alias> aliasPool) {
+			Map<String, Alias> aliasPool,List<ObjectColumn> subKeys) {
 		if (keys != null && keys.length > 0) {
 
 			int[] tKeys = new int[keys.length];
@@ -319,9 +366,17 @@ public class ReportUtil {
 						&& aliasPool.get(keys[i]) != null)
 					tKeys[i] = aliasPool.get(keys[i]).getKey();
 				else if (keys[i].equals(AnalysisConstants.GLOBAL_KEY_STR))
-					tKeys[i] = -2;
-				else
-					tKeys[i] = Integer.parseInt(keys[i]);
+					tKeys[i] = AnalysisConstants.GLOBAL_KEY;
+				else 
+					if(aliasPool != null && aliasPool.size() > 0 &&
+							keys[i].indexOf(".") > 0 && aliasPool.get(keys[i].substring(0, keys[i].indexOf("."))) != null)//列是复杂对象
+					{	
+						tKeys[i] = AnalysisConstants.Object_KEY;
+						subKeys.add(new ObjectColumn(aliasPool.get(keys[i].substring(0, keys[i].indexOf("."))).getKey(),
+								keys[i].substring(keys[i].indexOf(".") + 1)));
+					}
+					else
+						tKeys[i] = Integer.parseInt(keys[i]);
 			}
 
 			return tKeys;
@@ -586,14 +641,14 @@ public class ReportUtil {
 	 */
 	public static Map<String, Map<String, Object>> mergeEntryResult(
 			Map<String, Map<String, Object>>[] resultPools,
-			Map<String, ReportEntry> entryPool, boolean needMergeLazy) {
+			Map<String, ReportEntry> entryPool, boolean needMergeLazy,ReduceType reduceType) {
 		if (resultPools == null
 				|| (resultPools != null && resultPools.length == 0))
 			return null;
 
 		Map<String, Map<String, Object>> result = null;
 
-		result = merge(resultPools, entryPool);
+		result = merge(resultPools, entryPool,reduceType);
 
 		if (result == null || (result != null && result.size() <= 0))
 			return result;
@@ -626,6 +681,27 @@ public class ReportUtil {
 		}
 
 	}
+	
+	public static void cleanPeriodData(Map<String, Map<String, Object>> result,
+            Map<String, ReportEntry> entryPool) {
+	    if (entryPool != null) {
+            Iterator<String> entryKeys = entryPool.keySet().iterator();
+
+            while (entryKeys.hasNext()) {
+                String entryId = entryKeys.next();
+
+                ReportEntry entry = entryPool.get(entryId);
+
+                if (entry.isPeriod()) {
+                    Map<String, Object> t = result.remove(entryId);
+
+                    if (t != null)
+                        t.clear();
+                }
+
+            }
+        }
+	}
 
 	public static void lazyMerge(Map<String, Map<String, Object>> result,
 			Map<String, ReportEntry> entryPool) {
@@ -639,7 +715,8 @@ public class ReportUtil {
 
 			ReportEntry entry = entryPool
 					.get(entryId);
-			if (entry.isLazy()) {
+			if (entry.isLazy()) 
+			{
 				if (result.get(entryId) == null)
 					result.put(entryId, new HashMap<String, Object>());
 				SimpleCalculator c = (SimpleCalculator)entry.getCalculator();
@@ -854,13 +931,45 @@ public class ReportUtil {
 				}
 
 			}
+			else
+				//处理average的情况
+				if (entry.getGroupFunction() instanceof AvgFunction)
+				{
+					Map<String,Object> av = result.get(entryId);
+					Map<String,Object> tv = new HashMap<String,Object>();
+					
+					if (av != null)
+					{
+						Iterator<String> avKeys = av.keySet().iterator();
+						
+						while(avKeys.hasNext())
+						{
+							String ak = avKeys.next();
+							
+							if (ak.startsWith(AnalysisConstants.PREF_SUM))
+							{
+								String key = ak.substring(AnalysisConstants.PREF_SUM.length());
+								
+								tv.put(key, (Double)av.get(ak)/
+										(Double)av.get(new StringBuilder().append(AnalysisConstants.PREF_COUNT).append(key)
+													.toString()));
+								
+							}
+						}
+						
+						if (tv.size() > 0)
+							av.putAll(tv);
+						
+						tv.clear();
+					}
+				}
 
 		}
 	}
 
 	protected static Map<String, Map<String, Object>> merge(
 			Map<String, Map<String, Object>>[] entryPools,
-			Map<String, ReportEntry> entryConfig) {
+			Map<String, ReportEntry> entryConfig,ReduceType reduceType) {
 		Map<String, Map<String, Object>> result = null;
 
 		int _index = 0;
@@ -873,6 +982,13 @@ public class ReportUtil {
 				result = entryPools[i];
 				break;
 			}
+		}
+		
+		//对深度merge时，只有单个结果集合的时候也做一次深层扫描
+		if (reduceType == ReduceType.DEEP_MERGE && (_index == entryPools.length - 1))
+		{
+			result = new HashMap<String,Map<String,Object>>();
+			_index = entryPools.length - 2;
 		}
 
 		// 直接用resultPools的第一个作为基础数组，从第二个数组开始
@@ -895,8 +1011,12 @@ public class ReportUtil {
 					Object value = content.get(key);
 					if (key == null || value == null)
 						continue;
-					entry.getReduceClass().reducer(entry, key, value,
-							result.get(entryId));
+					try {
+					    entry.getReduceClass().reducer(entry, key, value,
+                            result.get(entryId),reduceType);
+					} catch (Throwable e) {
+					    logger.error("reduce error entryName:" + entry.getName() + ", key:" + key + ",value:" + value + "," + entry.getReports().get(0));
+					}
 				}
 
 			}
@@ -905,6 +1025,7 @@ public class ReportUtil {
 
 		return result;
 	}
+	
 
 	/**
 	 * 获得报表文件存储路径

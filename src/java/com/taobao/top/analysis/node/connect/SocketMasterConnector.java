@@ -5,14 +5,15 @@ package com.taobao.top.analysis.node.connect;
 
 
 import java.net.InetSocketAddress;
+import java.util.List;
 import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.jboss.netty.bootstrap.ServerBootstrap;
 import org.jboss.netty.channel.Channel;
 import org.jboss.netty.channel.ChannelDownstreamHandler;
+import org.jboss.netty.channel.ChannelFactory;
 import org.jboss.netty.channel.ChannelFuture;
 import org.jboss.netty.channel.ChannelFutureListener;
 import org.jboss.netty.channel.ChannelPipeline;
@@ -20,10 +21,15 @@ import org.jboss.netty.channel.ChannelPipelineFactory;
 import org.jboss.netty.channel.ChannelUpstreamHandler;
 import org.jboss.netty.channel.Channels;
 import org.jboss.netty.channel.socket.nio.NioServerSocketChannelFactory;
+import org.jboss.netty.handler.codec.serialization.ClassResolvers;
+import org.jboss.netty.handler.codec.serialization.ObjectDecoder;
+import org.jboss.netty.handler.codec.serialization.ObjectEncoder;
+import org.jboss.netty.handler.logging.LoggingHandler;
 
 import com.taobao.top.analysis.exception.AnalysisException;
 import com.taobao.top.analysis.node.event.GetTaskResponseEvent;
 import com.taobao.top.analysis.node.event.SendResultsResponseEvent;
+import com.taobao.top.analysis.node.job.JobTask;
 
 /**
  * Socket版本的服务端通信组件
@@ -40,32 +46,38 @@ public class SocketMasterConnector extends AbstractMasterConnector{
 	Channel serverChannel;
 	ChannelDownstreamHandler  downstreamHandler;
 	ChannelUpstreamHandler upstreamHandler;
+	private static final ChannelFactory factory = new NioServerSocketChannelFactory(Executors.newCachedThreadPool(),
+        Executors.newCachedThreadPool());
 
 	@Override
 	public void init() throws AnalysisException 
-	{
-		bootstrap = new ServerBootstrap(
-                new NioServerSocketChannelFactory(
-                        Executors.newCachedThreadPool(),
-                        Executors.newCachedThreadPool()));
-		
-	    bootstrap.setPipelineFactory(
-	    		new ChannelPipelineFactory() 
-	    		{
-	    			public ChannelPipeline getPipeline() 
-	    			{
-	    				return Channels.pipeline(downstreamHandler,upstreamHandler,new MasterConnectorHandler(masterNode));
-	            	}
-	        	});
-	    
-	    bootstrap.setOption("child.tcpNoDelay", true);
-	    bootstrap.setOption("child.keepAlive", true);
-	    bootstrap.setOption("child.receiveBufferSize", 9753);
-        bootstrap.setOption("child.sendBufferSize", 8642);
+ {
+        bootstrap =
+                new ServerBootstrap(factory);
+
+        bootstrap.setPipelineFactory(new ChannelPipelineFactory() {
+            public ChannelPipeline getPipeline() {
+                ChannelPipeline pipe =
+                        Channels.pipeline(
+                            new ObjectEncoder(),
+                            new ObjectDecoder(Integer.MAX_VALUE, ClassResolvers.weakCachingConcurrentResolver(this
+                                .getClass().getClassLoader())), new MasterConnectorHandler(masterNode));
+                pipe.addLast("log", new LoggingHandler());
+                return pipe;
+            }
+        });
+        
+        bootstrap.setOption("reuseAddress", true);
+
+        bootstrap.setOption("child.tcpNoDelay", true);
+        bootstrap.setOption("child.keepAlive", true);
+        bootstrap.setOption("child.receiveBufferSize", 8192 * 4); // 9753
+        bootstrap.setOption("child.sendBufferSize", 4096); // 8642
+        bootstrap.setOption("child.connectTimeoutMillis", 10000);
         serverChannel = bootstrap.bind(new InetSocketAddress(config.getMasterPort()));
-	    
-	    logger.info("SocketMasterConnector init now.");
-	}
+
+        logger.info("SocketMasterConnector init now.");
+    }
 	
 	public void openServer()
 	{
@@ -74,7 +86,12 @@ public class SocketMasterConnector extends AbstractMasterConnector{
 			releaseResource();
 		}
 		
-		serverChannel = bootstrap.bind(new InetSocketAddress(config.getMasterPort()));
+		try {
+            init();
+        }
+        catch (AnalysisException e) {
+            logger.error("reinit server error", e);
+        }
 	}
 
 	@Override
@@ -84,6 +101,7 @@ public class SocketMasterConnector extends AbstractMasterConnector{
 		{
 			serverChannel.close().awaitUninterruptibly();
 			bootstrap.getFactory().releaseExternalResources();
+			bootstrap.releaseExternalResources();
 		}
 		catch(Exception ex)
 		{
@@ -94,16 +112,37 @@ public class SocketMasterConnector extends AbstractMasterConnector{
 	}
 	
 	@Override
-	public void echoGetJobTasks(GetTaskResponseEvent event) {
+	public void echoGetJobTasks(final GetTaskResponseEvent event) {
 		ChannelFuture channelFuture = ((Channel)event.getChannel()).write(event);
 		
-		try {
-			channelFuture.await(10, TimeUnit.SECONDS);
-		} catch (InterruptedException e) {
-		}
+//		这里的线程等待只是为了阻塞线程？
+//		try {
+//			channelFuture.await(10, TimeUnit.SECONDS);
+//		} catch (InterruptedException e) {
+//		}
 		
 		channelFuture.addListener(new ChannelFutureListener() {
 	        public void operationComplete(ChannelFuture future) {
+	            if(future.isSuccess()) {
+	                //warn的日志，打点为了对每轮执行情况进行观察
+	                if (logger.isWarnEnabled())
+	                {
+	                    List<JobTask> jobTasks = event.getJobTasks();
+	                    if (jobTasks != null && jobTasks.size() > 0)
+	                    {
+	                        StringBuilder sb = new StringBuilder("Send " + jobTasks.size() + " tasks to slave(" + future.getChannel().getRemoteAddress() + "), tasks : { ");
+	                        
+	                        for(JobTask t : jobTasks)
+	                        {
+	                            sb.append("taskId:").append(t.getTaskId()).append(",");
+	                            sb.append("taskInput:").append(t.getInput()).append(";");
+	                        }
+	                        sb.append(" }");
+	                        logger.warn(sb.toString());
+	                        
+	                    }
+	                }
+	            }
 	            if (!future.isSuccess()) 
 	            {
 	            	logger.error("Mastersocket write error.",future.getCause());
@@ -118,10 +157,10 @@ public class SocketMasterConnector extends AbstractMasterConnector{
 	public void echoSendJobTaskResults(SendResultsResponseEvent event) {
 		ChannelFuture channelFuture = ((Channel)event.getChannel()).write(event);
 		
-		try {
-			channelFuture.await(10, TimeUnit.SECONDS);
-		} catch (InterruptedException e) {
-		}
+//		try {
+//			channelFuture.await(10, TimeUnit.SECONDS);
+//		} catch (InterruptedException e) {
+//		}
 		
 		channelFuture.addListener(new ChannelFutureListener() {
 	        public void operationComplete(ChannelFuture future) {

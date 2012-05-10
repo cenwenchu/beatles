@@ -38,8 +38,9 @@ public interface IJobResultMerger extends IComponent<MasterConfig>{
 	 * @param jobTask
 	 * @param jobTaskResults
 	 * @param needMergeLazy
+	 * @param needDeepMerge
 	 * @return
 	 */
-	public JobTaskResult merge(JobTask jobTask,List<JobTaskResult> jobTaskResults,boolean needMergeLazy);
+	public JobTaskResult merge(JobTask jobTask,List<JobTaskResult> jobTaskResults,boolean needMergeLazy,boolean needDeepMerge);
 	
 }

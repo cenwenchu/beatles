@@ -7,8 +7,10 @@ package com.taobao.top.analysis.node.component;
 
 import java.util.List;
 
+import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.zookeeper.ZooKeeper;
 import com.taobao.top.analysis.config.MasterConfig;
 import com.taobao.top.analysis.exception.AnalysisException;
 import com.taobao.top.analysis.node.IJobManager;
@@ -20,6 +22,8 @@ import com.taobao.top.analysis.node.event.SendResultsRequestEvent;
 import com.taobao.top.analysis.node.event.MasterNodeEvent;
 import com.taobao.top.analysis.node.event.SendResultsResponseEvent;
 import com.taobao.top.analysis.node.job.JobTask;
+import com.taobao.top.analysis.util.AnalyzerZKWatcher;
+import com.taobao.top.analysis.util.ZKUtil;
 
 /**
  * 分布式集群 Master Node （可以是虚拟机内部的）
@@ -41,6 +45,7 @@ public class MasterNode extends AbstractNode<MasterNodeEvent,MasterConfig> {
 	 * 用于与Slave通信的组件
 	 */
 	private IMasterConnector masterConnector;
+	
 	
 	public IJobManager getJobManager() {
 		return jobManager;
@@ -67,6 +72,30 @@ public class MasterNode extends AbstractNode<MasterNodeEvent,MasterConfig> {
 		jobManager.init();	
 		masterConnector.init();
 		
+		//增加一块对于zookeeper的支持
+		if (StringUtils.isNotEmpty(config.getZkServer()))
+		{
+			try
+			{
+				AnalyzerZKWatcher<MasterConfig> analyzerZKWatcher = 
+						new AnalyzerZKWatcher<MasterConfig>(config);
+				zk = new ZooKeeper(config.getZkServer(),3000,analyzerZKWatcher);
+				analyzerZKWatcher.setZk(zk);
+				
+				//每次启动时都先检查是否有根目录
+				ZKUtil.createGroupNodesIfNotExist(zk,config.getGroupId());
+				
+				ZKUtil.updateOrCreateNode(zk,ZKUtil.getGroupMasterZKPath(config.getGroupId())
+						+ "/" + config.getMasterName(),config.marshal().getBytes("UTF-8"));
+				
+			}
+			catch(Exception ex)
+			{
+				logger.error("config to zk error!",ex);
+			}
+			
+		}
+		
 		if (logger.isInfoEnabled())
 			logger.info("Master init complete.");
 	}
@@ -79,13 +108,33 @@ public class MasterNode extends AbstractNode<MasterNodeEvent,MasterConfig> {
 		if (masterConnector != null)
 			masterConnector.releaseResource();
 		
+		//增加一块对于zookeeper的支持
+		if (StringUtils.isNotEmpty(config.getZkServer()) && zk != null)
+		{
+			try
+			{
+				ZKUtil.deleteNode(zk,ZKUtil.getGroupMasterZKPath(config.getGroupId())
+						+ "/" + config.getMasterName());
+				
+			}
+			catch(Exception ex)
+			{
+				logger.error("delete zk node error!",ex);
+			}
+			
+		}
+		
 		if (logger.isInfoEnabled())
 			logger.info("Master releaseResource complete.");
 	}
 
 	@Override
 	public void process() throws AnalysisException {
-		jobManager.checkJobStatus();
+	    try {
+	        jobManager.checkJobStatus();
+	    } catch (Throwable e) {
+	        logger.error(e);
+	    }
 	}
 	
 	/**
@@ -100,22 +149,6 @@ public class MasterNode extends AbstractNode<MasterNodeEvent,MasterConfig> {
 		event.setChannel(channel);
 		
 		masterConnector.echoGetJobTasks(event);
-		
-		if (logger.isInfoEnabled())
-		{
-			if (jobTasks != null && jobTasks.size() > 0)
-			{
-				StringBuilder jobTaskIds = new StringBuilder("Send task to slave, taskids : ");
-				
-				for(JobTask t : jobTasks)
-				{
-					jobTaskIds.append(t.getTaskId()).append(",");
-				}
-				
-				logger.info(jobTaskIds.toString());
-				
-			}
-		}
 	}
 	
 	/**
@@ -193,6 +226,10 @@ public class MasterNode extends AbstractNode<MasterNodeEvent,MasterConfig> {
 			case AWAKE:
 				this.awaitNode();
 				break;
+				
+			case RESETSERVER:
+			    this.getMasterConnector().openServer();
+			    break;
 				
 			default:
 				throw new AnalysisException("Not support such Event : " + event.getEventCode().toString());

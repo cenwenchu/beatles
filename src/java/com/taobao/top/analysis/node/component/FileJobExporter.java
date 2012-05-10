@@ -103,8 +103,15 @@ public class FileJobExporter implements IJobExporter {
 
 	@Override
 	public List<String> exportReport(Job job,boolean needTimeSuffix) {
-		return exportReport(job.getStatisticsRule(),job.getJobConfig().getOutput(),
+		
+		long timer = System.currentTimeMillis();
+		
+		List<String> result =  exportReport(job.getStatisticsRule(),job.getJobConfig().getOutput(),
 				job.getJobName(),needTimeSuffix,job.getJobResult(),job.getJobConfig().getOutputEncoding());
+		
+		job.setJobExportTime(System.currentTimeMillis() - timer);
+		
+		return result;
 	}
 	
 	@Override
@@ -117,8 +124,8 @@ public class FileJobExporter implements IJobExporter {
 	protected List<String> exportReport(Rule statisticsRule,String reportOutput,String id,boolean needTimeSuffix
 			,Map<String, Map<String, Object>> entryResultPool,String outputEncoding)
 	{
-		if (logger.isInfoEnabled())
-			logger.info("start exportReport now, id : " + id + ", output : " + reportOutput);
+		if (logger.isWarnEnabled())
+			logger.warn("start exportReport now, id : " + id + ", output : " + reportOutput);
 		
 		long start = System.currentTimeMillis();
 		
@@ -131,7 +138,7 @@ public class FileJobExporter implements IJobExporter {
 			return reports;
 		
 		//清理lazy数据
-		ReportUtil.cleanLazyData(entryResultPool, statisticsRule.getEntryPool());
+        ReportUtil.cleanLazyData(entryResultPool, statisticsRule.getEntryPool());
 		//做一下lazy处理，用于输出
 		ReportUtil.lazyMerge(entryResultPool, statisticsRule.getEntryPool());
 
@@ -286,7 +293,7 @@ public class FileJobExporter implements IJobExporter {
 		
 		try
 		{
-			boolean allexport = countDownLatch.await(3, TimeUnit.MINUTES);
+			boolean allexport = countDownLatch.await(10, TimeUnit.MINUTES);
 			
 			if (!allexport)
 			{
@@ -303,9 +310,11 @@ public class FileJobExporter implements IJobExporter {
 		
 		//清理lazy数据
 		ReportUtil.cleanLazyData(entryResultPool, statisticsRule.getEntryPool());
+		//清理period数据
+		ReportUtil.cleanPeriodData(entryResultPool, statisticsRule.getEntryPool());
 
-		if (logger.isInfoEnabled())
-			logger.info(new StringBuilder("generate report end")
+		if (logger.isWarnEnabled())
+			logger.warn(new StringBuilder("generate report ").append(id).append(" end")
 					.append(", time consume: ")
 					.append((System.currentTimeMillis() - start) / 1000)
 					.toString());
@@ -362,9 +371,9 @@ public class FileJobExporter implements IJobExporter {
 	}
 	
 	@Override
-	public void loadJobBackupData(Job job,String epoch)
+	public void loadJobBackupData(Job job,String bckPrefix)
 	{
-		JobDataOperation jobDataOperation = new JobDataOperation(job,AnalysisConstants.JOBMANAGER_EVENT_LOAD_BACKUPDATA,this.config,epoch);
+		JobDataOperation jobDataOperation = new JobDataOperation(job,AnalysisConstants.JOBMANAGER_EVENT_LOAD_BACKUPDATA,this.config,bckPrefix);
 		createReportFileThreadPool.submit(jobDataOperation);
 	}
 

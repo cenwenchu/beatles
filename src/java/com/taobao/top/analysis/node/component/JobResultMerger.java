@@ -23,6 +23,7 @@ import com.taobao.top.analysis.node.job.JobTask;
 import com.taobao.top.analysis.node.job.JobTaskResult;
 import com.taobao.top.analysis.node.operation.JobDataOperation;
 import com.taobao.top.analysis.node.operation.MergeJobOperation;
+import com.taobao.top.analysis.statistics.reduce.IReducer.ReduceType;
 import com.taobao.top.analysis.util.AnalysisConstants;
 import com.taobao.top.analysis.util.NamedThreadFactory;
 import com.taobao.top.analysis.util.ReportUtil;
@@ -151,7 +152,7 @@ public class JobResultMerger implements IJobResultMerger {
 		//判断是否可以开始载入外部磁盘换存储的文件,大于AsynLoadDiskFilePrecent的时候开始载入数据等待分析
 		if (config.getSaveTmpResultToFile())
 			if (job.getMergedTaskCount().get() * 100 
-					/ job.getTaskCount() >= config.getAsynLoadDiskFilePrecent())
+					/ job.getTaskCount() >= job.getJobConfig().getAsynLoadDiskFilePrecent())
 			{		
 				if (logger.isInfoEnabled())
 					logger.info("start asyn load " + job.getJobName() + " trunkData from disk");
@@ -184,7 +185,7 @@ public class JobResultMerger implements IJobResultMerger {
 	
 	@Override
 	public JobTaskResult merge(JobTask jobTask,
-			List<JobTaskResult> jobTaskResults,boolean needMergeLazy) {
+			List<JobTaskResult> jobTaskResults,boolean needMergeLazy,boolean needDeepMerge) {
 		
 		if (jobTaskResults == null || (jobTaskResults != null && jobTaskResults.size() == 0))
 			return null;
@@ -219,8 +220,12 @@ public class JobResultMerger implements IJobResultMerger {
 			base.addTaskExecuteInfos(mergeResult.getTaskExecuteInfos());
 		}
 		
-		base.setResults(ReportUtil.mergeEntryResult(taskResultContents, 
-				jobTask.getStatisticsRule().getEntryPool(), needMergeLazy));
+		if (needDeepMerge)
+			base.setResults(ReportUtil.mergeEntryResult(taskResultContents, 
+				jobTask.getStatisticsRule().getEntryPool(), needMergeLazy,ReduceType.DEEP_MERGE));
+		else
+			base.setResults(ReportUtil.mergeEntryResult(taskResultContents, 
+					jobTask.getStatisticsRule().getEntryPool(), needMergeLazy,ReduceType.SHALLOW_MERGE));
 		
 		return base;
 	}

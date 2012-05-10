@@ -26,11 +26,7 @@ public class JobTaskExecuteInfo implements Serializable {
 	private long errorLine;
 	private long emptyLine;
 	private boolean success;
-	
-	/**
-	 * 工作者IP
-	 */
-	private String workerIp;
+	private String taskId;
 	
 	public boolean isSuccess() {
 		return success;
@@ -38,12 +34,7 @@ public class JobTaskExecuteInfo implements Serializable {
 	public void setSuccess(boolean success) {
 		this.success = success;
 	}
-	public String getWorkerIp() {
-		return workerIp;
-	}
-	public void setWorkerIp(String workerIp) {
-		this.workerIp = workerIp;
-	}
+
 	public long getAnalysisConsume() {
 		return analysisConsume;
 	}
@@ -74,5 +65,26 @@ public class JobTaskExecuteInfo implements Serializable {
 	public void setEmptyLine(long emptyLine) {
 		this.emptyLine = emptyLine;
 	}
+
+
+    public String toString() {
+        StringBuilder sb = new StringBuilder("(");
+        sb.append("taskId:").append(taskId).append(",analysisConsume:").append(analysisConsume).append(",jobDataSize:")
+            .append(jobDataSize).append(",totalLine:").append(totalLine).append(",errorLine:").append(errorLine)
+            .append(",emptyLine:").append(emptyLine).append(",success:").append(success).append(")");
+        return sb.toString();
+    }
+    /**
+     * @return the taskId
+     */
+    public String getTaskId() {
+        return taskId;
+    }
+    /**
+     * @param taskId the taskId to set
+     */
+    public void setTaskId(String taskId) {
+        this.taskId = taskId;
+    }
 
 }

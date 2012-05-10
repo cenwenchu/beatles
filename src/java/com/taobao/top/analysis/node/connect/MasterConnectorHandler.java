@@ -15,8 +15,10 @@ import org.jboss.netty.channel.MessageEvent;
 import org.jboss.netty.channel.SimpleChannelUpstreamHandler;
 
 import com.taobao.top.analysis.node.component.MasterNode;
+import com.taobao.top.analysis.node.event.GetTaskRequestEvent;
 import com.taobao.top.analysis.node.event.MasterEventCode;
 import com.taobao.top.analysis.node.event.MasterNodeEvent;
+import com.taobao.top.analysis.node.event.SendResultsRequestEvent;
 
 /**
  * @author fangweng
@@ -58,8 +60,34 @@ public class MasterConnectorHandler extends SimpleChannelUpstreamHandler {
 				nodeEvent.setChannel(channel);
 				masterNode.addEvent(nodeEvent);
 				
-				if (logger.isInfoEnabled())
-					logger.info("receive message from slave, squence : " + nodeEvent.getSequence());
+			} else {
+			    if (logger.isInfoEnabled())
+                    logger.info("receive message from slave : " + channel.getRemoteAddress() + ", squence : " + nodeEvent.getSequence());
+			}
+			
+            if (nodeEvent.getEventCode().equals(MasterEventCode.GET_TASK)) {
+                //INFO信息记录M/S通信内容
+                if (logger.isInfoEnabled()) {
+                    GetTaskRequestEvent requestEvent = (GetTaskRequestEvent) nodeEvent;
+                    String jobName = requestEvent.getJobName();
+                    int jobCount = requestEvent.getRequestJobCount();
+                    StringBuffer stringBuffer = new StringBuffer("receive get_task event, jobName:");
+                    if (jobName != null)
+                        stringBuffer.append("jobName:").append(jobName).append(",");
+                    stringBuffer.append("jobCount:").append(jobCount).append(",from:")
+                        .append(channel.getRemoteAddress()).append(",squence:").append(nodeEvent.getSequence());
+                    logger.info(stringBuffer.toString());
+                }
+            }
+			if(nodeEvent.getEventCode().equals(MasterEventCode.SEND_RESULT)) {
+			    //INFO信息记录M/S通信内容
+			    if(logger.isInfoEnabled()) {
+			        SendResultsRequestEvent requestEvent = (SendResultsRequestEvent)nodeEvent;
+	                StringBuffer stringBuffer = new StringBuffer("receive send_result event, resul:{");
+	                stringBuffer.append(requestEvent.getJobTaskResult().toString()).append("}");
+	                stringBuffer.append("from slave:").append(channel.getRemoteAddress()).append(",squence:").append(nodeEvent.getSequence());
+			        logger.info(stringBuffer.toString());
+			    }
 			}
 		}
 		
@@ -69,8 +97,9 @@ public class MasterConnectorHandler extends SimpleChannelUpstreamHandler {
 	public void exceptionCaught(ChannelHandlerContext ctx, ExceptionEvent e)
 			throws Exception {
 		
-		logger.warn("Unexpected exception from downstream.",
+		logger.error("Unexpected exception from downstream.channel:" + e.getChannel().getRemoteAddress().toString(),
                 e.getCause());
+		
 		e.getChannel().close();
 	}
 

@@ -3,8 +3,10 @@
  */
 package com.taobao.top.analysis.config;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.management.ManagementFactory;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
@@ -13,6 +15,7 @@ import java.util.Properties;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
+import com.taobao.top.analysis.util.AnalyzerUtil;
 import com.taobao.top.analysis.util.ReportUtil;
 
 /**
@@ -40,6 +43,22 @@ public abstract class AbstractConfig implements IConfig{
 	 */
 	public static final String USE_ZOOKEEPER = "useZookeeper";
 	
+	/**
+	 * 扫描文件的频率
+	 */
+	public static final String SCANFILETIME = "scanTime";
+	
+	/**
+	 * 如果使用本地文件配置，配置文件中将根据needScan字段判断是否定期扫描变更，文件最后修改时间
+	 * 扫描线程暂定写在AbstractConfig中，后续若zookeeper集成进来，再考虑实现变更接口
+	 */
+	private long fileLastModifyTime;
+	
+	/**
+	 * 配置文件名称
+	 */
+	private String configFile;
+	
 	public boolean isUseZookeeper()
 	{
 		if(this.properties.containsKey(USE_ZOOKEEPER))
@@ -52,6 +71,28 @@ public abstract class AbstractConfig implements IConfig{
 	{
 		this.properties.put(USE_ZOOKEEPER,useZookeeper);
 	}
+	
+	public int getScanFileTime() {
+	    return Double.valueOf(
+            this.properties.get(SCANFILETIME) == null ? "60"
+                    : this.properties.get(SCANFILETIME)).intValue();
+	}
+	
+	public void setScanFileTime(int scanFileTime) {
+	    this.properties.put(SCANFILETIME, String.valueOf(scanFileTime));
+	}
+	
+	public static String getSystemName(){
+        String app="";
+        if (System.getProperty("masterName") != null) {
+            app=System.getProperty("masterName");
+        } else {
+            String processName = ManagementFactory.getRuntimeMXBean().getName();
+            Long id = Long.parseLong(processName.split("@")[0]);
+            app=""+id;
+        }
+        return app;
+    }
 	
 	/**
 	 * 从配置中根据名称获得属性内容
@@ -94,6 +135,10 @@ public abstract class AbstractConfig implements IConfig{
 				properties.put(key, prop.getProperty(key));
 			}
 			
+			configFile = file;
+			
+			fileLastModifyTime = (new File(file)).lastModified();
+			
 		}
 		catch(Exception ex)
 		{
@@ -126,5 +171,35 @@ public abstract class AbstractConfig implements IConfig{
 		
 		return st.toString();
 	}
+	
+	public boolean equals(Object obj) {
+	    if(!(obj instanceof AbstractConfig))
+	        return false;
+	    if(this == obj)
+	        return true;
+	    AbstractConfig config = AbstractConfig.class.cast(obj);
+	    return AnalyzerUtil.covertNullToEmpty(this.toString()).equals(AnalyzerUtil.covertNullToEmpty(config.toString()));
+	}
+	
+	/* (non-Javadoc)
+     * @see com.taobao.top.analysis.config.IConfig#isNeedReload()
+     */
+    @Override
+    public boolean isNeedReload() {
+        File prop = new File(this.configFile);
+        if (prop.isFile() && prop.lastModified() != this.fileLastModifyTime) {
+            this.fileLastModifyTime = prop.lastModified();
+            return true;
+        }
+        return false;
+    }
 
+    /* (non-Javadoc)
+     * @see com.taobao.top.analysis.config.IConfig#reload()
+     */
+    @Override
+    public void reload() {
+        this.load(configFile);
+        logger.error("trying to reload config from " + configFile + ", please check that it's ok");
+    }
 }

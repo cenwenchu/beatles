@@ -4,7 +4,6 @@
 package com.taobao.top.analysis.node.component;
 
 import java.io.File;
-import java.io.IOException;
 
 import org.jboss.netty.handler.codec.serialization.ObjectDecoder;
 import org.jboss.netty.handler.codec.serialization.ObjectEncoder;
@@ -20,6 +19,7 @@ import com.taobao.top.analysis.node.event.SlaveEventCode;
 import com.taobao.top.analysis.node.event.SlaveNodeEvent;
 import com.taobao.top.analysis.node.io.FileInputAdaptor;
 import com.taobao.top.analysis.node.io.FileOutputAdaptor;
+import com.taobao.top.analysis.node.io.HdfsInputAdaptor;
 import com.taobao.top.analysis.node.io.HttpInputAdaptor;
 import com.taobao.top.analysis.node.io.IInputAdaptor;
 import com.taobao.top.analysis.node.io.IOutputAdaptor;
@@ -80,6 +80,7 @@ public class MasterSlaveIntegrationTest_SocketVersion {
 		
 		IInputAdaptor fileInputAdaptor =  new FileInputAdaptor();
 		IInputAdaptor httpInputAdaptor = new HttpInputAdaptor();
+		IInputAdaptor hdfsInputAdaptor = new HdfsInputAdaptor();
 		IOutputAdaptor fileOutAdaptor = new FileOutputAdaptor();
 		
 		FileJobExporter fileJobExporter2 = new FileJobExporter();
@@ -90,6 +91,7 @@ public class MasterSlaveIntegrationTest_SocketVersion {
 		
 		statisticsEngine.addInputAdaptor(fileInputAdaptor);
 		statisticsEngine.addInputAdaptor(httpInputAdaptor);
+		statisticsEngine.addInputAdaptor(hdfsInputAdaptor);
 		statisticsEngine.addOutputAdaptor(fileOutAdaptor);
 		
 		if (needStart)
@@ -137,8 +139,8 @@ public class MasterSlaveIntegrationTest_SocketVersion {
 	{
 		//build MasterNode1
 		MasterNode masterNode = buildMaster("master-config-ms.properties");
-		MasterNode masterNode1 = buildMaster("master-config-ms1.properties");
-		MasterNode masterNode2 = buildMaster("master-config-ms2.properties");
+		//MasterNode masterNode1 = buildMaster("master-config-ms1.properties");
+		//MasterNode masterNode2 = buildMaster("master-config-ms2.properties");
 			
 		Thread.sleep(1000);
 		
@@ -146,11 +148,11 @@ public class MasterSlaveIntegrationTest_SocketVersion {
 		SlaveNode slaveNode = buildSlave("slave-config.properties",true);
 		SlaveNode slaveNode1 = buildSlave("slave-config1.properties",true);
 		
-		Thread.sleep(35 * 1000);
+		Thread.sleep(30 * 1000);
 		
 		masterNode.stopNode();
-		masterNode1.stopNode();
-		masterNode2.stopNode();
+		//masterNode1.stopNode();
+		//masterNode2.stopNode();
 		slaveNode.stopNode();
 		slaveNode1.stopNode();
 		

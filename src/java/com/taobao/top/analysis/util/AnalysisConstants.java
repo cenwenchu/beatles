@@ -12,6 +12,8 @@ public class AnalysisConstants {
 	public final static String GLOBAL_KEY_STR = "GLOBAL_KEY";// 定义在报表中的全局key，作为对所有记录作全局统计用，也就是没有key做统计
 	public final static String RECORD_LENGTH = "RECORD_LENGTH";// 定义在报表过滤条件中，用于过滤切割后记录数是否符合条件
 	public final static Integer GLOBAL_KEY = -2;
+	public final static Integer Object_KEY = -3;
+	public final static String MAGIC_NUM = "^_^!";//用与定义distinct count key的关键字，防止被重复生成distinct count key
 	
 
 	// condition的条件设置
@@ -86,11 +88,20 @@ public class AnalysisConstants {
 	public final static String JOBMANAGER_EVENT_SETNULL_EXPORTDATA = "setNullexportData";
 	public final static String JOBMANAGER_EVENT_DEL_DATAFILE = "delDataFile";
 	public final static String JOBMANAGER_EVENT_LOAD_BACKUPDATA = "loadBackupData";
+	public final static String JOBMANAGER_EVENT_GET_SOURCETIMESTAMP = "getSourceTimeStamp";
 	
+	
+	public final static String ANALYSIS_BLOOM_MAXKEYS = "maxKeys";
+	public final static String ANALYSIS_BLOOM_ERRORRATE = "errorRate";
 	
 	public final static String REPORT_PERIOD_HOUR = "hour";
 	public final static String REPORT_PERIOD_DAY = "day";
 	public final static String REPORT_PERIOD_MONTH = "month";
 	
+	public final static String ZK_ROOT = "/beatles";
+	public final static String ZK_MASTER = "/master";
+	public final static String ZK_SLAVE = "/slave";
+	public final static String ZK_CONFIG = "/config";
+	public final static String ZK_LEADER_MASTER_PREFIX = "/leader:";
 
 }

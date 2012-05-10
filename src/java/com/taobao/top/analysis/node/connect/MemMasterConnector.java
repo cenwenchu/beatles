@@ -95,4 +95,12 @@ public class MemMasterConnector extends AbstractMasterConnector implements Runna
 		tunnel.getSlaveSide().offer(event);
 	}
 
+
+    /* (non-Javadoc)
+     * @see com.taobao.top.analysis.node.connect.IMasterConnector#openServer()
+     */
+    @Override
+    public void openServer() {
+    }
+
 }

@@ -21,7 +21,8 @@ public enum MasterEventCode {
 	LOAD_DATA_TO_TMP("loadDataToTmp"),
 	CLEAR_DATA("clearData"),
 	SUSPEND("suspend"),
-	AWAKE("awake");
+	AWAKE("awake"),
+	RESETSERVER("resetServer");
 	
 	
 	String v;

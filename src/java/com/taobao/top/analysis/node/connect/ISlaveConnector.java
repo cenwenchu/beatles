@@ -5,6 +5,7 @@ package com.taobao.top.analysis.node.connect;
 
 import com.taobao.top.analysis.config.SlaveConfig;
 import com.taobao.top.analysis.node.IComponent;
+import com.taobao.top.analysis.node.component.SlaveNode;
 import com.taobao.top.analysis.node.event.GetTaskRequestEvent;
 import com.taobao.top.analysis.node.event.SendResultsRequestEvent;
 import com.taobao.top.analysis.node.job.JobTask;
@@ -38,5 +39,11 @@ public interface ISlaveConnector extends IComponent<SlaveConfig>{
 	 * @param master
 	 */
 	public void changeMaster(String master);
+	
+	/**
+	 * 设置slaveNode
+	 * @param slaveNode
+	 */
+	public void setSlaveNode(SlaveNode slaveNode);
 
 }

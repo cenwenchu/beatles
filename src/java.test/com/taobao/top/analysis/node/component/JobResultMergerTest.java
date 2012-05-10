@@ -72,7 +72,7 @@ public class JobResultMergerTest {
 		
 		jobResultMerge.merge(job, branchResultQueue, jobTaskResultsQueue, false);
 		
-		JobTaskResult mergedJobTask = jobResultMerge.merge(job.getJobTasks().get(0), mergeing, false);
+		JobTaskResult mergedJobTask = jobResultMerge.merge(job.getJobTasks().get(0), mergeing, false,true);
 		
 		//多线程，需要休息一会儿
 		Thread.sleep(2000);
