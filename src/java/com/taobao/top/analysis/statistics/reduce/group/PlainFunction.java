@@ -19,5 +19,4 @@ public class PlainFunction implements GroupFunction {
 		if (o == null)
 			result.put(key, value);
 	}
-
 }

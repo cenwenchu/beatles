@@ -25,6 +25,7 @@ public class AnalysisConstants {
 	public final static byte CONDITION_EQUALORLESSER = 0x6;
 	public final static byte CONDITION_ISNUMBER = 0x7;
 	public final static byte CONDITION_IN = 0x8;
+	public final static byte CONDITION_LIKE = 0x9;
 	
 	
 	public final static byte OPERATE_PLUS = 0x11;
@@ -41,6 +42,7 @@ public class AnalysisConstants {
 	public final static String CONDITION_ISNUMBER_STR = "isnumber";// 是否是数字
 	public final static String CONDITION_ROUND_STR = "round:";// 是否需要保留几位小数
 	public final static String CONDITION_IN_STR = "in";
+	public final static String CONDITION_LIKE_STR = "like";
 	
 	
 	public final static char OPERATE_PLUS_CHAR = '+';

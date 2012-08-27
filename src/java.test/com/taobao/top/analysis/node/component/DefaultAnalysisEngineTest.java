@@ -54,6 +54,7 @@ public class DefaultAnalysisEngineTest {
 		defaultAnalysisEngine.addOutputAdaptor(fileOutAdaptor);
 			
 		FileJobBuilder jobBuilder = new FileJobBuilder();
+		jobBuilder.init();
 		Map<String,Job> jobs = jobBuilder.build("jobs-config-engine.properties");
 		long time = System.currentTimeMillis();
 		for(Job job : jobs.values())

@@ -1,0 +1,71 @@
+<html>
+	<head>
+		<title>TOP Analyzer</title>
+	</head>
+	<body>
+		<table id="cluster">
+			<tr>
+				<td>Master:</td>
+				<td>
+					<table id="master">
+						#foreach($master in ${masterList})
+							<tr>
+								<td>
+								</td>
+							</tr>
+						#end
+					</table>
+				</td>
+			</tr>
+			<tr>
+				<td>Slave:</td>
+				<td>
+					<table id="slave">
+						#foreach($slave in ${slaveList})
+							<tr>
+								<td>
+									StartupTime: $!{slave.slaveStartupTime}
+									<br/>
+									IP: $!{slave.ip}
+									<br/>
+									OSName: $!{slave.osName}
+									<br/>
+									OSVersion: $!{slave.osVersion}
+									<br/>
+									Last 1 Minute SystemLoadAverage: $!{slave.systemLoadAverage}
+									<br/>
+									JVM:
+									<br/>
+									JvmTotalMemory: $!{slave.jvmTotalMemory} bytes
+									<br/>
+									JvmFreeMemory: $!{slave.jvmFreeMemory} bytes
+									<br/>
+									JvmMaxMemory: $!{slave.jvmMaxMemory} bytes
+									<br/>
+									JvmThreadCount: $!{slave.jvmThreadCount}
+									<br/>
+									JvmPeakThreadCount: $!{slave.jvmPeakThreadCount}
+									<br/>
+								</td>
+							</tr>
+						#end
+					</table>
+				</td>
+			</tr>
+			<tr>
+				<td>Target:</td>
+				<td>
+					<table id="target">
+						#foreach($pic in ${picList})
+							<tr>
+								<td>
+									<img src="${pic.url}" title="$!{pic.title}" />
+								</td>
+							</tr>
+						#end
+					</table>
+				</td>
+			</tr>
+		</table>
+	</body>
+</html>

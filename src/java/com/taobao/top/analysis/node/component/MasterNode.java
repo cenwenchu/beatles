@@ -11,17 +11,22 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.zookeeper.ZooKeeper;
+
 import com.taobao.top.analysis.config.MasterConfig;
 import com.taobao.top.analysis.exception.AnalysisException;
 import com.taobao.top.analysis.node.IJobManager;
 import com.taobao.top.analysis.node.connect.IMasterConnector;
+import com.taobao.top.analysis.node.event.GetTaskRequestEvent;
 import com.taobao.top.analysis.node.event.GetTaskResponseEvent;
 import com.taobao.top.analysis.node.event.JobManageEvent;
-import com.taobao.top.analysis.node.event.GetTaskRequestEvent;
-import com.taobao.top.analysis.node.event.SendResultsRequestEvent;
 import com.taobao.top.analysis.node.event.MasterNodeEvent;
+import com.taobao.top.analysis.node.event.SendMonitorInfoEvent;
+import com.taobao.top.analysis.node.event.SendMonitorInfoResponseEvent;
+import com.taobao.top.analysis.node.event.SendResultsRequestEvent;
 import com.taobao.top.analysis.node.event.SendResultsResponseEvent;
 import com.taobao.top.analysis.node.job.JobTask;
+import com.taobao.top.analysis.node.monitor.MasterMonitorInfo;
+import com.taobao.top.analysis.node.monitor.NHttpServer;
 import com.taobao.top.analysis.util.AnalyzerZKWatcher;
 import com.taobao.top.analysis.util.ZKUtil;
 
@@ -46,6 +51,16 @@ public class MasterNode extends AbstractNode<MasterNodeEvent,MasterConfig> {
 	 */
 	private IMasterConnector masterConnector;
 	
+	/**
+	 * Master监控组件
+	 */
+	private MasterMonitor monitor;
+	
+	/**
+	 * HTTP服务组件
+	 */
+	private NHttpServer httpServer;
+	
 	
 	public IJobManager getJobManager() {
 		return jobManager;
@@ -62,15 +77,30 @@ public class MasterNode extends AbstractNode<MasterNodeEvent,MasterConfig> {
 	public void setMasterConnector(IMasterConnector masterConnector) {
 		this.masterConnector = masterConnector;
 	}
+	
+	public MasterMonitor getMonitor() {
+		return monitor;
+	}
+
+	public void setMonitor(MasterMonitor monitor) {
+		this.monitor = monitor;
+	}
 
 	@Override
 	public void init() throws AnalysisException {
+		httpServer = new NHttpServer();
+		httpServer.setConfig(config);
 		jobManager.setMasterNode(this);
 		jobManager.setConfig(config);
 		masterConnector.setMasterNode(this);
 		masterConnector.setConfig(config);
+		monitor.setConfig(config);
 		jobManager.init();	
 		masterConnector.init();
+		monitor.init();
+		httpServer.setMonitor(monitor);
+//		httpServer.setJobManager(jobManager);
+		httpServer.init();
 		
 		//增加一块对于zookeeper的支持
 		if (StringUtils.isNotEmpty(config.getZkServer()))
@@ -95,7 +125,7 @@ public class MasterNode extends AbstractNode<MasterNodeEvent,MasterConfig> {
 			}
 			
 		}
-		
+		logger.warn("Master init ok");
 		if (logger.isInfoEnabled())
 			logger.info("Master init complete.");
 	}
@@ -105,8 +135,13 @@ public class MasterNode extends AbstractNode<MasterNodeEvent,MasterConfig> {
 		if (jobManager != null)
 			jobManager.releaseResource();
 		
+		if(monitor != null) {
+			monitor.releaseResource();
+		}
+		
 		if (masterConnector != null)
 			masterConnector.releaseResource();
+	
 		
 		//增加一块对于zookeeper的支持
 		if (StringUtils.isNotEmpty(config.getZkServer()) && zk != null)
@@ -163,6 +198,13 @@ public class MasterNode extends AbstractNode<MasterNodeEvent,MasterConfig> {
 		
 		masterConnector.echoSendJobTaskResults(event);
 	}
+	
+	public void echoSendMonitorInfo(String sequence, MasterMonitorInfo info, Object channel) {
+		SendMonitorInfoResponseEvent event = new SendMonitorInfoResponseEvent(sequence);
+		event.setMasterMonitorInfo(info);
+		event.setChannel(channel);
+		masterConnector.echoSendMonitorInfo(event);
+	}
 
 
 	@Override
@@ -178,10 +220,14 @@ public class MasterNode extends AbstractNode<MasterNodeEvent,MasterConfig> {
 		
 			case SEND_RESULT:
 				jobManager.addTaskResultToQueue((SendResultsRequestEvent)event);
+				monitor.report(((SendResultsRequestEvent)event).getJobTaskResult().getJobName(), ((SendResultsRequestEvent)event).getJobTaskResult().getTaskExecuteInfos().values());
 				if (logger.isInfoEnabled())
 					logger.info("Master process SEND_RESULT Event");
 				break;
-		
+			case SEND_MONITOR_INFO:
+				MasterMonitorInfo info = monitor.report(((SendMonitorInfoEvent)event).getSlaveMonitorInfo());
+				this.echoSendMonitorInfo(event.getSequence(), info, event.getChannel());
+				break;
 			case RELOAD_JOBS:
 				jobManager.getJobBuilder().setNeedRebuild(true);
 				if (logger.isInfoEnabled())

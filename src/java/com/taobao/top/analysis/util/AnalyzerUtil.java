@@ -9,10 +9,17 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
+import java.io.UnsupportedEncodingException;
+import java.net.HttpURLConnection;
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import java.util.jar.Attributes;
 import java.util.jar.Manifest;
 
@@ -33,6 +40,10 @@ public class AnalyzerUtil {
     private static final Log logger = LogFactory.getLog(AnalyzerUtil.class);
     private static long buildDate=-1;
     private static final String report2MapFile = "report2Map";
+    private static ThreadPoolExecutor alertThreadPool = new ThreadPoolExecutor(
+        2, 5, 0, TimeUnit.SECONDS, new LinkedBlockingQueue<Runnable>(),
+        new NamedThreadFactory("Sendder_worker"));
+    private static final SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 
     /**
      * 获取MANIFEST.MF文件中的属性
@@ -65,6 +76,68 @@ public class AnalyzerUtil {
         }catch(Throwable t){
             return buildDate;
         }
+    }
+    
+    public static void sendOutAlert(final Calendar calendar,
+            final String alertURL, final String alertFrom,
+            final String alertModel, final String alertWangwang,
+            final String content) {
+
+        alertThreadPool.execute(new Runnable() {
+
+            @Override
+            public void run() {
+                StringBuilder urlStr = new StringBuilder(alertURL);
+                urlStr.append("?");
+                urlStr.append("from=");
+                urlStr.append(alertFrom);
+                urlStr.append("&");
+                urlStr.append("alertModel=");
+                urlStr.append(alertModel);
+                urlStr.append("&");
+                urlStr.append("wangwang=");
+                String temp = "error!";
+                String temp1 = "error!";
+                try {
+                    String date = sdf.format(java.util.Calendar.getInstance().getTime());
+                    temp = java.net.URLEncoder.encode(alertWangwang, "UTF-8");
+                    temp1 = java.net.URLEncoder.encode(content + "(" + date
+                            + "," + ReportUtil.getIp() + ")", "UTF-8");
+                } catch (UnsupportedEncodingException e) {
+                    logger.error(e.getMessage(), e);
+                }
+                urlStr.append(temp);
+                urlStr.append("&");
+                urlStr.append("content=");
+                urlStr.append(temp1);
+
+                HttpURLConnection con = null;
+                InputStream is = null;
+                try {
+                    java.net.URL url = new java.net.URL(urlStr.toString());
+                    con = HttpURLConnection.class.cast(url.openConnection());
+                    con.setRequestMethod("GET");
+                    con.setRequestProperty("Content-Type",
+                            "text/html; charset=UTF-8");
+                    con.connect();
+                    is = con.getInputStream();
+                } catch (Throwable e) {
+                    logger.error(urlStr.toString(), e);
+                } finally {
+                    try {
+                        if (is != null)
+                            is.close();
+                        if (con != null)
+                            con.disconnect();
+                    } catch (Throwable e) {
+                        logger.error(e.getMessage(), e);
+                    }
+
+                }
+
+            }
+
+        });
     }
     
     /**

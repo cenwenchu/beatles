@@ -49,6 +49,41 @@ public abstract class AbstractConfig implements IConfig{
 	public static final String SCANFILETIME = "scanTime";
 	
 	/**
+	 * 是否支持直接发送告警
+	 */
+	public static final String ENABLEALERT = "enableAlert";
+	
+	/**
+     * 告警接口
+     */
+    private static final String ALERTURL = "alertURL";
+    
+    /**
+     * 告警表识
+     */
+    private static final String ALERTFROM = "alertFrom";
+    
+    /**
+     * 告警方式
+     */
+    private static final String ALERTWANGWANG = "alertWangWang";
+    
+    /**
+     * 告警模型
+     */
+    private static final String ALERTMODEL = "alertModel";
+    
+    /**
+     * HTTP端口号
+     */
+    private static final String HTTPPORT = "httpPort";
+    
+    /**
+     * 
+     */
+    private static String HTTPCONTEXT = "httpContext";
+
+	/**
 	 * 如果使用本地文件配置，配置文件中将根据needScan字段判断是否定期扫描变更，文件最后修改时间
 	 * 扫描线程暂定写在AbstractConfig中，后续若zookeeper集成进来，再考虑实现变更接口
 	 */
@@ -94,6 +129,49 @@ public abstract class AbstractConfig implements IConfig{
         return app;
     }
 	
+	public boolean isEnableAlert() {
+        boolean flag = false;
+        try {
+            flag = Boolean.parseBoolean(this.properties
+                    .get(ENABLEALERT) == null ? "true"
+                    : this.properties.get(ENABLEALERT));
+        } catch (Throwable t) {
+        }
+        return flag;
+    }
+	
+	public String getAlertUrl() {
+        return this.properties.get(ALERTURL) == null ? "http://console.open.taobao.com/topconsole/alert"
+                : this.properties.get(ALERTURL);
+    }
+	
+	public String getAlertFrom() {
+        return this.properties.get(ALERTFROM) == null ? "analyzer"
+                : this.properties.get(ALERTFROM);
+    }
+	
+	public String getAlertWangWang() {
+        return this.properties.get(ALERTWANGWANG) == null ? "云湛"
+                : this.properties.get(ALERTWANGWANG);
+    }
+	
+	public String getAlertModel() {
+        return this.properties.get(ALERTMODEL) == null ? "0"
+                : this.properties.get(ALERTMODEL);
+    }
+	
+	public int getHttpPort() {
+	    if(this.properties.containsKey(HTTPPORT)) {
+	        return Integer.parseInt((String)this.properties.get(HTTPPORT));
+	    }
+	    return 8081;
+	}
+	
+	public String getHttpContext() {
+        return this.properties.get(HTTPCONTEXT) == null ? "/web"
+                : this.properties.get(HTTPCONTEXT);
+    }
+	
 	/**
 	 * 从配置中根据名称获得属性内容
 	 * @param propName
@@ -135,9 +213,11 @@ public abstract class AbstractConfig implements IConfig{
 				properties.put(key, prop.getProperty(key));
 			}
 			
-			configFile = file;
-			
-			fileLastModifyTime = (new File(file)).lastModified();
+            if (file.startsWith("file:")) {
+                configFile = file.substring(file.indexOf("file:") + "file:".length());
+
+                fileLastModifyTime = (new File(configFile)).lastModified();
+            }
 			
 		}
 		catch(Exception ex)
@@ -187,6 +267,7 @@ public abstract class AbstractConfig implements IConfig{
     @Override
     public boolean isNeedReload() {
         File prop = new File(this.configFile);
+//        logger.info("pro file is " + this.configFile + "," + prop.getAbsolutePath() + " ;pro lastModified is " + prop.lastModified() + ", and this is " + this.fileLastModifyTime);
         if (prop.isFile() && prop.lastModified() != this.fileLastModifyTime) {
             this.fileLastModifyTime = prop.lastModified();
             return true;
@@ -199,7 +280,14 @@ public abstract class AbstractConfig implements IConfig{
      */
     @Override
     public void reload() {
-        this.load(configFile);
+        this.load("file:" + configFile);
         logger.error("trying to reload config from " + configFile + ", please check that it's ok");
+    }
+
+    /**
+     * @return the configFile
+     */
+    public String getConfigFile() {
+        return configFile;
     }
 }

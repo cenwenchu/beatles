@@ -139,7 +139,7 @@ public class JobResultMerger implements IJobResultMerger {
 				break;
 			
 			// 放缓一些节奏
-			if (mergeResultCount == 0) {
+			if (mergeResultCount == 0 && (this.config.getDispatchMaster() || mergeResults.size() == 0)) {
 				try {
 					Thread.sleep(50);
 				} catch (InterruptedException e) {}
@@ -164,7 +164,7 @@ public class JobResultMerger implements IJobResultMerger {
 			}
 
 		
-		if (mergeResultCount > 0) 
+		if (mergeResultCount > 0 || (!this.config.getDispatchMaster() && mergeResults.size() > 0)) 
 		{			
 				mergeJobResultThreadPool
 						.execute(new MergeJobOperation(job,

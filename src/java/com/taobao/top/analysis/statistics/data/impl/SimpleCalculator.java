@@ -1,8 +1,10 @@
 package com.taobao.top.analysis.statistics.data.impl;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import com.taobao.top.analysis.exception.AnalysisException;
 import com.taobao.top.analysis.statistics.data.Alias;
@@ -28,7 +30,19 @@ public class SimpleCalculator implements ICalculator {
 	
 	private final String value;
 	
-	public String getValue() {
+	/**
+	 * 关联使用的entry
+	 */
+	private Set<String> referEntries;
+	
+	/**
+     * @return the referEntries
+     */
+    public Set<String> getReferEntries() {
+        return referEntries;
+    }
+
+    public String getValue() {
 		return value;
 	}
 
@@ -42,6 +56,9 @@ public class SimpleCalculator implements ICalculator {
 	
 	public void init(Map<String, Alias> aliasPool)  throws AnalysisException{
 
+	    //从这里init的代码可以看出，分析器的配置解析规则，并非是全部读取后，然后进行一次性解析的，它的report配置是有固定顺序的
+	    //一旦顺序出错，则会引起出错，同时alias和entry已经#的常量，三者是不可以重名的，否则会出错，这些潜规则都是在代码里反应出的
+	    //后续可以对这些进行改造，毕竟这并非是一个友好而完善的解析方式
 
 		if (value != null
 				&& !"".equals(value)
@@ -50,6 +67,7 @@ public class SimpleCalculator implements ICalculator {
 
 			bindingStack = new ArrayList<Object>();
 			operatorStack = new ArrayList<Byte>();
+			referEntries = new HashSet<String>();
 
 			String c = value;
 			String temp;
@@ -102,6 +120,7 @@ public class SimpleCalculator implements ICalculator {
 				temp = c.substring(0, c.indexOf(")"));
 				c = c.substring(c.indexOf(")") + 1);
 				bindingStack.add(temp);
+				referEntries.add(temp);
 			}
 
 			char[] cs = value.toCharArray();

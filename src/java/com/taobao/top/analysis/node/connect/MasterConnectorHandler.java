@@ -18,6 +18,7 @@ import com.taobao.top.analysis.node.component.MasterNode;
 import com.taobao.top.analysis.node.event.GetTaskRequestEvent;
 import com.taobao.top.analysis.node.event.MasterEventCode;
 import com.taobao.top.analysis.node.event.MasterNodeEvent;
+import com.taobao.top.analysis.node.event.SendMonitorInfoEvent;
 import com.taobao.top.analysis.node.event.SendResultsRequestEvent;
 
 /**
@@ -55,7 +56,7 @@ public class MasterConnectorHandler extends SimpleChannelUpstreamHandler {
 		if (nodeEvent != null)
 		{
 			if (nodeEvent.getEventCode().equals(MasterEventCode.GET_TASK) || 
-					nodeEvent.getEventCode().equals(MasterEventCode.SEND_RESULT))
+					nodeEvent.getEventCode().equals(MasterEventCode.SEND_RESULT) || nodeEvent.getEventCode().equals(MasterEventCode.SEND_MONITOR_INFO))
 			{
 				nodeEvent.setChannel(channel);
 				masterNode.addEvent(nodeEvent);
@@ -83,8 +84,18 @@ public class MasterConnectorHandler extends SimpleChannelUpstreamHandler {
 			    //INFO信息记录M/S通信内容
 			    if(logger.isInfoEnabled()) {
 			        SendResultsRequestEvent requestEvent = (SendResultsRequestEvent)nodeEvent;
-	                StringBuffer stringBuffer = new StringBuffer("receive send_result event, resul:{");
+	                StringBuffer stringBuffer = new StringBuffer("receive send_result event, result:{");
 	                stringBuffer.append(requestEvent.getJobTaskResult().toString()).append("}");
+	                stringBuffer.append("from slave:").append(channel.getRemoteAddress()).append(",squence:").append(nodeEvent.getSequence());
+			        logger.info(stringBuffer.toString());
+			    }
+			}
+			if(nodeEvent.getEventCode().equals(MasterEventCode.SEND_MONITOR_INFO)) {
+				 //INFO信息记录M/S通信内容
+			    if(logger.isInfoEnabled()) {
+			        SendMonitorInfoEvent requestEvent = (SendMonitorInfoEvent)nodeEvent;
+	                StringBuffer stringBuffer = new StringBuffer("receive send_monitor_info event, result:{");
+	                stringBuffer.append(requestEvent.getSlaveMonitorInfo().toString()).append("}");
 	                stringBuffer.append("from slave:").append(channel.getRemoteAddress()).append(",squence:").append(nodeEvent.getSequence());
 			        logger.info(stringBuffer.toString());
 			    }

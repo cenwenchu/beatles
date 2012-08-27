@@ -25,6 +25,9 @@ public class CountFunction implements GroupFunction {
 		} else if(!(value instanceof Double))
 		    value = Double.valueOf(String.valueOf(value)); 
 		    
+		if(((Double)value).isNaN()) {
+            return;
+        }
 		if (total == null)
 			result.put(key, value);
 		else

@@ -191,25 +191,27 @@ public class CreateReportOperation implements Runnable {
 				
 				
 				// 周期类报表就输出一次，结果将会被删除
-				if (report.isPeriod()) 
-				{
-					for(int i = 0 ; i < rs.size(); i++)
-					{
-									
-						Map<String, Object> _deleted = entryResultPool
-								.remove(report.getReportEntrys().get(i).getId());
-	
-						if (_deleted != null)
-							_deleted.clear();					
-						
-					}
-				}
+//				if (report.isPeriod()) 
+//				{
+//					for(int i = 0 ; i < rs.size(); i++)
+//					{
+//									
+//						Map<String, Object> _deleted = entryResultPool
+//								.remove(report.getReportEntrys().get(i).getId());
+//	
+//						if (_deleted != null)
+//							_deleted.clear();					
+//						
+//					}
+//				}
 				
 			}
 					
 
-			if (!report.isPeriod())
+			if (!report.isPeriod()) {
 				reports.add(reportFile);
+				file.renameTo(new File(reportFile.substring(0, reportFile.indexOf(".temp"))));
+			}
 
 		} catch (Exception ex) {
 			logger.error(ex, ex);

@@ -11,8 +11,9 @@ import java.util.Calendar;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Set;
+import java.util.Map.Entry;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -32,14 +33,17 @@ import com.taobao.top.analysis.node.event.GetTaskRequestEvent;
 import com.taobao.top.analysis.node.event.SendResultsRequestEvent;
 import com.taobao.top.analysis.node.event.SlaveNodeEvent;
 import com.taobao.top.analysis.node.job.JobTask;
+import com.taobao.top.analysis.node.job.JobTaskExecuteInfo;
 import com.taobao.top.analysis.node.job.JobTaskResult;
 import com.taobao.top.analysis.node.operation.JobDataOperation;
 import com.taobao.top.analysis.statistics.IStatisticsEngine;
 import com.taobao.top.analysis.statistics.data.ReportEntry;
 import com.taobao.top.analysis.statistics.data.Rule;
 import com.taobao.top.analysis.util.AnalysisConstants;
+import com.taobao.top.analysis.util.AnalyzerUtil;
 import com.taobao.top.analysis.util.AnalyzerZKWatcher;
 import com.taobao.top.analysis.util.NamedThreadFactory;
+import com.taobao.top.analysis.util.Threshold;
 import com.taobao.top.analysis.util.ZKUtil;
 
 /**
@@ -66,6 +70,12 @@ public class SlaveNode extends AbstractNode<SlaveNodeEvent,SlaveConfig>{
 	 * 结果合并组件，用于一次获取多个任务，合并任务结果返回给master的情况，分担master合并压力
 	 */
 	IJobResultMerger jobResultMerger;
+	
+	/**
+	 * Slave监控组件
+	 */
+	private SlaveMonitor monitor;
+	
 	/**
 	 * 会话序列生成器
 	 */
@@ -80,13 +90,25 @@ public class SlaveNode extends AbstractNode<SlaveNodeEvent,SlaveConfig>{
 	 * 关闭状态,slave处于该状态时，不再向master请求新的任务;
 	 * 并等待所有结果集发送完成
 	 */
-	private boolean stopped = false;
+	private volatile boolean stopped = false;
 	
+	//防止大量写日志的阀
+    transient Threshold threshold;
 	
 	/**
 	 * 分析工作线程池
 	 */
 	private ThreadPoolExecutor analysisWorkerThreadPool;
+	
+	/**
+	 * 任务池
+	 */
+	private Map<String, Long> doingTasks;
+	
+	/**
+	 * 上次任务的执行时间
+	 */
+	private long lastTaskDoingTime;
 	
 	public IStatisticsEngine getStatisticsEngine() {
 		return statisticsEngine;
@@ -111,6 +133,10 @@ public class SlaveNode extends AbstractNode<SlaveNodeEvent,SlaveConfig>{
 	public void setJobResultMerger(IJobResultMerger jobResultMerger) {
 		this.jobResultMerger = jobResultMerger;
 	}
+	
+	public void setMonitor(SlaveMonitor monitor) {
+		this.monitor = monitor;
+	}
 
 	@Override
 	public void init() throws AnalysisException {
@@ -118,6 +144,9 @@ public class SlaveNode extends AbstractNode<SlaveNodeEvent,SlaveConfig>{
 		hardWorkTimer = new AtomicLong(0);
 		slaveConnector.setConfig(config);
 		statisticsEngine.setConfig(config);
+		monitor.setConfig(config);
+		threshold = new Threshold(5000);
+		monitor.setSlaveConnector(slaveConnector);
 		
 		analysisWorkerThreadPool = new ThreadPoolExecutor(
 				this.config.getAnalysisWorkerNum(),
@@ -129,6 +158,8 @@ public class SlaveNode extends AbstractNode<SlaveNodeEvent,SlaveConfig>{
 		slaveConnector.init();
 		statisticsEngine.init();
 		jobResultMerger.init();
+		monitor.init();
+		doingTasks = new ConcurrentHashMap<String, Long>();
 		
 		//增加一块对于zookeeper的支持
 		if (StringUtils.isNotEmpty(config.getZkServer()))
@@ -155,6 +186,7 @@ public class SlaveNode extends AbstractNode<SlaveNodeEvent,SlaveConfig>{
 		
 		if (logger.isInfoEnabled())
 			logger.info("Slave init complete.");
+		lastTaskDoingTime = System.currentTimeMillis();
 	}
 
 	@Override
@@ -166,12 +198,22 @@ public class SlaveNode extends AbstractNode<SlaveNodeEvent,SlaveConfig>{
 		sequenceGen.set(0);
 		hardWorkTimer.set(0);
 		
+		long start = System.currentTimeMillis();
 		try
 		{
+		    while(!doingTasks.isEmpty()) {
+		        try {
+		        Thread.sleep(5000);
+		        } catch (Throwable e) {
+		        }
+		        if(System.currentTimeMillis() - start > 50000)
+		            break;
+		    }
 			if (analysisWorkerThreadPool != null)
 				analysisWorkerThreadPool.shutdown();
 			if(logger.isInfoEnabled())
 	            logger.info("analysisWorkerThreadPool shutdown");
+			
 		}
 		finally
 		{
@@ -189,6 +231,13 @@ public class SlaveNode extends AbstractNode<SlaveNodeEvent,SlaveConfig>{
 				jobResultMerger.releaseResource();
 			if(logger.isInfoEnabled())
                 logger.info("jobResultMerger releaseResource");
+			
+			if(monitor != null) {
+				monitor.releaseResource();
+			}
+			if(logger.isInfoEnabled()) {
+                logger.info("monitor releaseResource");
+			}
 		}
 		
 		//增加一块对于zookeeper的支持
@@ -227,11 +276,29 @@ public class SlaveNode extends AbstractNode<SlaveNodeEvent,SlaveConfig>{
 		if (config.getJobName() != null)
 			event.setJobName(config.getJobName());
 		
+		// 拉任务开始时间
+		long start = System.currentTimeMillis();
 		JobTask[] jobTasks = slaveConnector.getJobTasks(event);
+		// 统计平均拉取任情况
+		monitor.putPullTaskConsumeTime(System.currentTimeMillis()- start, jobTasks == null ? 0 : jobTasks.length);
 		
+		if (System.currentTimeMillis() - lastTaskDoingTime > this.config.getMaxIdleTime() * 1000) {
+            AnalyzerUtil.sendOutAlert(java.util.Calendar.getInstance(), this.config.getAlertUrl(),
+                this.config.getAlertFrom(), this.config.getAlertModel(), this.config.getAlertWangWang(),
+                "there's no jobs to do. Please have a check at the master. Time:" + ((System.currentTimeMillis() - lastTaskDoingTime)/1000) + "s");
+        }
 		
 		if (jobTasks != null && jobTasks.length > 0)
 		{
+		    lastTaskDoingTime = System.currentTimeMillis();
+		    
+			// 增加成功拉取的任务数
+			monitor.incPulledTaskCount(jobTasks.length);
+			for(JobTask jobTask : jobTasks) {
+			    doingTasks.put(jobTask.getTaskId() + "_" + jobTask.getJobEpoch(), System.currentTimeMillis());
+			    logger.info("doing tasks : " + doingTasks.size());
+			}
+			
 		    StringBuilder sb = new StringBuilder("receive tasks:{");
 		    for(JobTask task : jobTasks) {
 		        sb.append(task.getTaskId()).append(",").append(task.getInput()).append(";");
@@ -250,13 +317,14 @@ public class SlaveNode extends AbstractNode<SlaveNodeEvent,SlaveConfig>{
 					//计算并输出
 					JobTaskResult jobTaskResult = statisticsEngine.doAnalysis(jobTasks[0]);
 					
-					jobTaskResult.setEfficiency((System.currentTimeMillis() - timer + this.hardWorkTimer.get())
+					long taskConsumeTime = System.currentTimeMillis() - timer;
+					jobTaskResult.setEfficiency((taskConsumeTime + this.hardWorkTimer.get())
 									/(System.currentTimeMillis()  - this.nodeStartTimeStamp));
 					
-					if (jobTaskResult != null)
-					{
+					if (jobTaskResult != null) {
 						handleTaskResult(jobTasks[0],jobTaskResult);
 					}
+					doingTasks.remove(jobTasks[0].getTaskId() + "_" + jobTasks[0].getJobEpoch());
 				} 
 				catch (Exception e) {
 					logger.error("SlaveNode send result error. Tasks:[" + jobTasks[0].getJobName() + "," + jobTasks[0].getInput() + "]",e);
@@ -293,16 +361,18 @@ public class SlaveNode extends AbstractNode<SlaveNodeEvent,SlaveConfig>{
 				try 
 				{
 					if (!countDownLatch.await(config.getMaxBundleProcessTime(), TimeUnit.SECONDS)) {
+						// 如果执行超时, 没有进一步处理啊
 					    sb = new StringBuilder("Bundle task execute timeout !tasks:{");
                         for(JobTask task : jobTasks) {
                             sb.append(task.getTaskId()).append(",").append(task.getInput()).append(";");
                         }
                         sb.append("}");
 						logger.error(sb.toString());
-					}
-					else
-						if (logger.isInfoEnabled() && jobTasks != null && jobTasks.length > 0)
+					} else {
+						if (logger.isInfoEnabled() && jobTasks != null && jobTasks.length > 0) {
 							logger.info("Bundle task execute complete! task count :" + jobTasks.length);
+						}
+					}
 				} 
 				catch (InterruptedException e) 
 				{
@@ -330,6 +400,9 @@ public class SlaveNode extends AbstractNode<SlaveNodeEvent,SlaveConfig>{
 	
 	void handleTaskResult(final JobTask jobTask,JobTaskResult jobTaskResult)
 	{
+		// 统计任务执行情况
+		monitor.executedTask(getMaxTime(jobTaskResult), jobTaskResult.getTaskExecuteInfos().values());
+		
 	    if(logger.isInfoEnabled()) {
 	        logger.info("start to handle task result");
 	    }
@@ -360,7 +433,17 @@ public class SlaveNode extends AbstractNode<SlaveNodeEvent,SlaveConfig>{
 			for(String entryId : _entryResults.keySet())
 			{
 				ReportEntry reportEntry = rule.getEntryPool().get(entryId);
-				List<String> reports = reportEntry.getReports();
+				Set<String> reports = reportEntry.getReports();
+				if(reports == null || reports.size() == 0) {
+				    String master = config.getMasterAddress()+":"+config.getMasterPort();
+				    logger.error("reportEntry has no report " + reportEntry.getId());
+				    if (_masterEntryResults.get(master) == null)
+                    {
+                        _masterEntryResults.put(master, new HashMap<String,Map<String,Object>>());
+                    }
+                    
+                    _masterEntryResults.get(master).put(entryId, _entryResults.get(entryId));
+				}
 				
 				for(String r : reports)
 				{
@@ -370,7 +453,8 @@ public class SlaveNode extends AbstractNode<SlaveNodeEvent,SlaveConfig>{
 					{
 						master = config.getMasterAddress()+":"+config.getMasterPort();
 						
-						logger.error("report" + r + " has no master process,send to default master.");
+						if(!threshold.sholdBlock())
+						    logger.error("report" + r + " has no master process,send to default master.");
 					}
 					
 					if (_masterEntryResults.get(master) == null)
@@ -394,74 +478,106 @@ public class SlaveNode extends AbstractNode<SlaveNodeEvent,SlaveConfig>{
 			//批量发送消息
 			final CountDownLatch taskCountDownLatch = new CountDownLatch(_masterEntryResults.size());
 					
-			for(Entry<String,Map<String,Map<String,Object>>> e : _masterEntryResults.entrySet())
-			{
-				final Entry<String,Map<String,Map<String,Object>>> entrySet = e;
-				final JobTaskResult tResult = jobTaskResult.cloneWithOutResults();
-				tResult.setResults(entrySet.getValue());
-				tResult.setJobName(jobTask.getJobName());
-				tResult.setResultKey(entrySet.getKey());
-				
-				analysisWorkerThreadPool.execute(
-						new Runnable()
-						{
-							public void run()
-							{
-								try 
-								{
-									String masterAddr = entrySet.getKey().substring(entrySet.getKey().indexOf(":")+1);
-									SendResultsRequestEvent event = generateSendResultsRequestEvent(tResult);
-									String result = slaveConnector.sendJobTaskResults(event,masterAddr);
-									
-									//做一次重试
-									if (result == null)
-									{
-										Thread.sleep(100);
-										logger.warn("try to send result to master : " + masterAddr + " again.");
-										result = slaveConnector.sendJobTaskResults(event,masterAddr);
-										
-										//开始写入本地文件
-										if (result == null)
-										{
-											logger.error( new StringBuilder("send result to master : ")
-												.append(entrySet.getKey()).append(" fail again! now to write file to local,jobName : ")
-												.append(jobTask.getJobName()).toString());
-											
-											String destFile = getTempStoreDataFile(entrySet.getKey(),jobTask.getJobName());
-											
-											if (destFile != null)
-											{
-												JobDataOperation.export(event.getJobTaskResult().getResults(), destFile,false,false);
-											}
-										}
-									}
-									
-									logger.info("send piece result to master :" + entrySet.getKey());
-								} 
-								catch (Exception e) 
-								{
-									logger.error(e,e);
-								} 
-								finally
-								{
-									taskCountDownLatch.countDown();
-								}
-							}
-						}
-						);
-			}				
-			
+            for (Entry<String, Map<String, Map<String, Object>>> e : _masterEntryResults.entrySet()) {
+                final Entry<String, Map<String, Map<String, Object>>> entrySet = e;
+                final JobTaskResult tResult = jobTaskResult.cloneWithOutResults();
+                tResult.setResults(entrySet.getValue());
+                tResult.setJobName(jobTask.getJobName());
+                tResult.setResultKey(entrySet.getKey());
 
-			try 
-			{
-				if (!taskCountDownLatch.await(10,TimeUnit.SECONDS))
-					logger.error("send piece result to master timeout !");
-			} 
-			catch (InterruptedException e) {
-				//do nothing
-			}
+                if (!this.config.getMultiSendResult()) {
+                    try {
+                        // 这里应该是这样的吧：
+                        String masterAddr = entrySet.getKey();
+                        // String masterAddr =
+                        // entrySet.getKey().substring(entrySet.getKey().indexOf(":")+1);
+                        SendResultsRequestEvent event = generateSendResultsRequestEvent(tResult);
+                        String result = slaveConnector.sendJobTaskResults(event, entrySet.getKey());
+                        if (result == null) {
+                            Thread.sleep(100);
+                            logger.warn("try to send result to master : " + masterAddr + " again.");
+                            result = slaveConnector.sendJobTaskResults(event, masterAddr);
+
+                            // 开始写入本地文件
+                            if (result == null) {
+                                logger.error(new StringBuilder("send result to master : ").append(entrySet.getKey())
+                                    .append(" fail again! now to write file to local,jobName : ")
+                                    .append(jobTask.getJobName()).toString());
+
+                                String destFile = getTempStoreDataFile(entrySet.getKey(), jobTask.getJobName());
+
+                                if (destFile != null) {
+                                    JobDataOperation.export(event.getJobTaskResult().getResults(), destFile, false,
+                                        false, (new HashMap<String, Long>()));
+                                }
+                            }
+                        }
+
+                        logger.info("send piece result to master :" + entrySet.getKey() + ", size:"
+                                + entrySet.getValue().size() + ", result:" + result);
+                    }
+                    catch (Throwable e1) {
+                        logger.error(e1, e1);
+                    }
+                }
+                else {
+
+                    analysisWorkerThreadPool.execute(new Runnable() {
+                        public void run() {
+                            try {
+                                // 这里应该是这样的吧：
+                                String masterAddr = entrySet.getKey();
+                                // String masterAddr =
+                                // entrySet.getKey().substring(entrySet.getKey().indexOf(":")+1);
+                                SendResultsRequestEvent event = generateSendResultsRequestEvent(tResult);
+                                String result = slaveConnector.sendJobTaskResults(event, entrySet.getKey());
+
+                                // 做一次重试
+                                if (result == null) {
+                                    Thread.sleep(100);
+                                    logger.warn("try to send result to master : " + masterAddr + " again.");
+                                    result = slaveConnector.sendJobTaskResults(event, masterAddr);
+
+                                    // 开始写入本地文件
+                                    if (result == null) {
+                                        logger.error(new StringBuilder("send result to master : ")
+                                            .append(entrySet.getKey())
+                                            .append(" fail again! now to write file to local,jobName : ")
+                                            .append(jobTask.getJobName()).toString());
+
+                                        String destFile = getTempStoreDataFile(entrySet.getKey(), jobTask.getJobName());
+
+                                        if (destFile != null) {
+                                            JobDataOperation.export(event.getJobTaskResult().getResults(), destFile,
+                                                false, false, (new HashMap<String, Long>()));
+                                        }
+                                    }
+                                }
+
+                                logger.info("send piece result to master :" + entrySet.getKey() + ", size:"
+                                        + entrySet.getValue().size() + ", result:" + result);
+                            }
+                            catch (Exception e) {
+                                logger.error(e, e);
+                            }
+                            finally {
+                                taskCountDownLatch.countDown();
+                            }
+                        }
+                    });
+                }
+            }
+            if (config.getMultiSendResult()) {
+                try {
+                    if (!taskCountDownLatch.await(this.config.getMaxSendResultTime(), TimeUnit.SECONDS))
+                        logger.error("send piece result to master timeout !");
+                }
+                catch (InterruptedException e2) {
+                    // do nothing
+                }
+            }
 			
-			//暂时采用策略，将所有结果向所有master投递一个空的结果集，以确保所有master都有收到
+			//暂时采用策略，将所有结果向所有其他master投递一个空的结果集，以确保所有master都有收到
             //任务结束的通知，这里代码很丑陋啊~~
 			final CountDownLatch taskCountDown = new CountDownLatch((masters.size() - _masterEntryResults.size()));
 			for(final String master : masters) {
@@ -476,7 +592,9 @@ public class SlaveNode extends AbstractNode<SlaveNodeEvent,SlaveConfig>{
                         {
                             try 
                             {
-                                String masterAddr = master.substring(master.indexOf(":")+1);
+                            	// 这里应该是这样的吧：
+								String masterAddr = master;
+                                // String masterAddr = master.substring(master.indexOf(":")+1);
                                 SendResultsRequestEvent event = generateSendResultsRequestEvent(tResult);
                                 String result = slaveConnector.sendJobTaskResults(event,masterAddr);
                                 
@@ -498,12 +616,12 @@ public class SlaveNode extends AbstractNode<SlaveNodeEvent,SlaveConfig>{
                                         
                                         if (destFile != null)
                                         {
-                                            JobDataOperation.export(event.getJobTaskResult().getResults(), destFile,false,false);
+                                            JobDataOperation.export(event.getJobTaskResult().getResults(), destFile,false,false, (new HashMap<String, Long>()));
                                         }
                                     }
                                 }
                                 
-                                logger.info("send piece result to master :" + master);
+                                logger.info("send empty result to master :" + master + ", result:" + result);
                             } 
                             catch (Exception e) 
                             {
@@ -531,6 +649,7 @@ public class SlaveNode extends AbstractNode<SlaveNodeEvent,SlaveConfig>{
 		else
 			slaveConnector.sendJobTaskResults(generateSendResultsRequestEvent(jobTaskResult),
 						config.getMasterAddress()+":"+config.getMasterPort());
+		doingTasks.remove(jobTask.getTaskId() + "_" + jobTask.getJobEpoch());
 	}
 	
 	String getTempStoreDataFile(String master,String jobName)
@@ -613,6 +732,21 @@ public class SlaveNode extends AbstractNode<SlaveNodeEvent,SlaveConfig>{
 	}
 	
 	/**
+	 * 取多个并发执行任务的最大消耗时间
+	 * @param jobTaskResult
+	 * @return
+	 */
+	private long getMaxTime(JobTaskResult jobTaskResult) {
+		long max = 0;
+		for(JobTaskExecuteInfo info : jobTaskResult.getTaskExecuteInfos().values()) {
+			logger.warn(String.format("max=%d, info.getAnalysisConsume()=%d", max, info.getAnalysisConsume()));
+			max = max < info.getAnalysisConsume() ? info.getAnalysisConsume() : max;
+		}
+		logger.warn(String.format("max=%d", max));
+		return max;
+	}
+	
+	/**
 	 * 同一个Job的多个Task并行执行，并最后合并的模式处理
 	 * @author fangweng
 	 * email: fangweng@taobao.com
@@ -659,7 +793,7 @@ public class SlaveNode extends AbstractNode<SlaveNodeEvent,SlaveConfig>{
 						if (logger.isInfoEnabled())
                             logger.info("send result task:" + jobTasks.get(0).getTaskId() + ","
                                     + jobTasks.get(0).getInput() + " uses:" + (System.currentTimeMillis() - start));
-	
+						doingTasks.remove(jobTasks.get(0).getTaskId() + "_" + jobTasks.get(0).getJobEpoch());
 					} 
 					catch (Exception e) {
 						logger.error("SlaveNode send result error." + jobTasks.get(0).getJobName(),e);
@@ -718,7 +852,9 @@ public class SlaveNode extends AbstractNode<SlaveNodeEvent,SlaveConfig>{
 					long start = System.currentTimeMillis();
 					
 					//合并分析结果
-					JobTaskResult jobTaskResult = jobResultMerger.merge(jobTasks.get(0), taskResults,true,false);
+					JobTaskResult jobTaskResult = jobResultMerger.merge(jobTasks.get(0), taskResults,false,false);
+					// 统计merge, 这里的时间并不科学, 应用线程并发, 时间可能被多计算了
+					monitor.mergedTask(System.currentTimeMillis() - start, taskResults.size());
 					
 					jobTaskResult.setEfficiency((System.currentTimeMillis() - timer + hardWorkTimer.get())
 							/(System.currentTimeMillis()  - nodeStartTimeStamp));
@@ -730,6 +866,9 @@ public class SlaveNode extends AbstractNode<SlaveNodeEvent,SlaveConfig>{
 					//输出
 					if (jobTaskResult != null)
 						handleTaskResult(jobTasks.get(0),jobTaskResult);
+					for(JobTask jobtask : jobTasks) {
+					    doingTasks.remove(jobtask.getTaskId() + "_" + jobtask.getJobEpoch());
+					}
 					if (logger.isInfoEnabled())
                         logger.info("send result task:" + jobTasks.get(0).getTaskId() + ","
                                 + jobTasks.get(0).getInput() + " uses:" + (System.currentTimeMillis() - start));

@@ -1,11 +1,14 @@
 package com.taobao.top.analysis.statistics.map;
 
+import java.text.ParseException;
 import java.util.Calendar;
 import java.util.Date;
 
+import org.apache.commons.lang.math.NumberUtils;
+
 import com.taobao.top.analysis.node.job.JobTask;
-import com.taobao.top.analysis.statistics.data.Alias;
 import com.taobao.top.analysis.statistics.data.ReportEntry;
+import com.taobao.top.analysis.util.ThreadLocalVar;
 
 /**
  * 时间类型的MapClass实现
@@ -23,15 +26,31 @@ public class TimeMapper extends TimeKeyMapper {
 	 * 
 	 */
 	private static final long serialVersionUID = 971861884374324170L;
-
+	
 	@Override
 	protected Object generateValue(ReportEntry entry,
 			Object[] contents, JobTask jobtask) {
 
 		Calendar calendar = Calendar.getInstance();
+		long timestamp = 0;
+		String timeContent = contents[Integer.valueOf(entry
+            .getKeys()[0]) - 1].toString();
 		
-		long timestamp = Long.valueOf(contents[Integer.valueOf(entry
-				.getKeys()[0]) - 1].toString());
+		if(NumberUtils.isNumber(timeContent) && !timeContent.contains(":")) {
+		    timestamp = Long.valueOf(timeContent);
+		} else {
+		    try {
+		        if(timeContent.contains(".")) {
+                    timeContent = timeContent.substring(0, timeContent.indexOf("."));
+                }
+                timestamp = ThreadLocalVar.getDateFormat().parse(timeContent).getTime();
+            }
+            catch (ParseException e) {
+                if(!threshold.sholdBlock()) {
+                    logger.error("content is " + timeContent, e);
+                }
+            }
+		}
 
 		calendar.setTime(new Date(timestamp));
 

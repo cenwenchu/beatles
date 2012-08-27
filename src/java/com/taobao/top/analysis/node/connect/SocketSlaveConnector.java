@@ -4,6 +4,7 @@
 package com.taobao.top.analysis.node.connect;
 
 import java.net.InetSocketAddress;
+import java.util.Calendar;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -29,14 +30,20 @@ import org.jboss.netty.handler.codec.serialization.ClassResolvers;
 import org.jboss.netty.handler.codec.serialization.ObjectDecoder;
 import org.jboss.netty.handler.codec.serialization.ObjectEncoder;
 import org.jboss.netty.handler.logging.LoggingHandler;
+import org.jboss.netty.logging.InternalLoggerFactory;
+import org.jboss.netty.logging.Log4JLoggerFactory;
 
 import com.taobao.top.analysis.exception.AnalysisException;
 import com.taobao.top.analysis.node.event.GetTaskRequestEvent;
 import com.taobao.top.analysis.node.event.GetTaskResponseEvent;
 import com.taobao.top.analysis.node.event.MasterNodeEvent;
+import com.taobao.top.analysis.node.event.SendMonitorInfoEvent;
+import com.taobao.top.analysis.node.event.SendMonitorInfoResponseEvent;
 import com.taobao.top.analysis.node.event.SendResultsRequestEvent;
 import com.taobao.top.analysis.node.event.SendResultsResponseEvent;
 import com.taobao.top.analysis.node.job.JobTask;
+import com.taobao.top.analysis.node.monitor.MasterMonitorInfo;
+import com.taobao.top.analysis.util.AnalyzerUtil;
 
 /**
  * Socket版本的客户端通信组件
@@ -68,6 +75,7 @@ public class SocketSlaveConnector extends AbstractSlaveConnector {
 	
 	@Override
     public void init() throws AnalysisException {
+	    InternalLoggerFactory.setDefaultFactory(new Log4JLoggerFactory());
 //        slaveEventTimeQueue = new SlaveEventTimeOutQueue();
         channelLock = new ReentrantLock();
 
@@ -136,10 +144,13 @@ public class SocketSlaveConnector extends AbstractSlaveConnector {
 				logger.info("open channel to " + address );
 	
 				future.awaitUninterruptibly();
-				if (!future.isSuccess()) {
-					logger.error("connect fail.", future.getCause());
-					throw new AnalysisException("connect fail.", future.getCause());
-				}
+                if (!future.isSuccess()) {
+                    logger.error("connect fail.", future.getCause());
+                    AnalyzerUtil.sendOutAlert(Calendar.getInstance(), config.getAlertUrl(), config.getAlertFrom(),
+                        config.getAlertModel(), config.getAlertWangWang(), "master " + address
+                                + " maybe down, please hava a check");
+                    throw new AnalysisException("connect fail.", future.getCause());
+                }
 	
 				channel = future.getChannel();
 				channels.put(address, channel);
@@ -279,7 +290,7 @@ public class SocketSlaveConnector extends AbstractSlaveConnector {
                         future.getChannel().close();
                     } else {
                         if (logger.isWarnEnabled()) {
-                            logger.warn("send task success" + jobResponseEvent.getJobTaskResult().toString()
+                            logger.warn("send task success " + jobResponseEvent.getJobTaskResult().toString()
                                     + " result to master " + master + ",use:" + (System.currentTimeMillis() - start));
                         }
                     }
@@ -301,7 +312,50 @@ public class SocketSlaveConnector extends AbstractSlaveConnector {
         return null;
 	}
 	
+	@Override
+	public MasterMonitorInfo sendMonitorInfo(
+			SendMonitorInfoEvent sendSlaveMonitorInfoEvent) {
+		
+		MasterMonitorInfo info = null;
 
+		try {
+			
+			final SendMonitorInfoEvent event = sendSlaveMonitorInfoEvent;
+			if(logger.isInfoEnabled()) {
+				logger.info("Trying to send monitor info to master");
+			}
+			
+			responseQueue.put(sendSlaveMonitorInfoEvent.getSequence(), sendSlaveMonitorInfoEvent);
+			
+			Channel channel = getChannel(leaderChannel);
+			sendSlaveMonitorInfoEvent.setChannel(channel);
+			ChannelFuture channelFuture = channel.write(sendSlaveMonitorInfoEvent);
+
+			channelFuture.addListener(new ChannelFutureListener() {
+				public void operationComplete(ChannelFuture future) {
+					if (!future.isSuccess()) {
+						responseQueue.remove(event.getSequence());
+						logger.error("Slavesocket write error when trying to get tasks from master.", future.getCause());
+						future.getChannel().close();
+					}
+				}
+			});
+			
+			// 在SlaveConnectorHandler. messageReceived中会countDown
+			sendSlaveMonitorInfoEvent.getResultReadyFlag().await(config.getMaxClientEventWaitTime(), TimeUnit.SECONDS);
+			SendMonitorInfoResponseEvent responseEvent = (SendMonitorInfoResponseEvent)sendSlaveMonitorInfoEvent.getResponse();
+			info = responseEvent.getMasterMonitorInfo();
+
+		} catch (AnalysisException e) {
+			logger.error("Exception:", e);
+		} catch (InterruptedException e) {
+			logger.error("Exception:", e);
+			Thread.currentThread().interrupt();
+		}
+
+		return info;
+	}
+	
 	public ChannelDownstreamHandler getDownstreamHandler() {
 		return downstreamHandler;
 	}

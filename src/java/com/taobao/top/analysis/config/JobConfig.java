@@ -83,7 +83,28 @@ public class JobConfig extends AbstractConfig {
     //mod by fangweng 2011 performance
     //配合磁盘换内存的方式，判断什么时候可以异步载入文件
     private final static String ASYN_LOAD_DISK_FILE_PRECENT = "asynLoadDiskFilePrecent";
-	
+    
+    /**
+     * Hub游标每次拉取的大小
+     */
+    private final static String HUB_CURSOR_STEP = "hubCursorStep";
+    
+    /**
+     * hub游标开始位置指定
+     */
+    private final static String HUB_CURSOR_BEGIN = "begin";
+    
+    /**
+     * hub游标位置初始化，丢弃老数据，直接从最新文件开始
+     */
+    private final static String HUB_CURSOR_INIT = "init";
+    
+    /**
+     * 由聚石塔报表所引出的特殊需求，指定不同的任务路由到不同的slave上面进行执行
+     * 这里只是进行简单的配置，并没有细化到每一个task上面
+     */
+    private final static String SLAVE_IP_CONDITION = "slaveIp";
+    
 	public int getJobResetTime()
 	{
 		if(this.properties.containsKey(JOB_RESET_TIME))
@@ -250,6 +271,51 @@ public class JobConfig extends AbstractConfig {
 
     public void setAsynLoadDiskFilePrecent(String asynLoadDiskFilePrecent) {
         this.properties.put(ASYN_LOAD_DISK_FILE_PRECENT,asynLoadDiskFilePrecent);
+    }
+    
+    public void setHubCursorStep(String hubCursorStep) {
+        this.properties.put(HUB_CURSOR_STEP, hubCursorStep);
+    }
+    
+    public Long getHubCursorStep() {
+        if(this.properties.containsKey(HUB_CURSOR_STEP)) {
+            return Long.parseLong((String)this.properties.get(HUB_CURSOR_STEP));
+        }
+        else
+            return 3000L;
+    }
+    
+    public void setBegin(String begin) {
+        this.properties.put(HUB_CURSOR_BEGIN, begin);
+    }
+    
+    public Long getBegin() {
+        if(this.properties.containsKey(HUB_CURSOR_BEGIN)) {
+            return Long.parseLong((String)this.properties.get(HUB_CURSOR_BEGIN));
+        }
+        return null;
+    }
+    
+    public void setInit(String init) {
+        this.properties.put(HUB_CURSOR_INIT, init);
+    }
+    
+    public Boolean getInit() {
+        if(this.properties.containsKey(HUB_CURSOR_INIT)) {
+            return Boolean.parseBoolean((String)this.properties.get(HUB_CURSOR_INIT));
+        }
+        return false;
+    }
+    
+    public String getSlaveIpCondition() {
+        if(this.properties.containsKey(SLAVE_IP_CONDITION)) {
+            return this.properties.get(SLAVE_IP_CONDITION);
+        }
+        return null;
+    }
+    
+    public void setSlaveIpCondition(String slaveIpCondition) {
+        this.properties.put(SLAVE_IP_CONDITION, slaveIpCondition);
     }
 
 	@Override

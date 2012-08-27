@@ -32,6 +32,7 @@ public class Report implements java.io.Serializable {
 	//如果设置了condition，则默认与其他的condition为与的关系
 	private String key;
 	private String condition;
+	private String master;
 	
 	public int getWeight() {
 		return weight;
@@ -128,6 +129,20 @@ public class Report implements java.io.Serializable {
 	public final void setAppend(boolean append) {
 		this.append = append;
 	}
+
+    /**
+     * @return the master
+     */
+    public String getMaster() {
+        return master;
+    }
+
+    /**
+     * @param master the master to set
+     */
+    public void setMaster(String master) {
+        this.master = master;
+    }
 
 	
 	

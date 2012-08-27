@@ -2,11 +2,11 @@
 <!DOCTYPE log4j:configuration SYSTEM "http://toolkit.alibaba-inc.com/dtd/log4j/log4j.dtd">
 <log4j:configuration xmlns:log4j="http://jakarta.apache.org/log4j/">
      <appender name="RootErrorAppender" class="com.taobao.top.analysis.log.TopDailyRollingFileAppender">
-        <param name="file" value="top-analysis-error.log" />
+        <param name="file" value="../logs/top-analysis-error.log" />
         <param name="append" value="true" />
-        <param name="encoding" value="UTF-8" />
+        <param name="encoding" value="GBK" />
         <layout class="org.apache.log4j.PatternLayout">
-        <param name="ConversionPattern" value="%d %-5p - %m%n" />
+        <param name="ConversionPattern" value="%d %p [%c{10}]-%l - %m%n" />
         </layout>
         <filter class="org.apache.log4j.varia.LevelRangeFilter"> 
 		<param name="levelMin" value="error"/> 
@@ -16,7 +16,7 @@
     </appender>
 
     <appender name="RootWarnAppender" class="com.taobao.top.analysis.log.TopDailyRollingFileAppender">
-        <param name="file" value="top-analysis-warn.log" />
+        <param name="file" value="../logs/top-analysis-warn.log" />
         <param name="append" value="true" />
         <param name="encoding" value="UTF-8" />
         <layout class="org.apache.log4j.PatternLayout">
@@ -31,7 +31,7 @@
     
     
      <appender name="RootInfoAppender" class="com.taobao.top.analysis.log.TopDailyRollingFileAppender">
-        <param name="file" value="top-analysis-info.log" />
+        <param name="file" value="../logs/top-analysis-info.log" />
         <param name="append" value="true" />
         <param name="encoding" value="UTF-8" />
         <layout class="org.apache.log4j.PatternLayout">
@@ -45,7 +45,35 @@
     </appender>
     
     <appender name="clusterLogAppender" class="com.taobao.top.analysis.log.TopDailyRollingFileAppender">
-        <param name="file" value="top-analysis-cluster.log" />
+        <param name="file" value="../logs/top-analysis-cluster.log" />
+        <param name="append" value="true" />
+        <param name="encoding" value="UTF-8" />
+        <layout class="org.apache.log4j.PatternLayout">
+        <param name="ConversionPattern" value="%m%n" />
+        </layout>
+        <filter class="org.apache.log4j.varia.LevelRangeFilter"> 
+		<param name="levelMin" value="info"/> 
+		<param name="levelMax" value="info"/> 
+		<param name="AcceptOnMatch" value="true"/> 
+		</filter> 
+    </appender>
+    
+    <appender name="nettyLogAppender" class="com.taobao.top.analysis.log.TopDailyRollingFileAppender">
+        <param name="file" value="../logs/top-analysis-netty.log" />
+        <param name="append" value="true" />
+        <param name="encoding" value="UTF-8" />
+        <layout class="org.apache.log4j.PatternLayout">
+        <param name="ConversionPattern" value="%d %-5p-%l - %m%n" />
+        </layout>
+        <filter class="org.apache.log4j.varia.LevelRangeFilter"> 
+		<param name="levelMin" value="trace"/> 
+		<param name="levelMax" value="error"/> 
+		<param name="AcceptOnMatch" value="true"/> 
+		</filter> 
+    </appender>
+    
+    <appender name="monitorLogAppender" class="com.taobao.top.analysis.log.TopDailyRollingFileAppender">
+        <param name="file" value="../logs/top-analysis-monitor.log" />
         <param name="append" value="true" />
         <param name="encoding" value="UTF-8" />
         <layout class="org.apache.log4j.PatternLayout">
@@ -61,6 +89,16 @@
     <logger name="cluster" additivity="false">
         <level value="info" />
         <appender-ref ref="clusterLogAppender"/>
+    </logger>
+    
+    <!--logger name="org.jboss.netty" additivity="false">
+        <level value="trace" />
+        <appender-ref ref="nettyLogAppender"/>
+    </logger-->
+    
+    <logger name="monitor" additivity="false">
+        <level value="info" />
+        <appender-ref ref="monitorLogAppender"/>
     </logger>
     
     <!--  

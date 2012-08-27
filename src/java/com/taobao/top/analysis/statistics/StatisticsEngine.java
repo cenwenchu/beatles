@@ -9,6 +9,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -27,6 +28,7 @@ import com.taobao.top.analysis.node.job.JobTaskExecuteInfo;
 import com.taobao.top.analysis.node.job.JobTaskResult;
 import com.taobao.top.analysis.statistics.data.ReportEntry;
 import com.taobao.top.analysis.util.AnalysisConstants;
+import com.taobao.top.analysis.util.AnalyzerUtil;
 import com.taobao.top.analysis.statistics.reduce.IReducer.ReduceType;
 import com.taobao.top.analysis.util.Threshold;
 
@@ -115,15 +117,17 @@ public class StatisticsEngine implements IStatisticsEngine{
 	public JobTaskResult doAnalysis(JobTask jobTask) throws UnsupportedEncodingException, IOException {
 		
 		InputStream in = null;
+		JobTaskExecuteInfo taskExecuteInfo = new JobTaskExecuteInfo();
 		
 		try
 		{
+			// 寻找输入适配器
 			for(IInputAdaptor inputAdaptor : inputAdaptors)
 			{
 				if (inputAdaptor.ignore(jobTask.getInput()))
 					continue;
 				
-				in = inputAdaptor.getInputFormJob(jobTask);
+				in = inputAdaptor.getInputFormJob(jobTask, taskExecuteInfo);
 				
 				if (in != null)
 					break;
@@ -131,10 +135,32 @@ public class StatisticsEngine implements IStatisticsEngine{
 			
 			if (in == null)
 			{
-				throw new IOException("Input not found! input : " + jobTask.getInput());
+			    if(config.isEnableAlert()) {
+			        AnalyzerUtil.sendOutAlert(Calendar.getInstance(),
+                        config.getAlertUrl(),
+                        config.getAlertFrom(),
+                        config.getAlertModel(),
+                        config.getAlertWangWang(),
+                        "Can't connect resource:" + jobTask.getInput());
+			    }
+			    JobTaskResult jobTaskResult = new JobTaskResult();
+		        jobTaskResult.setJobName(jobTask.getJobName());
+		        jobTaskResult.addTaskId(jobTask.getTaskId());
+		        jobTaskResult.setJobEpoch(jobTask.getJobEpoch());
+		        taskExecuteInfo.setAnalysisConsume(0);
+	            taskExecuteInfo.setEmptyLine(0);
+	            taskExecuteInfo.setErrorLine(0);
+	            taskExecuteInfo.setJobDataSize(0);
+	            taskExecuteInfo.setTotalLine(0);
+	            taskExecuteInfo.setTaskId(jobTask.getTaskId());
+	            taskExecuteInfo.setSuccess(false);
+	            
+	            jobTaskResult.addTaskExecuteInfo(taskExecuteInfo);
+				logger.error("Input not found! input : " + jobTask.getInput());
+				return jobTaskResult;
 			}
 			
-			return analysis(in,jobTask);
+			return analysis(in,jobTask, taskExecuteInfo);
 		}
 		finally
 		{
@@ -149,17 +175,16 @@ public class StatisticsEngine implements IStatisticsEngine{
 	}
 	
 	// 分析数据
-	JobTaskResult analysis(InputStream in,JobTask jobtask) throws UnsupportedEncodingException
+	JobTaskResult analysis(InputStream in,JobTask jobtask, JobTaskExecuteInfo taskExecuteInfo) throws UnsupportedEncodingException
 	{
 		
 		String encoding = jobtask.getInputEncoding();
 		String splitRegex = jobtask.getSplitRegex();
 		
 		JobTaskResult jobTaskResult = new JobTaskResult();
+		jobTaskResult.setJobName(jobtask.getJobName());
 		jobTaskResult.addTaskId(jobtask.getTaskId());
 		jobTaskResult.setJobEpoch(jobtask.getJobEpoch());
-		
-		JobTaskExecuteInfo taskExecuteInfo = new JobTaskExecuteInfo();
 		
 		Map<String, ReportEntry> entryPool = jobtask.getStatisticsRule().getEntryPool();
 		
@@ -190,7 +215,7 @@ public class StatisticsEngine implements IStatisticsEngine{
 						continue;
 					}
 					
-					size += record.length();
+					size += record.getBytes().length;
 					
 					String[] contents = StringUtils.splitByWholeSeparatorPreserveAllTokens(record, splitRegex);
 					Iterator<String> keys = entryPool.keySet().iterator();
@@ -201,7 +226,11 @@ public class StatisticsEngine implements IStatisticsEngine{
 							String key = keys.next();
 							entry = entryPool.get(key);
 							if(!entry.isLazy()){
-								processSingleLine(entry, contents,jobtask,jobTaskResult);
+							    processSingleLine(entry, contents,jobtask,jobTaskResult, taskExecuteInfo);
+//								if(!processSingleLine(entry, contents,jobtask,jobTaskResult, taskExecuteInfo)) {
+//								    if(entry.getReports().contains("appAuthReport"))
+//								        logger.error("key null, record:" + record);
+//								}
 							}
 							
 						} 
@@ -258,9 +287,10 @@ public class StatisticsEngine implements IStatisticsEngine{
 			taskExecuteInfo.setAnalysisConsume(System.currentTimeMillis() - beg);
 			taskExecuteInfo.setEmptyLine(emptyLine);
 			taskExecuteInfo.setErrorLine(exceptionLine);
-			taskExecuteInfo.setJobDataSize(size*2);
+			taskExecuteInfo.setJobDataSize(size);
 			taskExecuteInfo.setTotalLine(normalLine+exceptionLine+emptyLine);
 			taskExecuteInfo.setTaskId(jobtask.getTaskId());
+			taskExecuteInfo.setSuccess(true);
 			
 			jobTaskResult.addTaskExecuteInfo(taskExecuteInfo);
 			
@@ -277,19 +307,25 @@ public class StatisticsEngine implements IStatisticsEngine{
 	}
 	
 	//处理单行数据
-	public void processSingleLine(ReportEntry entry,String[] contents,JobTask jobtask,JobTaskResult jobTaskResult){
+	public void processSingleLine(ReportEntry entry,String[] contents,JobTask jobtask,JobTaskResult jobTaskResult, JobTaskExecuteInfo taskExecuteInfo){
 		Map<String, Map<String, Object>> entryResult = jobTaskResult.getResults();
 		String key = entry.getMapClass().mapperKey(entry,contents, jobtask);
+//		if(key == null)
+//            return false;
 		if(key != null && !AnalysisConstants.IGNORE_PROCESS.equals(key)){
+			//
+			taskExecuteInfo.incKeyCount(1);
 			Object value = entry.getMapClass().mapperValue(entry, contents, jobtask);
+			//
+			taskExecuteInfo.incValueCount(1);
 			Map<String,Object> result = entryResult.get(entry.getId());
 			if(result == null){
 				result = new HashMap<String, Object>();
 				jobTaskResult.getResults().put(entry.getId(), result);
 			}
 			entry.getReduceClass().reducer(entry,key,value,result,ReduceType.SHALLOW_MERGE);
+//			return true;
 		}
-		
+//		return true;
 	}
-
 }

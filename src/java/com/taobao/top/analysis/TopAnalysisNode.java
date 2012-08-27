@@ -1,5 +1,7 @@
 package com.taobao.top.analysis;
 
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -24,8 +26,10 @@ import com.taobao.top.analysis.node.INode;
 import com.taobao.top.analysis.node.component.FileJobExporter;
 import com.taobao.top.analysis.node.component.JobManager;
 import com.taobao.top.analysis.node.component.JobResultMerger;
+import com.taobao.top.analysis.node.component.MasterMonitor;
 import com.taobao.top.analysis.node.component.MasterNode;
 import com.taobao.top.analysis.node.component.MixJobBuilder;
+import com.taobao.top.analysis.node.component.SlaveMonitor;
 import com.taobao.top.analysis.node.component.SlaveNode;
 import com.taobao.top.analysis.node.connect.IMasterConnector;
 import com.taobao.top.analysis.node.connect.ISlaveConnector;
@@ -35,10 +39,12 @@ import com.taobao.top.analysis.node.event.MasterEventCode;
 import com.taobao.top.analysis.node.event.MasterNodeEvent;
 import com.taobao.top.analysis.node.io.FileInputAdaptor;
 import com.taobao.top.analysis.node.io.FileOutputAdaptor;
-import com.taobao.top.analysis.node.io.HttpInputAdaptor;
 import com.taobao.top.analysis.node.io.HdfsInputAdaptor;
+import com.taobao.top.analysis.node.io.HttpInputAdaptor;
+import com.taobao.top.analysis.node.io.HubInputAdaptor;
 import com.taobao.top.analysis.node.io.IInputAdaptor;
 import com.taobao.top.analysis.node.io.IOutputAdaptor;
+import com.taobao.top.analysis.node.monitor.IMonitor;
 import com.taobao.top.analysis.statistics.IStatisticsEngine;
 import com.taobao.top.analysis.statistics.StatisticsEngine;
 import com.taobao.top.analysis.util.AnalyzerUtil;
@@ -85,6 +91,11 @@ public class TopAnalysisNode implements Runnable {
     private ISlaveConnector slaveConnector = null;
     
     /**
+     * 监控组件
+     */
+    private IMonitor<?> monitor = null;
+    
+    /**
      * 任务合并组件
      */
     private IJobResultMerger jobResultMerger = null;
@@ -122,6 +133,11 @@ public class TopAnalysisNode implements Runnable {
     private IInputAdaptor fileInputAdaptor = null;
     
     /**
+     * hub输入适配器
+     */
+    private IInputAdaptor hubInputAdaptor = null;
+    
+    /**
      * file输出适配器
      */
     private IOutputAdaptor fileOutputAdaptor = null;
@@ -130,6 +146,11 @@ public class TopAnalysisNode implements Runnable {
      * 初始化标志
      */
     private AtomicBoolean init = new AtomicBoolean(false);
+    
+    /**
+     * 同步http服务
+     */
+    private HttpAgentNode httpAgentNode = null;
     
     /**
      * 扫描线程
@@ -165,7 +186,11 @@ public class TopAnalysisNode implements Runnable {
         
         final TopAnalysisNode topAnalyzerNode = new TopAnalysisNode();
         
-        topAnalyzerNode.init(args[0], "master".equalsIgnoreCase(args[1]));
+        try {
+            topAnalyzerNode.init(args[0], "master".equalsIgnoreCase(args[1]));
+        } catch(Throwable e) {
+            log.error(e, e);
+        }
         topAnalyzerNode.start();
 //        topAnalyzerNode.run();
     }
@@ -203,9 +228,11 @@ public class TopAnalysisNode implements Runnable {
      */
     public void start() {
         if(!this.init.get()) {
+            log.error("node init failed, please check the config");
             throw new java.lang.RuntimeException("node init failed, please check the config");
         }
         node.startNode();
+        httpAgentNode.start();
         scanService.scheduleAtFixedRate(this, 5, ((AbstractConfig)nodeConfig).getScanFileTime(), TimeUnit.SECONDS);
     }
     
@@ -231,6 +258,8 @@ public class TopAnalysisNode implements Runnable {
         jobManager = new JobManager();
         jobBuilder = new MixJobBuilder();
         masterConnector = new SocketMasterConnector();
+        monitor = new MasterMonitor();
+        httpAgentNode = new HttpAgentNode();
         
         ((MasterNode)node).setConfig((MasterConfig)nodeConfig);
         
@@ -244,6 +273,9 @@ public class TopAnalysisNode implements Runnable {
         
         ((MasterNode)node).setJobManager(jobManager);
         ((MasterNode)node).setMasterConnector(masterConnector);
+        ((MasterNode)node).setMonitor((MasterMonitor)monitor);
+        httpAgentNode.setJobManager(jobManager);
+        httpAgentNode.setName("top-analysis-http-agent");
     }
     
     /**
@@ -253,10 +285,12 @@ public class TopAnalysisNode implements Runnable {
         node = new SlaveNode();
         nodeConfig = new SlaveConfig();
         slaveConnector = new SocketSlaveConnector();
+        monitor = new SlaveMonitor();
         statisticsEngine = new StatisticsEngine();
         httpInputAdaptor = new HttpInputAdaptor();
         hdfsInputAdaptor = new HdfsInputAdaptor();
         fileInputAdaptor = new FileInputAdaptor();
+        hubInputAdaptor = new HubInputAdaptor();
         fileOutputAdaptor = new FileOutputAdaptor();
         
         try {
@@ -274,10 +308,12 @@ public class TopAnalysisNode implements Runnable {
         ((SlaveNode)node).setJobResultMerger(jobResultMerger);
         ((SlaveNode)node).setSlaveConnector(slaveConnector);
         ((SlaveNode)node).setStatisticsEngine(statisticsEngine);
+        ((SlaveNode)node).setMonitor((SlaveMonitor)monitor);
         
         statisticsEngine.addInputAdaptor(httpInputAdaptor);
         statisticsEngine.addInputAdaptor(hdfsInputAdaptor);
         statisticsEngine.addInputAdaptor(fileInputAdaptor);
+        statisticsEngine.addInputAdaptor(hubInputAdaptor);
         statisticsEngine.addOutputAdaptor(fileOutputAdaptor);
     }
     
@@ -295,6 +331,18 @@ public class TopAnalysisNode implements Runnable {
             e.setEventCode(MasterEventCode.RELOAD_JOBS);
             ((MasterNode)node).addEvent(e);
             log.error("job'config is modified, reloading executed, please have a check");
+            String content = null;
+            try {
+                content = "Host:"
+                    + InetAddress.getLocalHost().getHostAddress()
+                    + ",config file was modified!!!";
+            }
+            catch (UnknownHostException e1) {
+                log.error(e1);
+            }
+            AbstractConfig tmpConfig = (AbstractConfig)nodeConfig;
+            if(tmpConfig.isEnableAlert())
+                AnalyzerUtil.sendOutAlert(java.util.Calendar.getInstance(), tmpConfig.getAlertUrl(), tmpConfig.getAlertFrom(), tmpConfig.getAlertModel(), tmpConfig.getAlertWangWang(), content);
         }
     }
 

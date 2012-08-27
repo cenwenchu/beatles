@@ -52,6 +52,7 @@ public class ReportUtil {
 	public final static String RETURN = "\r\n";
 	public final static String MASTER_LOG = "master";
 	public final static String SLAVE_LOG = "slave";
+	public final static Threshold threshold = new Threshold(5000);
 
 	private static String ip;
 
@@ -148,6 +149,10 @@ public class ReportUtil {
 		
 		if (operation.startsWith(AnalysisConstants.CONDITION_IN_STR)) {
 			return AnalysisConstants.CONDITION_IN;
+		}
+		
+		if(operation.startsWith(AnalysisConstants.CONDITION_LIKE_STR)) {
+		    return AnalysisConstants.CONDITION_LIKE;
 		}
 
 		throw new AnalysisException("Entry Operation not support!");
@@ -669,7 +674,6 @@ public class ReportUtil {
 				String entryId = entryKeys.next();
 
 				ReportEntry entry = entryPool.get(entryId);
-
 				if (entry.isLazy()) {
 					Map<String, Object> t = result.remove(entryId);
 
@@ -698,10 +702,24 @@ public class ReportUtil {
                     if (t != null)
                         t.clear();
                 }
+                //遍历删除平均值计算
+                if(entry.getGroupFunction() != null && entry.getGroupFunction() instanceof AvgFunction) {
+                    if(result.get(entryId) == null)
+                        continue;
+                    Iterator<Map.Entry<String, Object>> entries = result.get(entryId).entrySet().iterator();
+                    while(entries.hasNext()) {
+                        Entry<String, Object> en = entries.next();
+                        String key = en.getKey();
+                        if(!key.startsWith(AnalysisConstants.PREF_SUM) && !key.startsWith(AnalysisConstants.PREF_COUNT)) {
+                            entries.remove();
+                        }
+                    }
+                }
 
             }
         }
 	}
+	
 
 	public static void lazyMerge(Map<String, Map<String, Object>> result,
 			Map<String, ReportEntry> entryPool) {
@@ -740,7 +758,7 @@ public class ReportUtil {
 							String nodekey = iter.next();
 							Object nodevalue = result.get(leftEntryId).get(
 									nodekey);
-							Object rightvalue;
+							Object rightvalue = null;
 
 							for (int i = 0; i < size - 1; i++) {
 								String rightkey = (String) _bindingStack
@@ -847,9 +865,16 @@ public class ReportUtil {
 															.toString());
 										}
 
-									} else
-										rightvalue = result.get(rightkey).get(
-												nodekey);
+                                    }
+                                    else {
+                                        try {
+                                            rightvalue = result.get(rightkey).get(nodekey);
+                                        }
+                                        catch (Throwable e) {
+                                            if(!threshold.sholdBlock())
+                                                logger.error("resultkey is null" + rightkey, e);
+                                        }
+                                    }
 								}
 
 								if (rightvalue != null) {
@@ -1011,11 +1036,10 @@ public class ReportUtil {
 					Object value = content.get(key);
 					if (key == null || value == null)
 						continue;
-					try {
-					    entry.getReduceClass().reducer(entry, key, value,
-                            result.get(entryId),reduceType);
-					} catch (Throwable e) {
-					    logger.error("reduce error entryName:" + entry.getName() + ", key:" + key + ",value:" + value + "," + entry.getReports().get(0));
+                    try {
+                        entry.getReduceClass().reducer(entry, key, value, result.get(entryId), reduceType);
+                    } catch (Throwable e) {
+					    logger.error("reduce error entryName:" + entry.getName() + ", key:" + key + ",value:" + value + "," + entry.getReports().toString(), e);
 					}
 				}
 

@@ -16,12 +16,12 @@ public enum SlaveEventCode {
 	SEND_RESULT_RESP("sendResult"),
 	SUSPEND("suspend"),
 	AWAKE("awake"),
-	CHANGE_MASTER("changeMaster");	
+	CHANGE_MASTER("changeMaster"),
+	SEND_MONITOR_INFO_RESP("sendMonitorInfo.Response");	
 	
 	String v;
 	
-	SlaveEventCode(String value)
-	{
+	SlaveEventCode(String value) {
 		this.v = value;
 	}
 	

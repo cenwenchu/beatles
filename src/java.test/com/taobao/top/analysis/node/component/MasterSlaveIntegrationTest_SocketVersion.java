@@ -41,6 +41,7 @@ public class MasterSlaveIntegrationTest_SocketVersion {
 		JobResultMerger jobResultMerger = new JobResultMerger();
 		MixJobBuilder mixJobBuilder = new MixJobBuilder();
 		FileJobExporter fileJobExporter = new FileJobExporter();
+		MasterMonitor monitor = new MasterMonitor();
 		
 		
 		jobManager.setJobBuilder(mixJobBuilder);
@@ -52,6 +53,7 @@ public class MasterSlaveIntegrationTest_SocketVersion {
 		
 		masterNode.setJobManager(jobManager);
 		masterNode.setMasterConnector(masterConnector);	
+		masterNode.setMonitor(monitor);
 		
 		MasterConfig config = new MasterConfig();
 		config.load(configfile);
@@ -67,6 +69,7 @@ public class MasterSlaveIntegrationTest_SocketVersion {
 		SlaveNode slaveNode = new SlaveNode();
 		JobResultMerger jobResultMerger2 = new JobResultMerger();
 		SocketSlaveConnector slaveConnector = new SocketSlaveConnector();
+		SlaveMonitor monitor = new SlaveMonitor();
 		slaveConnector.setDownstreamHandler(new ObjectEncoder());
 		slaveConnector.setUpstreamHandler(new ObjectDecoder());
 			
@@ -77,6 +80,7 @@ public class MasterSlaveIntegrationTest_SocketVersion {
 		slaveNode.setSlaveConnector(slaveConnector);
 		slaveNode.setStatisticsEngine(statisticsEngine);
 		slaveNode.setJobResultMerger(jobResultMerger2);
+		slaveNode.setMonitor(monitor);
 		
 		IInputAdaptor fileInputAdaptor =  new FileInputAdaptor();
 		IInputAdaptor httpInputAdaptor = new HttpInputAdaptor();
@@ -142,13 +146,13 @@ public class MasterSlaveIntegrationTest_SocketVersion {
 		//MasterNode masterNode1 = buildMaster("master-config-ms1.properties");
 		//MasterNode masterNode2 = buildMaster("master-config-ms2.properties");
 			
-		Thread.sleep(1000);
+		Thread.sleep(8000);
 		
 		//build SlaveNode
 		SlaveNode slaveNode = buildSlave("slave-config.properties",true);
 		SlaveNode slaveNode1 = buildSlave("slave-config1.properties",true);
 		
-		Thread.sleep(30 * 1000);
+		Thread.sleep(60 * 1000 * 60);
 		
 		masterNode.stopNode();
 		//masterNode1.stopNode();
@@ -156,7 +160,7 @@ public class MasterSlaveIntegrationTest_SocketVersion {
 		slaveNode.stopNode();
 		slaveNode1.stopNode();
 		
-		Thread.sleep(3000);
+		Thread.sleep(60 * 1000 * 60);
 		
 	}
 	
@@ -191,7 +195,6 @@ public class MasterSlaveIntegrationTest_SocketVersion {
 		slaveNode.stopNode();
 		
 		Thread.sleep(3000);
-		
 	}
 
 }

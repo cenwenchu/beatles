@@ -55,7 +55,6 @@ import com.taobao.top.analysis.statistics.reduce.DefaultReducer;
 import com.taobao.top.analysis.statistics.reduce.IReducer;
 import com.taobao.top.analysis.statistics.reduce.group.GroupFunctionFactory;
 import com.taobao.top.analysis.util.AnalyzerFilenameFilter;
-import com.taobao.top.analysis.util.AnalyzerUtil;
 import com.taobao.top.analysis.util.ReportUtil;
 
 /**
@@ -175,6 +174,7 @@ public class FileJobBuilder implements IJobBuilder{
 //                        		AnalysisConstants.JOBMANAGER_EVENT_LOADDATA,this.config);
 //                        jobDataOperation.run();
                         JobDataOperation.getSourceTimeStamp(job, this.config);
+//                        JobDataOperation.loadDataToTmp(job, this.config);
 //                        JobDataOperation.loadData(job, this.config);
                         
                         buildTasks(job);
@@ -215,17 +215,23 @@ public class FileJobBuilder implements IJobBuilder{
 						
 						//做一下改进，如果原来已经有分配的，为了保证数据一致性，则不再分配(保证中间结果的连贯性)
 						//考虑原来就是比较平均分配的，然后将新来业务平均分配也是一样的
-						Map<String, String> report2Master = ReportUtil.SimpleAllocationAlgorithm(masters, reports, "|");
+//						Map<String, String> report2Master = ReportUtil.SimpleAllocationAlgorithm(masters, reports, "|");
+						Map<String, String> report2Master = new HashMap<String, String>();
 						
 						//此处将report2Master传入方法中进行修改，并非好的代码处理方式
-						AnalyzerUtil.loadReportToMaster(masters, reports, report2Master, j);
+//						AnalyzerUtil.loadReportToMaster(masters, reports, report2Master, j);
 						if(this.config.getReportToMaster() != null && this.config.getReportToMaster().size() > 0) {
 						    report2Master.putAll(this.config.getReportToMaster());
 						}
+						for(Report r : rule.getReportPool().values()) {
+                            if(!report2Master.containsKey(r.getId()) && this.config.getDispatchMaster()) {
+                                report2Master.put(r.getId(), ReportUtil.getIp() + ":" + this.config.getMasterPort());
+                            }
+                        }
 						
 						for(Entry<String,String> rm : report2Master.entrySet())
-							if (rule.getReport2Master().get(rm.getKey()) == null)
-								rule.getReport2Master().put(rm.getKey(), rm.getValue());
+//							if (rule.getReport2Master().get(rm.getKey()) == null)
+							rule.getReport2Master().put(rm.getKey(), rm.getValue());
 						
 						if (logger.isWarnEnabled() && rule.getReport2Master() != null)
 						{
@@ -237,16 +243,21 @@ public class FileJobBuilder implements IJobBuilder{
 									.append(r.getKey()).append(" -> master: ").append(r.getValue()).append(" , ");
 							}
 							
-							logger.warn(report2Master.toString());
+							logger.error(report2MasterStr.toString());
 						}
-						AnalyzerUtil.exportReportToMaster(report2Master, j);
+//						AnalyzerUtil.exportReportToMaster(report2Master, j);
 						allMasters.addAll(report2Master.values());
 					}
 					
-				} else {
-				    if(this.config != null)
-				        allMasters.add(ReportUtil.getIp() + ":" + this.config.getMasterPort());
-				}
+				} 
+                if (this.config != null) {
+                    allMasters.add(ReportUtil.getIp() + ":" + this.config.getMasterPort());
+                    StringBuilder sb = new StringBuilder("allMasters:");
+                    for (String master : allMasters) {
+                        sb.append(master).append(",");
+                    }
+                    logger.error(sb.toString());
+                }
 				for(Job j : jobs.values()) {
                     j.getStatisticsRule().setMasters(allMasters);
                 }
@@ -325,6 +336,37 @@ public class FileJobBuilder implements IJobBuilder{
                 }
 
             }
+            // 遍历所有报表的entry，再遍历这些entry中所使用的其他的entry
+            // 将entry与report的关联关系理清楚，因为在数据清理，多master数据发送的时候，都是按照entry来进行的
+            for(Report report : rule.getReportPool().values()) {
+                for(ReportEntry entry : report.getReportEntrys()) {
+                    Set<String> referEntries = ((SimpleCalculator) entry.getCalculator()).getReferEntries();
+                    if(referEntries == null)
+                        continue;
+                    for(String key : referEntries) {
+                        setReport(entry, rule, rule.getEntryPool().get(key));
+                    }
+                }
+            }
+        }
+    }
+    
+    /**
+     * 采用递归来设置每一个entry的报表
+     */
+    private void setReport(ReportEntry entry, Rule rule, ReportEntry referEntry) {
+        if(referEntry == null) {
+            logger.error("please have a check at the referEntry. How can it be null?");
+            return;
+        }
+        for(String reportName : entry.getReports()) {
+            referEntry.addReport(rule.getReportPool().get(reportName));
+        }
+        Set<String> referEntries = ((SimpleCalculator) referEntry.getCalculator()).getReferEntries();
+        if(referEntries == null)
+            return;
+        for(String refer : referEntries) {
+            setReport(referEntry, rule, rule.getEntryPool().get(refer));
         }
     }
 	
@@ -601,28 +643,29 @@ public class FileJobBuilder implements IJobBuilder{
 			}
 
 			// 删除没有被引用的公用的定义
-			if (rule.getReferEntrys() != null
-					&& rule.getReferEntrys().size() > 0) {
-				Iterator<Entry<String, ReportEntry>> iter = rule.getEntryPool()
-						.entrySet().iterator();
-				StringBuilder invalidKeys = new StringBuilder();
+            // 考虑到每一个job（也就是过去的instance的概念）对应于同一个rule，并非是一个配置文件对应一个rule，因此
+            // rule中删除不用的key这一操作，应该是在所有配置文件读取完后进行
+            if (rule.getReferEntrys() != null
+                    && rule.getReferEntrys().size() > 0) {
+                Iterator<Entry<String, ReportEntry>> iter = rule.getEntryPool()
+                        .entrySet().iterator();
+                StringBuilder invalidKeys = new StringBuilder();
 
-				while (iter.hasNext()) {
-					Entry<String, ReportEntry> e = iter.next();
+                while (iter.hasNext()) {
+                    Entry<String, ReportEntry> e = iter.next();
 
-					if (!rule.getReferEntrys().containsKey(e.getKey())) {
-						iter.remove();
-						invalidKeys.append(e.getKey()).append(",");
-					}
+                    if (!rule.getReferEntrys().containsKey(e.getKey())) {
+                        iter.remove();
+                        invalidKeys.append(e.getKey()).append(",");
+                    }
 
-				}
+                }
 
-				if (invalidKeys.length() > 0)
-					logger.error("File: " + configFile
-						+ " ----- remove invalid entry define : "
-						+ invalidKeys.toString());
-			}
-
+                if (invalidKeys.length() > 0)
+                    logger.error("File: " + configFile
+                        + " ----- remove invalid entry define : "
+                        + invalidKeys.toString());
+            }
 		} 
 		catch(Throwable ex)
 		{
@@ -747,7 +790,7 @@ public class FileJobBuilder implements IJobBuilder{
 				report.getReportEntrys().add(node);
 				
 				//给node增加report的属性
-				node.getReports().add(report.getId());
+				node.addReport(report);
 			} else {
 				String errorMsg = new StringBuilder()
 						.append("reportEntry not exist :")
@@ -763,7 +806,7 @@ public class FileJobBuilder implements IJobBuilder{
 		if (report != null)
 		{
 			//给node增加report的属性
-			entry.getReports().add(report.getId());
+			entry.addReport(report);
 		}
 
 		if (start.getAttributeByName(new QName("", "name")) != null) {
@@ -990,14 +1033,27 @@ public class FileJobBuilder implements IJobBuilder{
 		{
 			JobTask jobTask = new JobTask(jobConfig);
 			jobTask.setStatisticsRule(job.getStatisticsRule());
-			jobTask.setTaskId(job.getJobName() + "-" + job.getTaskCount());
 			jobTask.setJobName(job.getJobName());
 			jobTask.setUrl(jobTask.getInput());
 			jobTask.setJobSourceTimeStamp(job.getJobSourceTimeStamp());
 			
 			jobTask.setInput(generateJobInputAddition(jobTask.getInput(),job));
+			jobTask.setTaskId(getTaskIdFromUrl(job.getJobName(), jobTask.getUrl(), job.getTaskCount()));
 			
+			/**
+			 * 目前使用master游标管理方式的只有hub
+			 */
+			Long begin = jobConfig.getBegin();
+			if(begin == null)
+			    begin = 0L;
+			if(jobTask.getUrl().startsWith("hub://")) {
+			    String key = jobTask.getUrl().substring(0, jobTask.getUrl().indexOf('?'));
+			    job.getCursorMap().putIfAbsent(key, begin);
+			    job.getTimestampMap().putIfAbsent(key, -1L);
+			    jobTask.setJobSourceTimeStamp(job.getTimestampMap().get(key));
+			}
 			job.addTaskCount();
+			jobTask.getTailCursor().set(jobConfig.getInit());
 			job.getJobTasks().add(jobTask);
 		}
 		else
@@ -1016,11 +1072,24 @@ public class FileJobBuilder implements IJobBuilder{
 				{
 					JobTask jobTask = new JobTask(jobConfig);
 					jobTask.setStatisticsRule(job.getStatisticsRule());
-					jobTask.setTaskId(job.getJobName() + "-" + job.getTaskCount());
 					jobTask.setJobName(job.getJobName());
 					jobTask.setUrl(jobConfig.getInput().replace(key, ps));
 					jobTask.setJobSourceTimeStamp(job.getJobSourceTimeStamp());
 					jobTask.setInput(generateJobInputAddition(jobConfig.getInput().replace(key, ps),job));
+					jobTask.setTaskId(getTaskIdFromUrl(job.getJobName(), jobTask.getUrl(), job.getTaskCount()));
+					/**
+		             * 目前使用master游标管理方式的只有hub
+		             */
+					Long begin = jobConfig.getBegin();
+		            if(begin == null)
+		                begin = 0L;
+		            if(jobTask.getUrl().startsWith("hub://")) {
+		                String keyU = jobTask.getUrl().substring(0, jobTask.getUrl().indexOf('?'));
+		                job.getCursorMap().putIfAbsent(keyU, begin);
+		                job.getTimestampMap().putIfAbsent(keyU, -1L);
+		                jobTask.setJobSourceTimeStamp(job.getTimestampMap().get(keyU));
+		            }
+		            jobTask.getTailCursor().set(jobConfig.getInit());
 					job.addTaskCount();
 					job.getJobTasks().add(jobTask);
 				}
@@ -1033,9 +1102,23 @@ public class FileJobBuilder implements IJobBuilder{
 				{
 					JobTask jobTask = new JobTask(jobConfig);
 					jobTask.setStatisticsRule(job.getStatisticsRule());
-					jobTask.setTaskId(job.getJobName() + "-" + job.getTaskCount());
 					jobTask.setJobName(job.getJobName());
 					jobTask.setInput(generateJobInputAddition(input,job));
+					jobTask.setUrl(input);
+					jobTask.setTaskId(getTaskIdFromUrl(job.getJobName(), jobTask.getUrl(), job.getTaskCount()));
+                    /**
+                     * 目前使用master游标管理方式的只有hub
+                     */
+                    Long begin = jobConfig.getBegin();
+                    if(begin == null)
+                        begin = 0L;
+                    if(jobTask.getUrl().startsWith("hub://")) {
+                        String key = jobTask.getUrl().substring(0, jobTask.getUrl().indexOf('?'));
+                        job.getCursorMap().putIfAbsent(key, begin);
+                        job.getTimestampMap().putIfAbsent(key, -1L);
+                        jobTask.setJobSourceTimeStamp(job.getTimestampMap().get(key));
+                    }
+                    jobTask.getTailCursor().set(jobConfig.getInit());
 					job.addTaskCount();
 					job.getJobTasks().add(jobTask);
 				}
@@ -1068,6 +1151,16 @@ public class FileJobBuilder implements IJobBuilder{
                 return true;
         }
         return false;
+    }
+    
+    private String getTaskIdFromUrl(final String jobName, final String url, final int taskCount) {
+        String temp = url.substring(url.indexOf("://") + 3);
+        if(temp.indexOf(':') >= 0)
+            temp = temp.substring(0, temp.indexOf(':'));
+        else if(temp.indexOf('/') >= 0)
+            temp = temp.substring(0, temp.indexOf('/'));
+        temp = jobName + "-" + temp + "-" + taskCount;
+        return temp;
     }
 
 }

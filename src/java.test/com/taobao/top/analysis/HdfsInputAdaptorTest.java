@@ -12,6 +12,7 @@ import org.apache.hadoop.io.IOUtils;
 import com.taobao.top.analysis.config.JobConfig;
 import com.taobao.top.analysis.node.io.HdfsInputAdaptor;
 import com.taobao.top.analysis.node.job.JobTask;
+import com.taobao.top.analysis.node.job.JobTaskExecuteInfo;
 
 /**
  * @author fangweng
@@ -37,7 +38,7 @@ public class HdfsInputAdaptorTest {
 		
 		try
 		{
-			in = hdfsInputAdaptor.getInputFormJob(jobtask);
+			in = hdfsInputAdaptor.getInputFormJob(jobtask, new JobTaskExecuteInfo());
 			
 			reader = new java.io.BufferedReader(new java.io.InputStreamReader(in));
 			

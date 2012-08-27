@@ -4,10 +4,11 @@
 package com.taobao.top.analysis.statistics.data;
 
 import java.io.Serializable;
-import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import com.taobao.top.analysis.statistics.map.IMapper;
 import com.taobao.top.analysis.statistics.reduce.IReducer;
@@ -73,12 +74,17 @@ public class ReportEntry implements Serializable, Cloneable {
 	
 	private Map<String,Object> additions;
 	
-	private boolean period;
+	private boolean period = true;
 	
 	/**
 	 * 该entry所属的report
 	 */
-	private List<String> reports = new ArrayList<String>();	
+	private Set<String> reports = new HashSet<String>();	
+	
+	/**
+	 * 该entry所依赖引用的entry的列表
+	 */
+	private List<String> referEntries;
 	
 	
 	public Map<String,Object> getAdditions() {
@@ -112,11 +118,18 @@ public class ReportEntry implements Serializable, Cloneable {
 		}
 			
 	}
-	public List<String> getReports() {
+	public Set<String> getReports() {
 		return reports;
 	}
-	public void setReports(List<String> reports) {
+	public void setReports(Set<String> reports) {
 		this.reports = reports;
+	}
+	public void addReport(Report report) {
+	    if(report == null)
+	        return;
+	    this.reports.add(report.getId());
+	    if(!report.isPeriod())
+	        this.period = false;
 	}
 	public boolean isLazy() {
 		return lazy;
@@ -216,8 +229,16 @@ public class ReportEntry implements Serializable, Cloneable {
     public void setPeriod(boolean period) {
         this.period = period;
     }
-	
-	
-	
-
+    /**
+     * @return the referEntries
+     */
+    public List<String> getReferEntries() {
+        return referEntries;
+    }
+    /**
+     * @param referEntries the referEntries to set
+     */
+    public void setReferEntries(List<String> referEntries) {
+        this.referEntries = referEntries;
+    }
 }

@@ -22,7 +22,8 @@ public enum MasterEventCode {
 	CLEAR_DATA("clearData"),
 	SUSPEND("suspend"),
 	AWAKE("awake"),
-	RESETSERVER("resetServer");
+	RESETSERVER("resetServer"),
+	SEND_MONITOR_INFO("sendMonitorInfo");
 	
 	
 	String v;

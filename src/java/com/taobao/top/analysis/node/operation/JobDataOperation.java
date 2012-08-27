@@ -12,7 +12,9 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Calendar;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -292,7 +294,8 @@ public class JobDataOperation implements Runnable {
 		
 		File[] files = dest.listFiles(new AnalyzerFilenameFilter(_fileSuffix));
 		File[] bckfiles = dest.listFiles(new AnalyzerFilenameFilter(_bckSuffix));
-		
+		FileComparator c = new FileComparator();
+		Arrays.sort(bckfiles, c);
 		if (files.length + bckfiles.length == 0)
 			return null;
 		
@@ -312,6 +315,22 @@ public class JobDataOperation implements Runnable {
 		}
 
 		return load(totalFiles,onlyLoadSourceTimestamp, job);
+	}
+	
+	private static class FileComparator implements Comparator<File> {
+
+        /* (non-Javadoc)
+         * @see java.util.Comparator#compare(java.lang.Object, java.lang.Object)
+         */
+        @Override
+        public int compare(File o1, File o2) {
+            if(o1.lastModified() < o2.lastModified())
+                return 1;
+            else if (o1.lastModified() > o2.lastModified())
+                return -1;
+            return 0;
+        }
+	    
 	}
 	
 	void deleteData()
@@ -473,8 +492,8 @@ public class JobDataOperation implements Runnable {
 		
 		Map<String, Map<String, Object>> resultPool = job.getJobResult();
 		
-		
-		if (resultPool != null && resultPool.size() > 0) {
+		//判断放在这里是不正确的,因为有timestamp的概念
+//		if (resultPool != null && resultPool.size() > 0) {
 			
 			String destfile=null;
 			try 
@@ -552,7 +571,10 @@ public class JobDataOperation implements Runnable {
 					Map<String, Map<String, Object>> newTrunk = cloneResultFromTrunk(resultPool);
 					
 					job.setJobResult(newTrunk);
-					export(resultPool,destfile,true,true);
+					export(resultPool,destfile,true,true, job.getCursorMap());
+					//空指针保护
+					if(resultPool != null)
+					    resultPool.clear();
 				}
 				else
 				{
@@ -564,7 +586,7 @@ public class JobDataOperation implements Runnable {
 						{
 							try
 							{
-								export(resultPool,destfile,true,true);
+								export(resultPool,destfile,true,true, job.getCursorMap());
 							}
 							finally{
 								readLock.unlock();
@@ -588,7 +610,7 @@ public class JobDataOperation implements Runnable {
 			{
 				logger.error(ex.getMessage(), ex);
 			} 
-		}
+//		}
 	}
 	
 	
@@ -599,6 +621,8 @@ public class JobDataOperation implements Runnable {
 	public Map<String, Map<String, Object>> cloneResultFromTrunk(Map<String, Map<String, Object>> trunk)
 	{
 		Map<String, Map<String, Object>> r = new HashMap<String,Map<String,Object>>();
+		if (trunk == null || trunk.size() <= 0)
+		    return r;
 		
 		Iterator<String> keys = trunk.keySet().iterator();
 		
@@ -672,9 +696,9 @@ public class JobDataOperation implements Runnable {
 		{	
 			
 			if(useCompress)
-				breader = new BufferedReader(new InputStreamReader(new InflaterInputStream(new FileInputStream(file))));
+				breader = new BufferedReader(new InputStreamReader(new InflaterInputStream(new FileInputStream(file)), "GBK"));
 			else
-				breader = new BufferedReader(new InputStreamReader(new FileInputStream(file)));
+				breader = new BufferedReader(new InputStreamReader(new FileInputStream(file), "GBK"));
 			
 			String line;
 			boolean isFirstLine = true;
@@ -685,9 +709,20 @@ public class JobDataOperation implements Runnable {
 				{
 					try
 					{
-						long jobSourceTimeStamp = Long.parseLong(line);
-						job.setJobSourceTimeStamp(jobSourceTimeStamp);
+					    String[] contents = StringUtils.splitByWholeSeparator(line, AnalysisConstants.EXPORT_DATA_SPLIT);
+						long jobSourceTimeStamp = Long.parseLong(contents[0]);
+						if(onlyLoadSourceTimestamp)
+						    job.setJobSourceTimeStamp(jobSourceTimeStamp);
 						
+						if(contents.length == 2 && onlyLoadSourceTimestamp) {
+						    String[] strings = StringUtils.splitByWholeSeparator(contents[1], AnalysisConstants.EXPORT_RECORD_SPLIT);
+						    if(strings.length > 1) {
+						        for(int i=1; i<strings.length; i++) {
+						            String[] entrys = StringUtils.splitByWholeSeparator(strings[i], AnalysisConstants.EXPORT_COLUMN_SPLIT);
+						            job.getCursorMap().putIfAbsent(entrys[0], Long.parseLong(entrys[1]));
+						        }
+						    }
+						}
 						if (onlyLoadSourceTimestamp)
 							return resultPools;
 					}
@@ -697,6 +732,7 @@ public class JobDataOperation implements Runnable {
 					}
 					
 					isFirstLine = false;
+					continue;
 				}
 				
 				if (line.equals(AnalysisConstants.EXPORT_DATA_SPLIT))
@@ -767,10 +803,11 @@ public class JobDataOperation implements Runnable {
 	 * @param 是否需要覆盖原来的文件
 	 */
 	public static void export(Map<String, Map<String, Object>> resultPool,
-			String FileName,boolean needCompress,boolean needOverwrite)
+			String FileName,boolean needCompress,boolean needOverwrite, Map<String, Long> cursorMap)
 	{
-	    if(resultPool == null)
-	        return;
+	    //这里判断不应该有
+//	    if(resultPool == null)
+//	        return;
 		BufferedWriter bwriter = null;
 		
 		try{
@@ -789,49 +826,57 @@ public class JobDataOperation implements Runnable {
 				Deflater def = new Deflater(Deflater.BEST_SPEED, false);
 			
 				bwriter = new BufferedWriter(new OutputStreamWriter(new DeflaterOutputStream(
-					new FileOutputStream(FileName), def)));
+					new FileOutputStream(FileName), def), "GBK"));
 			}
 			else		
 				bwriter = new BufferedWriter(new OutputStreamWriter(
-					new FileOutputStream(FileName,!needOverwrite)));
+					new FileOutputStream(FileName,!needOverwrite), "GBK"));
 			
 			//fix by fangweng 2012 增加分析器恢复能力
 			bwriter.write(String.valueOf(System.currentTimeMillis()));
+			bwriter.write(AnalysisConstants.EXPORT_DATA_SPLIT);
+			bwriter.write("cursors");
+			for(String key : cursorMap.keySet()) {
+			    bwriter.write(AnalysisConstants.EXPORT_RECORD_SPLIT);
+			    bwriter.write(key);
+			    bwriter.write(AnalysisConstants.EXPORT_COLUMN_SPLIT);
+			    bwriter.write(cursorMap.get(key).toString());
+			}
 			bwriter.write(ReportUtil.getSeparator());
 		
 			//写个开头
 			bwriter.write(AnalysisConstants.EXPORT_DATA_SPLIT);
 			bwriter.write(ReportUtil.getSeparator());
 			
-			Iterator<String> keys = resultPool.keySet().iterator();
-			
-			while(keys.hasNext())
-			{
-				String key = keys.next();
-				
-				bwriter.write(key);
-				bwriter.write(AnalysisConstants.EXPORT_RECORD_SPLIT);
-				
-				Map<String,Object> m = resultPool.get(key);
-							
-				Iterator<String> mkeys = m.keySet().iterator();
-				
-				while(mkeys.hasNext())
-				{
-					String k = mkeys.next();
-					bwriter.write(k);
-					bwriter.write(AnalysisConstants.EXPORT_COLUMN_SPLIT);
-					
-					if (m.get(k) instanceof Double)
-						bwriter.write(AnalysisConstants.EXPORT_DOUBLE_SPLIT);
-					
-					bwriter.write(m.get(k).toString());
-					bwriter.write(AnalysisConstants.EXPORT_RECORD_SPLIT);
-				}
-				
-				bwriter.write(ReportUtil.getSeparator());
-				
-			}
+            if (resultPool != null && resultPool.size() > 0) {
+                Iterator<String> keys = resultPool.keySet().iterator();
+
+                while (keys.hasNext()) {
+                    String key = keys.next();
+
+                    bwriter.write(key);
+                    bwriter.write(AnalysisConstants.EXPORT_RECORD_SPLIT);
+
+                    Map<String, Object> m = resultPool.get(key);
+
+                    Iterator<String> mkeys = m.keySet().iterator();
+
+                    while (mkeys.hasNext()) {
+                        String k = mkeys.next();
+                        bwriter.write(k);
+                        bwriter.write(AnalysisConstants.EXPORT_COLUMN_SPLIT);
+
+                        if (m.get(k) instanceof Double)
+                            bwriter.write(AnalysisConstants.EXPORT_DOUBLE_SPLIT);
+
+                        bwriter.write(m.get(k).toString());
+                        bwriter.write(AnalysisConstants.EXPORT_RECORD_SPLIT);
+                    }
+
+                    bwriter.write(ReportUtil.getSeparator());
+
+                }
+            }
 			bwriter.flush();
 			
 		}
@@ -861,28 +906,33 @@ public class JobDataOperation implements Runnable {
 		innPool.put("key2", "value2");
 		innPool.put("key3", "value3");
 		innPool.put("key4", "value4");
+		innPool.put("ceshi", new Double(1.0));
 		
 		resultPool.put("entry1", innPool);
 		
-		JobDataOperation.export(resultPool, "resultPool.tmp",false,true);
-		JobDataOperation.export(resultPool, "resultPool.tmp",false,false);
+		JobDataOperation.export(resultPool, "resultPool.tmp",false,true, job.getCursorMap());
+		JobDataOperation.export(resultPool, "resultPool.tmp",false,false, job.getCursorMap());
 		
 		List<Map<String, Map<String, Object>>> resultPools = JobDataOperation.load(new File("resultPool.tmp"),false,job,false);
 		
 		Assert.assertEquals(2,resultPools.size());
 		Assert.assertEquals("value4", resultPools.get(0).get("entry1").get("key4"));
 		Assert.assertEquals("value4", resultPools.get(1).get("entry1").get("key4"));
+		Assert.assertEquals(new Double(1.0), resultPools.get(0).get("entry1").get("ceshi"));
+		Assert.assertEquals(new Double(1.0), resultPools.get(1).get("entry1").get("ceshi"));
 		
 		
-		JobDataOperation.export(resultPool, "resultPool.tmp",true,true);
+		JobDataOperation.export(resultPool, "resultPool.tmp",true,true, job.getCursorMap());
 		resultPools = JobDataOperation.load(new File("resultPool.tmp"),true,job,false);
 		
 		Assert.assertEquals(1,resultPools.size());
 		Assert.assertEquals("value4", resultPools.get(0).get("entry1").get("key4"));
 		
-		File destDir = new File("temp");
+		File destDir = new File("resultPool.tmp");
 		
 		File[] files = destDir.listFiles(new AnalyzerFilenameFilter(AnalysisConstants.TEMP_MASTER_DATAFILE_SUFFIX));
+		
+		resultPools = JobDataOperation.load(new File("D:\\tmp\\2012-7-16-tip-10.246.146.70-15-5.ibck"), true, job, false);
 		
 		System.out.println(files[0].getName().substring(files[0].getName().indexOf(AnalysisConstants.SPLIT_KEY)+AnalysisConstants.SPLIT_KEY.length()
 				,files[0].getName().indexOf(AnalysisConstants.TEMP_MASTER_DATAFILE_SUFFIX)));

@@ -3,6 +3,7 @@
  */
 package com.taobao.top.analysis.node.component;
 
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.HashMap;
@@ -17,8 +18,11 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.zookeeper.ZooKeeper;
+import org.jboss.netty.channel.Channel;
 
 import com.taobao.top.analysis.config.MasterConfig;
 import com.taobao.top.analysis.exception.AnalysisException;
@@ -37,9 +41,11 @@ import com.taobao.top.analysis.node.job.JobTaskStatus;
 import com.taobao.top.analysis.node.operation.JobDataOperation;
 import com.taobao.top.analysis.node.operation.MergeJobOperation;
 import com.taobao.top.analysis.util.AnalysisConstants;
+import com.taobao.top.analysis.util.AnalyzerZKWatcher;
 import com.taobao.top.analysis.util.MasterDataRecoverWorker;
 import com.taobao.top.analysis.util.NamedThreadFactory;
 import com.taobao.top.analysis.util.ReportUtil;
+import com.taobao.top.analysis.util.ZKUtil;
 
 
 /**
@@ -98,12 +104,15 @@ public class JobManager implements IJobManager {
      */
     private MasterDataRecoverWorker masterDataRecoverWorker;
     
+    
     /**
      * 关闭标志，重启关闭时置为true
      * 置为true后，不再分配新的任务，并等待任务merge完成
      * 导出中间结果
      */
-    private boolean stopped = false;
+    private volatile boolean stopped = false;
+    
+    ZooKeeper zk = null;
 
     @Override
     public void init() throws AnalysisException {
@@ -145,6 +154,23 @@ public class JobManager implements IJobManager {
         masterDataRecoverWorker.start();
 
         addJobsToPool();
+        
+        if (StringUtils.isNotEmpty(config.getZkServer()))
+		{
+			try
+			{
+				AnalyzerZKWatcher<MasterConfig> analyzerZKWatcher = 
+						new AnalyzerZKWatcher<MasterConfig>(config);
+				zk = new ZooKeeper(config.getZkServer(),3000,analyzerZKWatcher);
+				analyzerZKWatcher.setZk(zk);
+				
+				ZKUtil.createGroupNodesIfNotExist(zk,config.getGroupId());
+			}
+			catch(Exception ex)
+			{
+				logger.error("zk init error!",ex);
+			}
+		}
 
         if (logger.isInfoEnabled())
             logger.info("jobManager init end, MaxJobEventWorker size : " + config.getMaxJobEventWorker());
@@ -159,15 +185,46 @@ public class JobManager implements IJobManager {
         try {
          // 导出所有结果，暂时不导出中间data，后面看是否需要
             //添加中间结果导出，不导出中间结果，会有部分数据丢失
+            long start = System.currentTimeMillis();
+            for(JobTask jobTask : this.jobTaskPool.values()) {
+                while(JobTaskStatus.DOING.equals(jobTask.getStatus())) {
+                    Thread.sleep(10000);
+                    if(System.currentTimeMillis() - start > 60000)
+                        break;
+                }
+            }
+            
             if (jobs != null)
                 for (Job j : jobs.values()) {
-                    //结果导出不重要，可以考虑去掉
-                    while(!j.getTrunkExported().get())
-                        Thread.sleep(3000);
-                    if (!j.isExported().get()) {
-                        jobExporter.exportReport(j, false);
-                        logger.info("releaseResouce now, export job : " + j.getJobName());
+                    boolean gotIt = j.getTrunkLock().writeLock().tryLock();
+
+                    if (gotIt) {
+                        try {
+                            if (!j.isMerged().get()) {
+                                List<Map<String, Map<String, Object>>> mergeResults =
+                                        new ArrayList<Map<String, Map<String, Object>>>();
+                                new MergeJobOperation(j, 0, mergeResults, config, branchResultQueuePool.get(j
+                                    .getJobName()), true).run();
+
+                                j.isMerged().set(true);
+                                logger.warn("job is timeout, last merge trunk success!");
+                            }
+                        }
+                        finally {
+                            j.getTrunkLock().writeLock().unlock();
+                        }
+
                     }
+                    JobDataOperation jobd =
+                            new JobDataOperation(j, AnalysisConstants.JOBMANAGER_EVENT_EXPORTDATA, this.config);
+                    jobd.run();
+                    logger.info("releaseResouce now, export job : " + j.getJobName());
+//                    while(!j.getTrunkExported().get())
+//                        Thread.sleep(3000);
+//                    if (!j.isExported().get()) {
+//                        jobExporter.exportReport(j, false);
+//                        logger.info("releaseResouce now, export job : " + j.getJobName());
+//                    }
                 }
             if (eventProcessThreadPool != null)
                 eventProcessThreadPool.shutdown();
@@ -207,6 +264,7 @@ public class JobManager implements IJobManager {
             logger.info("jobManager releaseResource end");
 
         }
+        
     }
 
 
@@ -254,6 +312,19 @@ public class JobManager implements IJobManager {
                         || jobs.get(jobTask.getJobName()).getJobTimeOut().get()) {
                     taskIter.remove();
                     continue;
+                }
+                
+                if (jobs.get(jobTask.getJobName()).getJobConfig().getSlaveIpCondition() != null) {
+                    try {
+                        Channel channel = (Channel) requestEvent.getChannel();
+                        if (!channel.getRemoteAddress().toString()
+                            .matches(jobs.get(jobTask.getJobName()).getJobConfig().getSlaveIpCondition())) {
+                            continue;
+                        }
+                    }
+                    catch (Throwable e) {
+                        logger.error(e);
+                    }
                 }
 
                 if (statusPool.get(jobTask.getTaskId()).equals(JobTaskStatus.UNDO)) {
@@ -311,9 +382,12 @@ public class JobManager implements IJobManager {
             // 以后要扩展成为如果发现当前的epoch < 结果的epoch，表明这台可能是从属的master，负责reduce，但是速度跟不上了
             if(jobTaskPool.get(jobTaskResult.getTaskIds().get(0)) == null) {
                 logger.error("jobTask is null " + jobTaskResult.getTaskIds().get(0));
+                masterNode.echoSendJobTaskResults(jobResponseEvent.getSequence(), "success", jobResponseEvent.getChannel());
+                return;
             }
-            if (jobTaskResult.getJobEpoch() != jobTaskPool.get(jobTaskResult.getTaskIds().get(0)).getJobEpoch()) {
-
+            if (jobTaskResult.getJobEpoch() != jobTaskPool.get(jobTaskResult.getTaskIds().get(0)).getJobEpoch() && this.config.getDispatchMaster()) {
+            	
+            	// 结果过期, 肯能是任务超时后, 被重新分配了
                 if (jobTaskResult.getJobEpoch() < jobTaskPool.get(jobTaskResult.getTaskIds().get(0)).getJobEpoch()) {
                     logger.error("old task result will be discard! job:" + jobTaskPool.get(jobTaskResult.getTaskIds().get(0)).getJobName() + ",epoch:" + jobTaskResult.getJobEpoch() + ",slave:" + jobResponseEvent.getChannel());
                     masterNode.echoSendJobTaskResults(jobResponseEvent.getSequence(), "success", jobResponseEvent.getChannel());
@@ -322,11 +396,16 @@ public class JobManager implements IJobManager {
                 else {
                     // 给一定的容忍时间，暂时定为5秒
                     jobs.get(jobTaskPool.get(jobTaskResult.getTaskIds().get(0)).getJobName()).blockToResetJob(15000);
-
+                    
+                    // 这块有点疑问, 什么情况会出现
                     if (jobTaskResult.getJobEpoch() > jobTaskPool.get(jobTaskResult.getTaskIds().get(0)).getJobEpoch()) {
-                        logger.error("otherMaster can't merge in time!job:" + jobTaskPool.get(jobTaskResult.getTaskIds().get(0)).getJobName());
+                        logger.error("otherMaster can't merge in time!job:" + jobTaskPool.get(jobTaskResult.getTaskIds().get(0)).getJobName() + ",taskResult epoch:" + jobTaskResult.getJobEpoch() + ", task epoch:" + jobTaskPool.get(jobTaskResult.getTaskIds().get(0)).getJobEpoch());
                         masterNode.echoSendJobTaskResults(jobResponseEvent.getSequence(), "success", jobResponseEvent.getChannel());
-                        return;
+                        if(!this.config.getDispatchMaster()) {
+                            jobs.get(jobTaskResult.getJobName()).reset(this);
+                        } else {
+                            return;
+                        }
                     }
                 }
             }
@@ -337,13 +416,26 @@ public class JobManager implements IJobManager {
                             .append(jobTaskResult.toString()).append(", ").append(jobTaskResult.getTaskIds().size());
                 logger.warn(ts.toString());
             }
+            if(jobs.get(jobTaskPool.get(jobTaskResult.getTaskIds().get(0)).getJobName()).isMerged().get()) {
+                masterNode.echoSendJobTaskResults(jobResponseEvent.getSequence(), "success", jobResponseEvent.getChannel());
+                return;
+            }
 
             // 先放入队列，防止小概率多线程并发问题
             jobTaskResultsQueuePool.get(jobTaskPool.get(jobTaskResult.getTaskIds().get(0)).getJobName()).offer(
                 jobTaskResult);
+            if(logger.isInfoEnabled()) {
+                StringBuilder sb = new StringBuilder("add result [");
+                for(String s : jobTaskResult.getTaskIds()) {
+                    sb.append(s).append(",");
+                }
+                sb.append("] to queue:").append(jobTaskPool.get(jobTaskResult.getTaskIds().get(0)).getJobName());
+                logger.info(sb.toString());
+            }
 
-            for (int i = 0; i < jobTaskResult.getTaskIds().size(); i++) {
-                String taskId = jobTaskResult.getTaskIds().get(i);
+            Iterator<String> iter = jobTaskResult.getTaskIds().iterator();
+            while (iter.hasNext()) {
+                String taskId = iter.next();
                 JobTask jobTask = jobTaskPool.get(taskId);
                 
                 if (jobTask == null)
@@ -362,34 +454,71 @@ public class JobManager implements IJobManager {
                         || statusPool.replace(taskId, JobTaskStatus.UNDO, JobTaskStatus.DONE)) {
                     logger.info("task " + jobTask.getJobName() + " of job " + job.getJobName() + " done");
                     jobTask.setStatus(JobTaskStatus.DONE);
+                    jobTask.getTailCursor().compareAndSet(true, false);
                     jobTask.setEndTime(System.currentTimeMillis());
                     jobTask.setLastMergedEpoch(job.getEpoch().get());
                     job.getCompletedTaskCount().incrementAndGet();
+                } else {
+                    if(!this.config.getDispatchMaster()) {
+                        jobTask.setStatus(JobTaskStatus.DONE);
+                        jobTask.getTailCursor().compareAndSet(true, false);
+                        jobTask.setEndTime(System.currentTimeMillis());
+                        jobTask.setLastMergedEpoch(job.getEpoch().get());
+                        statusPool.put(taskId, JobTaskStatus.DONE);
+                        iter.remove();
+                    }
                 }
                 
                 //对jobTask的执行结果打点
-                StringBuilder log = new StringBuilder(ReportUtil.SLAVE_LOG).append(",")
-                					.append(System.currentTimeMillis()).append(",")
-                					.append(job.getEpoch()).append(",");
-                log.append(jobTask.getJobName()).append(",")
-                	.append(jobTask.getTaskId()).append(",")
-                	.append(jobTask.getRecycleCounter().get()).append(",")
-                	.append(jobTaskResult.getSlaveIp()).append(",")
+                StringBuilder log = new StringBuilder(ReportUtil.SLAVE_LOG).append(",timeStamp=")
+                					.append(System.currentTimeMillis()).append(",epoch=")
+                					.append(job.getEpoch()).append(",jobName=");
+                log.append(jobTask.getJobName()).append(",taskId=")
+                	.append(jobTask.getTaskId()).append(",recycleCounter=")
+                	.append(jobTask.getRecycleCounter().get()).append(",slaveIp=")
+                	.append(jobTaskResult.getSlaveIp()).append(",efficiency=")
                 	.append(jobTaskResult.getEfficiency()).append(",");
                
                 JobTaskExecuteInfo executeInfo = jobTaskResult.getTaskExecuteInfos().get(jobTask.getTaskId());
                 
-                if (executeInfo != null)
-                	log.append(executeInfo.getAnalysisConsume()).append(",")
-                		.append(executeInfo.getJobDataSize()).append(",")
-                		.append(executeInfo.getTotalLine()).append(",")
-                		.append(executeInfo.getErrorLine()).append(",")
-                		.append(executeInfo.getEmptyLine());
+                if (executeInfo != null) {
+                    log.append("analysisConsume=").append(executeInfo.getAnalysisConsume()).append(",")
+                        .append("jobDataSize=").append(executeInfo.getJobDataSize()).append(",").append("totalLine=")
+                        .append(executeInfo.getTotalLine()).append(",").append("errorLine=")
+                        .append(executeInfo.getErrorLine()).append(",").append("emptyLine=")
+                        .append(executeInfo.getEmptyLine()).append(",fileBegin=").append(executeInfo.getFileBegin())
+                        .append(",fileLength=").append(executeInfo.getFileLength());
+                    if(jobTask.getInput().startsWith("hub:")) {
+                        jobTask.setJobSourceTimeStamp(executeInfo.getTimestamp());
+                        job.updateCursor(jobTask.getUrl(), executeInfo.getFileBegin(), executeInfo.getFileLength(), executeInfo.getTimestamp());
+                    }
+                }
                 else
                 	logger.error(new StringBuilder().append("taskId : ").
                 			append(jobTask.getTaskId()).append(" executeInfo is null!").toString());
                 
                 ReportUtil.clusterLog(log.toString());
+                
+                
+                //增加一块对于zookeeper的支持
+        		if (StringUtils.isNotEmpty(config.getZkServer()) && zk != null)
+        		{
+        			try
+        			{     				
+        				ZKUtil.updateOrCreateNode(zk,new StringBuilder()
+        							.append(ZKUtil.getGroupMasterZKPath(config.getGroupId()))
+        							.append("/").append(config.getMasterName())
+        							.append("/runtime/").append(job.getEpoch())
+        							.append("/").append(jobTask.getJobName())
+        							.append("/").append(jobTask.getTaskId()).toString(),log.toString().getBytes("UTF-8"));
+        				
+        			}
+        			catch(Exception ex)
+        			{
+        				logger.error("log to zk error!",ex);
+        			}
+        			
+        		}
                 
             }
 
@@ -496,9 +625,19 @@ public class JobManager implements IJobManager {
                 throw new AnalysisException("jobs should not be empty!");
         }
 
-        checkTaskStatus();
-
-        mergeAndExportJobs();
+        try {
+            if(this.config.getDispatchMaster())
+                checkTaskStatus();
+        } catch (Throwable e) {
+            logger.error("checkTaskStatus Error", e);
+        }
+        
+        // 合并任务,并导出报表
+        try {
+            mergeAndExportJobs();
+        } catch (Throwable e) {
+            logger.error("mergeAndExport Error", e);
+        }
         
         //任务全部完成并且没有新加任务的情况下，休息1s
         for(Job job : jobs.values()) {
@@ -512,6 +651,26 @@ public class JobManager implements IJobManager {
                     logger.error(e);
                 }
             }
+        }
+        
+        // 打点观察Direct Memory区域的大小
+        try {
+            Class<?> c = Class.forName("java.nio.Bits");
+            Field maxMemory = c.getDeclaredField("maxMemory");
+            maxMemory.setAccessible(true);
+            Field reservedMemory = c.getDeclaredField("reservedMemory");
+            reservedMemory.setAccessible(true);
+            synchronized (c) {
+                Long maxMemoryValue = (Long) maxMemory.get(null);
+                Long reservedMemoryValue = (Long) reservedMemory.get(null);
+                if (logger.isInfoEnabled()) {
+                    logger.info("now the maxMemory is " + String.valueOf(maxMemoryValue)
+                            + " and the reservedMemory is " + String.valueOf(reservedMemoryValue));
+                }
+            }
+        }
+        catch (Throwable e) {
+            logger.error("trying to get java.nio.Bits class failed");
         }
 
     }
@@ -577,6 +736,7 @@ public class JobManager implements IJobManager {
         	}
         	else
         	{
+        		// Job超时了, 尝试做一次主干merge
         		//判断是否还有和主干合并的线程，如果没有可以设置完成标识
         		boolean gotIt = job.getTrunkLock().writeLock().tryLock();
         		
@@ -623,6 +783,18 @@ public class JobManager implements IJobManager {
                             exportOrCleanTrunk(j);
                         }
                     });
+            }
+            
+            //做一次任务处理时间判断，如果超时将设置job的超时状态位置
+            if(this.config.getDispatchMaster())
+                job.checkJobTimeOut();
+
+            // 任务是否需要被重置
+            if (job.needReset() || (!this.config.getDispatchMaster() && job.isExported().get()) ) {
+                if(logger.isWarnEnabled())
+                    logger.warn("job " + job.getJobName() + " be reset now.");
+                
+                //检查任务是否需要重新build
                 if(job.getRebuildTag() == -1) {
                     job.rebuild(0, null, this);
                     iter.remove();
@@ -630,30 +802,39 @@ public class JobManager implements IJobManager {
                 if(job.getRebuildTag() == 1) {
                     job.rebuild(0, null, this);
                 }
-            }
-            
-            //做一次任务处理时间判断，如果超时将设置job的超时状态位置
-            job.checkJobTimeOut();
-
-            // 任务是否需要被重置
-            if (job.needReset()) {
-                if(logger.isWarnEnabled())
-                    logger.warn("job " + job.getJobName() + " be reset now.");
                 
-                
-            	StringBuilder sb = new StringBuilder(ReportUtil.MASTER_LOG).append(",")
-            							.append(System.currentTimeMillis()).append(",");
-            	sb.append(job.getEpoch()).append(",")
-            		.append(job.getJobName()).append(",")
-            		.append(System.currentTimeMillis() - job.getStartTime()).append(",")
-            		.append(job.getJobMergeTime().get()).append(",")
-            		.append(job.getJobExportTime()).append(",")
-            		.append(job.getTaskCount()).append(",")
-            		.append(job.getCompletedTaskCount().get()).append(",")
-            		.append(job.getMergedTaskCount().get()).append(",")
+            	StringBuilder sb = new StringBuilder(ReportUtil.MASTER_LOG).append(",timeStamp=")
+            							.append(System.currentTimeMillis()).append(",epoch=");
+            	sb.append(job.getEpoch()).append(",jobName=")
+            		.append(job.getJobName()).append(",timeConsume=")
+            		.append(System.currentTimeMillis() - job.getStartTime()).append(",jobMergeTime=")
+            		.append(job.getJobMergeTime().get()).append(",jobExportTime=")
+            		.append(job.getJobExportTime()).append(",taskCount=")
+            		.append(job.getTaskCount()).append(",completedTaskCount=")
+            		.append(job.getCompletedTaskCount().get()).append(",mergedTaskCount=")
+            		.append(job.getMergedTaskCount().get()).append(",jobMergeBranchCount=")
             		.append(job.getJobMergeBranchCount().get());
             	ReportUtil.clusterLog(sb.toString());
                 
+            	//增加一块对于zookeeper的支持
+        		if (StringUtils.isNotEmpty(config.getZkServer()) && zk != null)
+        		{
+        			try
+        			{     				
+        				ZKUtil.updateOrCreateNode(zk,new StringBuilder()
+        							.append(ZKUtil.getGroupMasterZKPath(config.getGroupId()))
+        							.append("/").append(config.getMasterName())
+        							.append("/runtime/").append(job.getEpoch())
+        							.append("/").append(job.getJobName()).toString(),sb.toString().getBytes("UTF-8"));
+        				
+        			}
+        			catch(Exception ex)
+        			{
+        				logger.error("log to zk error!",ex);
+        			}
+        			
+        		}
+            	
 
                 job.reset(this);
                 

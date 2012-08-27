@@ -33,6 +33,7 @@ public class MergeJobOperation implements Runnable {
 	private List<Map<String, Map<String, Object>>> mergeResults;
 	private MasterConfig config;
 	private BlockingQueue<JobMergedResult> branchResultQueue;
+	private boolean stopping = false;
 
 	public MergeJobOperation(Job job,int mergeCount,
 			List<Map<String, Map<String, Object>>> mergeResults
@@ -43,6 +44,17 @@ public class MergeJobOperation implements Runnable {
 		this.config = config;
 		this.branchResultQueue = branchResultQueue;
 	}
+	
+	public MergeJobOperation(Job job,int mergeCount,
+            List<Map<String, Map<String, Object>>> mergeResults
+            ,MasterConfig config,BlockingQueue<JobMergedResult> branchResultQueue, boolean stopping) {
+        this.job = job;
+        this.mergeCount = mergeCount;
+        this.mergeResults = mergeResults;
+        this.config = config;
+        this.branchResultQueue = branchResultQueue;
+        this.stopping = stopping;
+    }
 
 	@Override
 	public void run() {
@@ -105,13 +117,14 @@ public class MergeJobOperation implements Runnable {
 			otherResult = ReportUtil.mergeEntryResult(results, job.getStatisticsRule().getEntryPool(), false,ReduceType.SHALLOW_MERGE);
 
 		//对于timeout引起的reset做一层保护，丢弃掉分支合并的结果
-		if (job.getEpoch().get() == epoch)
-		{
+		if (job.getEpoch().get() == epoch) {
 			// 将结果放入到队列中等待获得锁的线程去执行
 			JobMergedResult jr = new JobMergedResult();
 			jr.setMergeCount(mergeCount);
 			jr.setMergedResult(otherResult);
 			branchResultQueue.offer(jr);
+		} else {
+			logger.error(String.format("Discard one branch result, because of epoch not equals, of job:%s", job.getJobName()));
 		}
 		
 		logger.warn(new StringBuilder(
@@ -207,8 +220,8 @@ public class MergeJobOperation implements Runnable {
 		
 		Map<String, Map<String, Object>>  diskTmpResult = null;
 		
-		//已经到了最后一轮合并
-		if (job.getMergedTaskCount().addAndGet(mergeCount) == job.getTaskCount() || job.getJobTimeOut().get())
+		//已经到了最后一轮合并, Job超时了, 当然会是最后一次merge
+		if (job.getMergedTaskCount().addAndGet(mergeCount) == job.getTaskCount() || job.getJobTimeOut().get() || stopping)
 		{
 			//磁盘换内存模式
 			if (config.getSaveTmpResultToFile())
@@ -216,6 +229,7 @@ public class MergeJobOperation implements Runnable {
 				if (job.getNeedLoadResultFile().compareAndSet(true, false))
 				{
 				    try {
+				    	// load result from file to job.diskResult
                         JobDataOperation.loadDataToTmp(job, config);
                     }
                     catch (AnalysisException e) {
@@ -247,8 +261,17 @@ public class MergeJobOperation implements Runnable {
 				if(job.getDiskResult() == null)
 				    job.setDiskResultMerged(true);
 				
-				if (diskTmpResult != null)
+				if (diskTmpResult != null) {
 					size += 1;
+					logger.warn("diskTmpResult is not null");
+				}
+			} else if (job.getJobResult() == null) {
+			    try {
+                    JobDataOperation.loadData(job, config);
+                }
+                catch (AnalysisException e) {
+                    logger.error("loadData error.",e);
+                }
 			}
 		}
 		else
@@ -257,6 +280,7 @@ public class MergeJobOperation implements Runnable {
 					job.getJobResult() == null)
 			{
 				try {
+					// load result from file to job.jobResult
                     JobDataOperation.loadData(job, config);
                 }
                 catch (AnalysisException e) {

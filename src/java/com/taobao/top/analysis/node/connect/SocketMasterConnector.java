@@ -25,9 +25,12 @@ import org.jboss.netty.handler.codec.serialization.ClassResolvers;
 import org.jboss.netty.handler.codec.serialization.ObjectDecoder;
 import org.jboss.netty.handler.codec.serialization.ObjectEncoder;
 import org.jboss.netty.handler.logging.LoggingHandler;
+import org.jboss.netty.logging.InternalLoggerFactory;
+import org.jboss.netty.logging.Log4JLoggerFactory;
 
 import com.taobao.top.analysis.exception.AnalysisException;
 import com.taobao.top.analysis.node.event.GetTaskResponseEvent;
+import com.taobao.top.analysis.node.event.SendMonitorInfoResponseEvent;
 import com.taobao.top.analysis.node.event.SendResultsResponseEvent;
 import com.taobao.top.analysis.node.job.JobTask;
 
@@ -52,6 +55,7 @@ public class SocketMasterConnector extends AbstractMasterConnector{
 	@Override
 	public void init() throws AnalysisException 
  {
+	    InternalLoggerFactory.setDefaultFactory(new Log4JLoggerFactory());
         bootstrap =
                 new ServerBootstrap(factory);
 
@@ -162,6 +166,21 @@ public class SocketMasterConnector extends AbstractMasterConnector{
 //		} catch (InterruptedException e) {
 //		}
 		
+		channelFuture.addListener(new ChannelFutureListener() {
+	        public void operationComplete(ChannelFuture future) {
+	            if (!future.isSuccess()) 
+	            {
+	            	logger.error("Mastersocket write error.",future.getCause());
+	                future.getChannel().close();
+	            }
+	        }
+	    });
+	}
+	
+	@Override
+	public void echoSendMonitorInfo(SendMonitorInfoResponseEvent event) {
+		
+		ChannelFuture channelFuture = ((Channel)event.getChannel()).write(event);
 		channelFuture.addListener(new ChannelFutureListener() {
 	        public void operationComplete(ChannelFuture future) {
 	            if (!future.isSuccess()) 

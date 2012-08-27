@@ -3,6 +3,7 @@ package com.taobao.top.analysis.statistics.data.impl;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 import org.apache.commons.lang.StringUtils;
 
@@ -74,6 +75,9 @@ public class SimpleCondition implements ICondition {
 						|| value.startsWith(AnalysisConstants.CONDITION_IN_STR)) {
 					operate = value.substring(0, 2);
 					value = value.substring(2).trim();
+				} else if(value.startsWith(AnalysisConstants.CONDITION_LIKE_STR)) {
+				    operate = value.substring(0, 4);
+				    value = value.substring(4).trim();
 				} else {
 					if (value.startsWith(AnalysisConstants.CONDITION_EQUAL_STR)
 							|| value.startsWith(AnalysisConstants.CONDITION_LESSER_STR)
@@ -87,13 +91,17 @@ public class SimpleCondition implements ICondition {
 				{
 				    if(!(key instanceof Integer))
 				        conditionKStack.add(Integer.valueOf(String.valueOf(key)));
-					conditionKStack.add(key);
+				    else
+				        conditionKStack.add(key);
 					
 					if (operate.equals(AnalysisConstants.CONDITION_EQUAL_STR)
 							|| operate.equals(AnalysisConstants.CONDITION_NOT_EQUAL_STR)
 							|| operate.equals(AnalysisConstants.CONDITION_IN_STR))
 					{
 						conditionVStack.add(value);
+					}
+					else if (operate.equals(AnalysisConstants.CONDITION_LIKE_STR)) {
+					    conditionVStack.add(Pattern.compile(value));
 					}
 					else
 						conditionVStack.add(Double.valueOf(value));
@@ -190,7 +198,10 @@ public class SimpleCondition implements ICondition {
 			if (conditionKey > 0)
 				result = (new StringBuilder().append(conditionValue).append(","))
 					.indexOf(new StringBuilder().append(contents[conditionKey - 1]).append(",").toString())>=0;
-		} 
+		} else if(operator == AnalysisConstants.CONDITION_LIKE) {
+		    if(conditionKey > 0 && conditionValue instanceof Pattern)
+		        result = ((Pattern)conditionValue).matcher(contents[conditionKey - 1]).matches();
+		}
 		else {
 			double cmpValue = 0;
 

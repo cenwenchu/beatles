@@ -12,6 +12,7 @@ import com.taobao.top.analysis.exception.AnalysisException;
 import com.taobao.top.analysis.node.event.GetTaskResponseEvent;
 import com.taobao.top.analysis.node.event.MasterEventCode;
 import com.taobao.top.analysis.node.event.MasterNodeEvent;
+import com.taobao.top.analysis.node.event.SendMonitorInfoResponseEvent;
 import com.taobao.top.analysis.node.event.SendResultsResponseEvent;
 
 /**
@@ -22,6 +23,7 @@ import com.taobao.top.analysis.node.event.SendResultsResponseEvent;
  *
  */
 public class MemMasterConnector extends AbstractMasterConnector implements Runnable {
+
 	private static final Log logger = LogFactory.getLog(MemMasterConnector.class);
 	
 	MemTunnel tunnel;
@@ -94,7 +96,11 @@ public class MemMasterConnector extends AbstractMasterConnector implements Runna
 	public void echoSendJobTaskResults(SendResultsResponseEvent event) {
 		tunnel.getSlaveSide().offer(event);
 	}
-
+	
+	@Override
+	public void echoSendMonitorInfo(SendMonitorInfoResponseEvent event) {
+		tunnel.getSlaveSide().offer(event);
+	}
 
     /* (non-Javadoc)
      * @see com.taobao.top.analysis.node.connect.IMasterConnector#openServer()

@@ -5,6 +5,7 @@ import com.taobao.top.analysis.config.MasterConfig;
 import com.taobao.top.analysis.node.IComponent;
 import com.taobao.top.analysis.node.component.MasterNode;
 import com.taobao.top.analysis.node.event.GetTaskResponseEvent;
+import com.taobao.top.analysis.node.event.SendMonitorInfoResponseEvent;
 import com.taobao.top.analysis.node.event.SendResultsResponseEvent;
 
 /**
@@ -29,6 +30,12 @@ public interface IMasterConnector extends IComponent<MasterConfig>{
 	 * @param 返回结果
 	 */
 	public void echoSendJobTaskResults(SendResultsResponseEvent event);
+	
+	/**
+	 * 响应发送监控信息请求
+	 * @param event
+	 */
+	public void echoSendMonitorInfo(SendMonitorInfoResponseEvent event);
 	
 	public void openServer();
 

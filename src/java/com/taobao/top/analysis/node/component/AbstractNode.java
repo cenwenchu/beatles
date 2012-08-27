@@ -8,11 +8,13 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
+
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.zookeeper.ZooKeeper;
 
 import com.taobao.top.analysis.config.IConfig;
+import com.taobao.top.analysis.exception.AnalysisException;
 import com.taobao.top.analysis.node.INode;
 import com.taobao.top.analysis.node.event.INodeEvent;
 
@@ -28,8 +30,6 @@ public abstract class AbstractNode<E extends INodeEvent,C extends IConfig> imple
 	
 	private static final Log logger = LogFactory.getLog(AbstractNode.class);
 	
-	boolean running = true;
-	
 	protected C config;
 	
 	/**
@@ -42,6 +42,9 @@ public abstract class AbstractNode<E extends INodeEvent,C extends IConfig> imple
 	 */
 	private Inspector inspector;
 	
+	/**
+	 * 节点内部线程，处理节点内部周期工作
+	 */
 	private Thread innerThread;
 	
 	/**
@@ -98,6 +101,7 @@ public abstract class AbstractNode<E extends INodeEvent,C extends IConfig> imple
 	{
 		innerThread = new Thread(this);
 		innerThread.start();
+		logger.info("trying to start node");
 		nodeStartTimeStamp = System.currentTimeMillis();
 	}
 	
@@ -107,8 +111,8 @@ public abstract class AbstractNode<E extends INodeEvent,C extends IConfig> imple
 	@Override
 	public void stopNode()
 	{
-		running = false;
 		innerThread.interrupt();
+		inspector.interrupt();
 	}
 
 	public C getConfig() {
@@ -125,16 +129,21 @@ public abstract class AbstractNode<E extends INodeEvent,C extends IConfig> imple
 		{
 			this.init();
 			
-			while(running)
+			while(!Thread.currentThread().isInterrupted())
 			{
 				try
 				{
 					pauseSemaphore.acquire();
 					process();
 				}
-				catch(Exception ex)
+				catch(InterruptedException e)
 				{
-					logger.error(ex,ex);
+					logger.error(e,e);
+					Thread.currentThread().interrupt();
+				}
+				catch(AnalysisException e)
+				{
+					logger.error(e,e);
 				}
 				finally
 				{
@@ -149,7 +158,7 @@ public abstract class AbstractNode<E extends INodeEvent,C extends IConfig> imple
 		}
 		finally
 		{
-			this.inspector.stopInspector();
+			this.inspector.interrupt();
 			this.releaseResource();
 			
 			logger.info("Node stopped ...");
@@ -167,7 +176,7 @@ public abstract class AbstractNode<E extends INodeEvent,C extends IConfig> imple
 
 		@Override
 		public void run() {
-			while(running)
+			while(!Thread.currentThread().isInterrupted())
 			{
 				try
 				{
@@ -183,21 +192,16 @@ public abstract class AbstractNode<E extends INodeEvent,C extends IConfig> imple
 				catch(InterruptedException e)
 				{
 					//do nothing
+					logger.error(e);
+					Thread.currentThread().interrupt();
 				}
-				catch(Exception ex)
+				catch(Throwable e)
 				{
-					logger.error(ex,ex);
+					logger.error(e,e);
 				}
 			}
 			
 			logger.warn("Node Inspector stop now.");
 		}
-		
-		public void stopInspector()
-		{
-			this.interrupt();
-		}
-		
 	}
-
 }

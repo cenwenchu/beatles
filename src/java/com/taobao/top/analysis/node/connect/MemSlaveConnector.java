@@ -8,14 +8,18 @@ import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+
 import com.taobao.top.analysis.exception.AnalysisException;
 import com.taobao.top.analysis.node.event.GetTaskRequestEvent;
 import com.taobao.top.analysis.node.event.GetTaskResponseEvent;
+import com.taobao.top.analysis.node.event.SendMonitorInfoEvent;
+import com.taobao.top.analysis.node.event.SendMonitorInfoResponseEvent;
 import com.taobao.top.analysis.node.event.SendResultsRequestEvent;
 import com.taobao.top.analysis.node.event.SendResultsResponseEvent;
 import com.taobao.top.analysis.node.event.SlaveEventCode;
 import com.taobao.top.analysis.node.event.SlaveNodeEvent;
 import com.taobao.top.analysis.node.job.JobTask;
+import com.taobao.top.analysis.node.monitor.MasterMonitorInfo;
 
 /**
  * 用于单机的分布式模拟，用内存作为通信的客户端实现
@@ -92,6 +96,24 @@ public class MemSlaveConnector extends AbstractSlaveConnector {
 		return null;
 	}
 
+	@Override
+	public MasterMonitorInfo sendMonitorInfo(
+			SendMonitorInfoEvent sendSlaveMonitorInfoEvent) {
+		
+		tunnel.getMasterSide().offer(sendSlaveMonitorInfoEvent);
+		try {
+			
+			SlaveNodeEvent event = tunnel.getSlaveSide().poll(10, TimeUnit.SECONDS);
+			if (event != null && event.getEventCode().equals(SlaveEventCode.SEND_RESULT_RESP)) {
+				return ((SendMonitorInfoResponseEvent)event).getMasterMonitorInfo();
+			}	
+			
+		} catch (InterruptedException e) {
+			logger.error(e,e);
+		}
+		
+		return null;
+	}
 
 	public MemTunnel getTunnel() {
 		return tunnel;

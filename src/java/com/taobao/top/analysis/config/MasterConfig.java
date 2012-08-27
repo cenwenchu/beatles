@@ -44,6 +44,11 @@ public class MasterConfig extends AbstractConfig{
 	private final static String MASTER_PORT = "masterPort";
 	
 	/**
+	 * Master端输出系统监控信息目录
+	 */
+	private final static String SYSTEM_MONITOR_INFO_OUTPUT = "systemMonitorInfoOutput";
+	
+	/**
 	 * JobManager处理消息事件最大线程池线程数量
 	 */
 	private final static String MAX_JOBEVENT_WORKER = "maxJobEventWorker";
@@ -121,6 +126,28 @@ public class MasterConfig extends AbstractConfig{
 	 * 标识是否有zookeeper作为部分配置存储中心
 	 */
 	private final static String ZK_SERVER = "zkServer";
+	
+	/**
+	 * 监控HTTP服务文档目录
+	 */
+	private final static String MONITOR_DOC_ROOT = "monitorDocRoot";
+	
+	private final static String DEFAULT_MONITOR_DOC_ROOT = "/tmp";
+	
+	/**
+	 * 监控HTTP服务端口
+	 */
+	private final static String MONITOR_PORT = "monitorPort";
+	
+	/**
+	 * Master导出监控新的周期, 到出到报表
+	 */
+	private final static String EXPORT_MONITOR_INTERVAL = "exportMonitorInterval";
+	
+	/**
+	 * 是否为DispatchMaster
+	 */
+	private final static String DISPATCH_MASTER = "dispatchMaster";
 	
 	public String getZkServer()
 	{
@@ -332,6 +359,62 @@ public class MasterConfig extends AbstractConfig{
 	        return AnalyzerUtil.convertStringToMap(this.properties.get(REPORT_TO_MASTER), ",", "|");
 	    else
 	        return new HashMap<String, String>();
+	}
+	
+	public String getMonitorDocRoot() {
+		if(this.properties.containsKey(MONITOR_DOC_ROOT))
+			return (String)this.properties.get(MONITOR_DOC_ROOT);
+		else
+			return DEFAULT_MONITOR_DOC_ROOT;
+	}
+	
+	public int getMonitorPort() {
+		if(this.properties.containsKey(MONITOR_PORT))
+			return Integer.parseInt((String)this.properties.get(MONITOR_PORT));
+		else
+			return 8421;
+	}
+	
+	public void setMonitorPort(int port) {
+		this.properties.put(MONITOR_PORT, String.valueOf(port));
+	}
+	
+	public int getExportMonitorInterval() {
+		if(this.properties.containsKey(EXPORT_MONITOR_INTERVAL)) {
+			return Integer.parseInt((String)this.properties.get(EXPORT_MONITOR_INTERVAL));
+		} else {
+			// 默认5分钟
+			return 300;
+		}
+	}
+	
+	public void setExportMonitorInterval(int interval) {
+		this.properties.put(EXPORT_MONITOR_INTERVAL, String.valueOf(interval));
+	}
+	
+	public String getSystemMonitorInfoOutput() {
+		if(this.properties.containsKey(SYSTEM_MONITOR_INFO_OUTPUT)) {
+			return (String)this.properties.get(SYSTEM_MONITOR_INFO_OUTPUT);
+		} else {
+			// 默认5分钟
+			return "./system";
+		}
+	}
+	
+	public void setSystemMonitorInfoOutput(String output) {
+		this.properties.put(SYSTEM_MONITOR_INFO_OUTPUT, output);
+	}
+	
+	public boolean getDispatchMaster() {
+	    if(this.properties.containsKey(DISPATCH_MASTER)) {
+	        return Boolean.parseBoolean((String)this.properties.get(DISPATCH_MASTER));
+	    }
+	    //默认为true
+	    return true;
+	}
+	
+	public void setDispatchMaster(String dispatchMaster) {
+	    this.properties.put(DISPATCH_MASTER, dispatchMaster);
 	}
 
 	@Override

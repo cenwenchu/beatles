@@ -50,10 +50,17 @@ public class DefaultMapper extends AbstractMapper {
             }
 
             if (c > contents.length) {
-                if (!threshold.sholdBlock())
-                    logger.error(new StringBuilder().append("Entry :").append(entry.getId()).append(", job : ")
-                        .append(jobtask.getJobName()).append(", entry:").append(entry.getName()).append(", index:")
-                        .append(c).append("\r record: ").append(contents.length).toString());
+                if (!threshold.sholdBlock()) {
+                    StringBuilder sb = new StringBuilder();
+                    sb.append("Entry :").append(entry.getId()).append(", job : ")
+                    .append(jobtask.getJobName()).append(", entry:").append(entry.getName()).append(", index:")
+                    .append(c).append("\r record: ").append(contents.length).append(", content[");
+                    for(String s : contents) {
+                        sb.append(s).append(",");
+                    }
+                    sb.append("]");
+                    logger.error(sb.toString());
+                }
                 return null;
             }
             key.append(innerKeyReplace(c, contents[c - 1], jobtask.getStatisticsRule().getInnerKeyPool())).append(

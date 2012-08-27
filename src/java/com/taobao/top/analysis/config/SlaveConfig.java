@@ -86,6 +86,26 @@ public class SlaveConfig extends AbstractConfig {
 	 */
 	private final static String ZK_SERVER = "zkServer";
 	
+	/**
+	 * Slave向Master汇报监控信息周期, 单位秒
+	 */
+	private final static String SLAVE_REPORT_MONITOR_INTERVAL = "slaveReportMonitorInterval";
+	
+	/**
+	 * Slave没有任务做的最长时间，超过该时长，会发送告警
+	 */
+	private final static String MAX_IDLE_TIME = "maxIdleTime";
+	
+	/**
+	 * slave发送结果所用的时间
+	 */
+	private final static String MAX_SEND_RESULT_TIME = "maxSendResultTime";
+	
+	/**
+	 * 是否采用多线程发送结果
+	 */
+	private final static String MULTI_SEND_RESULT = "multiSendResult";
+	
 	public String getZkServer()
 	{
 		if(this.properties.containsKey(ZK_SERVER))
@@ -235,6 +255,57 @@ public class SlaveConfig extends AbstractConfig {
 
 	public void setMaxTransJobCount(String maxTransJobCount) {
 		this.properties.put(MAX_TRANSJOB_COUNT,maxTransJobCount);
+	}
+	
+	public int getSlaveReportMonitorInterval() {
+		if(this.properties.containsKey(SLAVE_REPORT_MONITOR_INTERVAL)) {
+			return Integer.parseInt((String)this.properties.get(SLAVE_REPORT_MONITOR_INTERVAL));
+		} else {
+			// 默认30秒
+			return 30;
+		}
+	} 
+	
+	public long getMaxIdleTime() {
+	    if(this.properties.containsKey(MAX_IDLE_TIME)) {
+	        return Long.parseLong((String)(this.properties.get(MAX_IDLE_TIME)));
+	    }
+	    //默认300秒
+	    return 600;
+	}
+	
+	public long getMaxSendResultTime() {
+	    if(this.properties.containsKey(MAX_SEND_RESULT_TIME)) {
+            return Long.parseLong((String)this.properties.get(MAX_SEND_RESULT_TIME));
+        } else {
+            // 默认30秒
+            return 30;
+        }
+	}
+	
+	public boolean getMultiSendResult() {
+	    if(this.properties.containsKey(MULTI_SEND_RESULT)) {
+            return Boolean.parseBoolean((String)this.properties.get(MULTI_SEND_RESULT));
+        } else {
+            // 默认30秒
+            return true;
+        }
+	}
+	
+	public void setMaxSendResultTime(long maxSendResultTime) {
+	    this.properties.put(MAX_SEND_RESULT_TIME, String.valueOf(maxSendResultTime));
+	}
+	
+	public void setMultiSendResult(boolean multiSendResult) {
+	    this.properties.put(MULTI_SEND_RESULT, String.valueOf(multiSendResult));
+	}
+	
+	public void setMaxIdleTime(String maxIdleTime) {
+	    this.properties.put(MAX_IDLE_TIME, maxIdleTime);
+	}
+	
+	public void setSlaveReportMonitorInterval(int slaveReportMonitorInterval) {
+		this.properties.put(SLAVE_REPORT_MONITOR_INTERVAL, String.valueOf(slaveReportMonitorInterval));
 	}
 
 	@Override

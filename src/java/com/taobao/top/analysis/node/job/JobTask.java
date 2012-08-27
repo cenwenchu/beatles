@@ -4,6 +4,7 @@
 package com.taobao.top.analysis.node.job;
 
 import java.io.Serializable;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import com.taobao.top.analysis.config.JobConfig;
 import com.taobao.top.analysis.statistics.data.Rule;
@@ -82,6 +83,8 @@ public class JobTask implements Serializable{
      * 用于系统恢复的时候从临时备份数据中读取临时数据在日志获取端的游标，以时间戳作为游标
      * 简单来说就是每一个master备份出去的临时文件包含当前分析的数据内容和这些数据对应到数据源（日志产生方）的日志拖拉绝对游标
      * 这个参数将会配合epoch一起加入到job的task的input中作为参数传递，epoch＝1的时候才会判断是否要根据这个参数重置游标
+     * 
+     * 在hub客户端使用时，重用该参数，用于记录上次日志拉取的时间
      */
     private long jobSourceTimeStamp = 0;
     
@@ -90,6 +93,11 @@ public class JobTask implements Serializable{
      * 若重构时需要修改该task，则置为1；
      */
     private int rebuildStatus = 0;
+    
+    /**
+     * 是否重置游标
+     */
+    private AtomicBoolean tailCursor = new AtomicBoolean(false);
 	
 	public JobTask(JobConfig jobConfig)
 	{
@@ -236,11 +244,15 @@ public class JobTask implements Serializable{
         this.url = url;
     }
     
-    public void resetInput() {
+    public void resetInput(long start, long step) {
         if(url != null && url.startsWith("http")) {
             StringBuilder result = new StringBuilder(url);
             result.append("&jobSourceTimeStamp=").append(this.getJobSourceTimeStamp())
             .append("&epoch=").append(this.jobEpoch);
+            this.input = result.toString();
+        } else if (url != null && url.startsWith("hub://")) {
+            StringBuilder result = new StringBuilder(url);
+            result.append("&begin=").append(start).append("&end=").append((start + step));
             this.input = result.toString();
         }
     }
@@ -289,6 +301,14 @@ public class JobTask implements Serializable{
      */
     public void setRebuildStatus(int rebuildStatus) {
         this.rebuildStatus = rebuildStatus;
+    }
+
+
+    /**
+     * @return the tailCursor
+     */
+    public AtomicBoolean getTailCursor() {
+        return tailCursor;
     }
 
 }

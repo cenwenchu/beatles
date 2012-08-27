@@ -2,6 +2,8 @@ package com.taobao.top.analysis.statistics.reduce.group;
 
 import java.util.Map;
 
+import org.apache.commons.lang.math.NumberUtils;
+
 import com.taobao.top.analysis.statistics.data.ReportEntry;
 import com.taobao.top.analysis.statistics.reduce.IReducer.ReduceType;
 import com.taobao.top.analysis.util.AnalysisConstants;
@@ -24,8 +26,11 @@ public class AvgFunction implements GroupFunction {
 	public void group(ReportEntry entry,String key, Object value, Map<String, Object> result,ReduceType rs) {
 		if (value == null)
 			return;
-		value = Double.parseDouble(value.toString());
 		
+		if(NumberUtils.isNumber(value.toString()))
+            value = Double.parseDouble(value.toString());
+		else
+		    return;
 		
 		if(key.startsWith(AnalysisConstants.PREF_SUM)) 
 		{

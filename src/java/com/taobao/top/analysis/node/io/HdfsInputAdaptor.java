@@ -3,13 +3,15 @@
  */
 package com.taobao.top.analysis.node.io;
 
-import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.fs.FsUrlStreamHandlerFactory;
 
 import com.taobao.top.analysis.node.job.JobTask;
+import com.taobao.top.analysis.node.job.JobTaskExecuteInfo;
 
 /**
  * @author fangweng
@@ -18,6 +20,7 @@ import com.taobao.top.analysis.node.job.JobTask;
  *
  */
 public class HdfsInputAdaptor implements IInputAdaptor {
+    private static final Log logger = LogFactory.getLog(HdfsInputAdaptor.class);
 
 	static
 	{
@@ -26,10 +29,16 @@ public class HdfsInputAdaptor implements IInputAdaptor {
 	
 	
 	@Override
-	public InputStream getInputFormJob(JobTask jobtask) throws IOException {
-		URL url = new URL(jobtask.getInput());
-		return url.openStream();
-	}
+    public InputStream getInputFormJob(JobTask jobtask, JobTaskExecuteInfo taskExecuteInfo) {
+        try {
+            URL url = new URL(jobtask.getInput());
+            return url.openStream();
+        }
+        catch (Throwable e) {
+            logger.error("job get input error:" + jobtask.getJobName() + "," + jobtask.getInput(), e);
+        }
+        return null;
+    }
 
 	
 	@Override

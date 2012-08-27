@@ -3,6 +3,9 @@
  */
 package com.taobao.top.analysis.util;
 
+import java.util.List;
+
+import org.apache.commons.lang.StringUtils;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.ZooKeeper;
@@ -15,6 +18,10 @@ import org.apache.zookeeper.data.Stat;
  *  beatles-
  *  		groupId-
  *  				master-
+ *  					runtime-
+ *  						epoch-
+ *  						jobName-
+ *  							taskId-
  *  				slave-
  *  				config-
  *  
@@ -120,6 +127,7 @@ public class ZKUtil {
 		
 		if (node == null)
 		{
+			createPath(zk,path);
 			zk.create(path,data,Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
 		}
 		else
@@ -130,6 +138,32 @@ public class ZKUtil {
 		
 		//增加对于节点数据修改的监控
 		zk.getData(path, true, null);
+	}
+	
+	/**
+	 * 循环创建路径中不存在的节点
+	 * @param zk
+	 * @param path
+	 * @throws InterruptedException 
+	 * @throws KeeperException 
+	 */
+	public static void createPath(ZooKeeper zk,String path) throws KeeperException, InterruptedException
+	{
+		String[] paths = StringUtils.split(path, '/');
+		StringBuilder sp = new StringBuilder();
+		
+		for(int i = 0 ; i < paths.length - 1; i++)
+		{
+			sp.append("/").append(paths[i]);
+			
+			Stat node = zk.exists(sp.toString(), false);
+			
+			if (node == null)
+			{
+				zk.create(sp.toString(),null,Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
+			}
+		}
+		
 	}
 	
 	/**
@@ -145,7 +179,28 @@ public class ZKUtil {
 		
 		if (node != null)
 		{
-			zk.delete(path, -1);
+			List<String> subPaths = null;
+			
+			try
+			{
+				subPaths = zk.getChildren(path, false);
+			}
+			catch(Exception ex)
+			{
+				ex.printStackTrace();
+			}
+			
+			if (subPaths == null || subPaths.size() == 0)
+				zk.delete(path, -1);
+			else
+			{
+				for(String s : subPaths)
+				{
+					deleteNode(zk,new StringBuilder().append(path).append("/").append(s).toString());
+				}
+				
+				zk.delete(path, -1);
+			}
 		}
 	}
 	

@@ -4,6 +4,8 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -140,6 +142,24 @@ public class Job {
 	 */
 	private transient boolean diskResultMerged;
 	
+	/**
+     * 游标管理的Map，采用hub拉取日志方式，使用该Map存储各数据来源游标位置
+     * 采用Hub方式的标识是HTTP的URL为hub://开头
+     */
+    private ConcurrentMap<String, Long> cursorMap;
+    
+    /**
+     * 游标管理的临时Map，采用hub拉取日志方式，使用该Map存储各数据来源游标位置
+     * 采用Hub方式的标识是HTTP的URL为hub://开头
+     */
+    private ConcurrentMap<String, Long> tmpMap;
+	
+    /**
+     * 采用hub拉取日志时，使用该timestampMap记录日志上次拉取的时间，
+     * 用于做跨天处理的判断，如果跨天就多拉一次日志
+     */
+    private ConcurrentMap<String, Long> timestampMap;
+
 	public Job()
 	{
 		jobTasks = new ArrayList<JobTask>();
@@ -148,12 +168,19 @@ public class Job {
 		loadLock = new ReentrantLock();
 		waitlock = new ReentrantLock();
 		waitToJobReset = waitlock.newCondition();
+		merged = new AtomicBoolean(false);
+        merging = new AtomicBoolean(false);
+        exporting = new AtomicBoolean(false);
+        exported = new AtomicBoolean(false);
 		
 		lastExportTime = 0;
 		reportPeriodFlag = -1;
 		epoch = new AtomicInteger(0);
 		trunkExported = new AtomicBoolean(false);
 		diskResultMerged = false;
+		cursorMap = new ConcurrentHashMap<String, Long>();
+		tmpMap = new ConcurrentHashMap<String, Long>();
+		timestampMap = new ConcurrentHashMap<String, Long>();
 //		reset(null);
 	}
 	
@@ -220,7 +247,8 @@ public class Job {
 		this.jobSourceTimeStamp = jobSourceTimeStamp;
 		for(JobTask task : jobTasks)
         {
-            task.setJobSourceTimeStamp(jobSourceTimeStamp);
+		    if(task.getUrl().startsWith("http://"))
+		        task.setJobSourceTimeStamp(jobSourceTimeStamp);
         }
 	}
 
@@ -274,16 +302,18 @@ public class Job {
 	
 	public boolean needExport()
 	{
-		return !exported.get() && merged.get() && (mergedTaskCount.get() == taskCount || jobTimeOut.get());
+		return !exported.get() && merged.get() && (mergedTaskCount.get() >= taskCount || jobTimeOut.get());
 	}
 	
 	public void checkJobTimeOut()
 	{
 		long consume = System.currentTimeMillis() - startTime;
 		
-		if (mergedTaskCount.get() < taskCount && consume > jobConfig.getJobResetTime() * 1000)
+		if (mergedTaskCount.get() < taskCount && consume > jobConfig.getJobResetTime() * 1000) {
 			if (logger.isWarnEnabled() && !threshold.sholdBlock())
-				logger.warn("job : " + jobName + " can't complete in time!");
+				logger.warn("job : " + jobName + " can't complete in time!" + " mergedTaskCount:" + mergedTaskCount.get() + ",taskCount:" + taskCount
+                    + ",taskList:" + jobTasks.size());
+		}
 		
 		if (consume > jobConfig.getJobResetTime() * 1000 * 2)
 			this.jobTimeOut.set(true);
@@ -312,6 +342,7 @@ public class Job {
 	public void reset(JobManager jobManager)
 	{
 		epoch.incrementAndGet();
+		tmpMap.clear();
 		
 		for(JobTask task : jobTasks)
 		{
@@ -320,7 +351,20 @@ public class Job {
 			task.setStartTime(0);
 			task.getRecycleCounter().set(0);
 			task.setJobEpoch(epoch.get());
-			task.resetInput();
+			long start = 0;
+			if(task.getInput().startsWith("hub://")) {
+			    String key = task.getInput().substring(0, task.getInput().indexOf('?'));
+			    if(timestampMap.containsKey(key))
+			        task.setJobSourceTimeStamp(timestampMap.get(key));
+			    if(!tmpMap.containsKey(key)) {
+			        logger.info("get job cursor " + key + ", " + cursorMap.get(key));
+			        tmpMap.put(key, cursorMap.get(key));
+			    }
+			    start = tmpMap.get(key);
+			    tmpMap.put(key, start + jobConfig.getHubCursorStep());
+			    logger.info("dispatch job cursor " + key + "," + start + ", " + task.getJobSourceTimeStamp());
+			}
+			task.resetInput(start, jobConfig.getHubCursorStep());
 		}
 			
 		taskCount = jobTasks.size();
@@ -340,6 +384,12 @@ public class Job {
 		jobExportTime = 0;
 		jobMergeBranchCount = new AtomicInteger(0);
 		diskResult = null;
+		StringBuilder bs = new StringBuilder();
+        for(JobTask jobTask : this.jobTasks) {
+            bs.append(jobTask.getUrl());
+            bs.append(";");
+        }
+        logger.info("jobTasks:[" + bs.toString() + " ]");
 		
 		notifySomeWaitResetJob();
 		
@@ -512,8 +562,8 @@ public class Job {
                 jobManager.getJobTaskPool().remove(jobTask.getTaskId());
                 jobManager.getStatusPool().remove(jobTask.getTaskId());
             }
-            jobManager.getBranchResultQueuePool().remove(job.getJobName());
-            jobManager.getJobTaskResultsQueuePool().remove(job.getJobName());
+            jobManager.getBranchResultQueuePool().remove(this.jobName);
+            jobManager.getJobTaskResultsQueuePool().remove(this.jobName);
             this.rebuildTag = rebuildTag;
             this.rebuildJob = null;
             return;
@@ -540,12 +590,29 @@ public class Job {
         this.statisticsRule = rebuildJob.statisticsRule;
         int o = this.taskCount;
         this.taskCount = rebuildJob.taskCount;
+        //更新cursorMap和timestampMap
+        for(String key : rebuildJob.cursorMap.keySet()) {
+            this.cursorMap.putIfAbsent(key, rebuildJob.cursorMap.get(key));
+        }
+        for(String key : rebuildJob.timestampMap.keySet()) {
+            this.timestampMap.putIfAbsent(key, rebuildJob.timestampMap.get(key));
+        }
+        Iterator<Map.Entry<String, Long>> mapIter = this.cursorMap.entrySet().iterator();
+        while(mapIter.hasNext()) {
+            if(!rebuildJob.cursorMap.containsKey(mapIter.next().getKey()))
+                mapIter.remove();
+        }
+        mapIter = this.timestampMap.entrySet().iterator();
+        while(mapIter.hasNext()) {
+            if(!rebuildJob.timestampMap.containsKey(mapIter.next().getKey()))
+                mapIter.remove();
+        }
         int i = 0, j = 0;
         for (JobTask jobTask : this.jobTasks) {
             Iterator<JobTask> iter = rebuildJob.jobTasks.iterator();
             while (iter.hasNext()) {
                 JobTask task = iter.next();
-                if (jobTask.getUrl() != null && jobTask.getUrl().equals(task.getUrl())) {
+                if (jobTask.getUrl() != null && jobTask.getUrl().equals(task.getUrl()) && jobTask.getRebuildStatus() != 1) {
                     jobTask.rebuild(task);
                     iter.remove();
                     i++;
@@ -565,20 +632,55 @@ public class Job {
         for (JobTask jobTask : rebuildJob.getJobTasks()) {
             this.jobTasks.add(jobTask);
         }
-        this.jobTasks.addAll(rebuildJob.getJobTasks());
         for (JobTask jobTask : this.jobTasks) {
             jobTask.setRebuildStatus(0);
             jobManager.getJobTaskPool().put(jobTask.getTaskId(), jobTask);
             jobManager.getStatusPool().put(jobTask.getTaskId(), jobTask.getStatus());
         }
         logger.error(jobName + " oldJob:" + o + ",newJob:" + this.taskCount + ",update:" + i + ",delete:" + j + ",add:"
-                + job.getJobTasks().size());
+                + rebuildJob.getJobTasks().size());
         if(jobManager.getBranchResultQueuePool().get(this.jobName) == null)
             jobManager.getBranchResultQueuePool().put(this.jobName, new LinkedBlockingQueue<JobMergedResult>());
         if(jobManager.getJobTaskResultsQueuePool().get(this.jobName) == null)
             jobManager.getJobTaskResultsQueuePool().put(this.jobName, new LinkedBlockingQueue<JobTaskResult>());
         this.rebuildTag = rebuildTag;
         this.rebuildJob = null;
+        
+        StringBuilder bs = new StringBuilder();
+        for(JobTask jobTask : this.jobTasks) {
+            bs.append(jobTask.getUrl());
+            bs.append(";");
+        }
+        logger.info("jobTasks:[" + bs.toString() + " ]");
+    }
+    
+    /**
+     * 更新游标
+     * 游标的处理会引起误差
+     * @param url
+     * @param fileLength
+     */
+    public void updateCursor(String url, Long fileBegin, Long fileLength, Long timestamp) {
+        if(url.indexOf('?') < 0)
+            return;
+        if(fileBegin == null || fileLength == null || timestamp == null)
+            return;
+        String key = url.substring(0, url.indexOf('?'));
+        logger.info("updateCursor " + key + "," + fileBegin + "," + fileLength + "," + this.cursorMap.get(key) + ",timestamp:" + this.timestampMap.get(key));
+        if(!this.timestampMap.containsKey(key) || this.timestampMap.get(key).compareTo(0L) == 0 ) {
+            this.timestampMap.put(key, timestamp);
+        }
+        if(this.cursorMap.containsKey(key)) {
+            long last = (this.timestampMap.get(key).longValue() + 28800000L) / (24 * 3600 * 1000);
+            long now = (timestamp.longValue() + 28800000L) / (24 * 3600 * 1000);
+            if(fileBegin.equals(0L) && !this.cursorMap.get(key).equals(0L) && (now > last || fileLength.compareTo(0L) > 0))
+                this.cursorMap.put(key, fileLength);
+            else
+                this.cursorMap.put(key, this.cursorMap.get(key) + fileLength);
+        }
+        if(timestamp.compareTo(this.timestampMap.get(key)) > 0)
+            this.timestampMap.put(key, timestamp);
+        logger.info("updateCursor " + key + "," + fileBegin + "," + fileLength + "," + this.cursorMap.get(key) + ",timestamp:" + timestamp);
     }
 
     /**
@@ -614,5 +716,19 @@ public class Job {
      */
     public void setRebuildTag(int rebuildTag) {
         this.rebuildTag = rebuildTag;
+    }
+
+    /**
+     * @return the cursorMap
+     */
+    public ConcurrentMap<String, Long> getCursorMap() {
+        return cursorMap;
+    }
+
+    /**
+     * @return the timestampMap
+     */
+    public ConcurrentMap<String, Long> getTimestampMap() {
+        return timestampMap;
     }
 }

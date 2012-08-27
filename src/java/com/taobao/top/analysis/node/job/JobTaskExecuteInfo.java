@@ -25,8 +25,13 @@ public class JobTaskExecuteInfo implements Serializable {
 	private long totalLine;
 	private long errorLine;
 	private long emptyLine;
+	private long keyCount;
+	private long valueCount;
 	private boolean success;
 	private String taskId;
+	private long fileBegin;
+	private long fileLength;
+	private long timestamp;
 	
 	public boolean isSuccess() {
 		return success;
@@ -65,7 +70,26 @@ public class JobTaskExecuteInfo implements Serializable {
 	public void setEmptyLine(long emptyLine) {
 		this.emptyLine = emptyLine;
 	}
-
+	public long getKeyCount() {
+		return keyCount;
+	}
+	public void setKeyCount(long keyCount) {
+		this.keyCount = keyCount;
+	}
+	public long getValueCount() {
+		return valueCount;
+	}
+	public void setValueCount(long valueCount) {
+		this.valueCount = valueCount;
+	}
+	
+	public void incKeyCount(int count) {
+		keyCount += count;
+	}
+	
+	public void incValueCount(int count) {
+		valueCount += count;
+	}
 
     public String toString() {
         StringBuilder sb = new StringBuilder("(");
@@ -85,6 +109,42 @@ public class JobTaskExecuteInfo implements Serializable {
      */
     public void setTaskId(String taskId) {
         this.taskId = taskId;
+    }
+    /**
+     * @return the fileBegin
+     */
+    public long getFileBegin() {
+        return fileBegin;
+    }
+    /**
+     * @param fileBegin the fileBegin to set
+     */
+    public void setFileBegin(long fileBegin) {
+        this.fileBegin = fileBegin;
+    }
+    /**
+     * @return the fileLength
+     */
+    public long getFileLength() {
+        return fileLength;
+    }
+    /**
+     * @param fileLength the fileLength to set
+     */
+    public void setFileLength(long fileLength) {
+        this.fileLength = fileLength;
+    }
+    /**
+     * @return the timestamp
+     */
+    public long getTimestamp() {
+        return timestamp;
+    }
+    /**
+     * @param timestamp the timestamp to set
+     */
+    public void setTimestamp(long timestamp) {
+        this.timestamp = timestamp;
     }
 
 }
